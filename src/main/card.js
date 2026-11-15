@@ -142,6 +142,12 @@ function isInteractive() {
 
 function show() {
   if (!win) return;
+  // Se recoloca SIEMPRE al mostrarse: el ancla puede haber cambiado desde la
+  // ultima vez (o no existir aun la primera vez, con lo que la tarjeta se
+  // habia quedado en la esquina de respaldo) y position() solo se llamaba
+  // cuando cambiaba el tamano del contenido.
+  const [width, height] = win.getSize();
+  position({ width, height });
   win.showInactive();
 }
 
