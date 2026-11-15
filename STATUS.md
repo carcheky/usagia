@@ -85,7 +85,7 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
 - **Empaquetado**: los `.ps1` que la app ejecuta viajan desempaquetados del
   asar (arreglado en `beta.3`; antes la tarjeta no salía en la app instalada).
 - **Pipeline de releases**: `commits` → `verify` → `release` → `build-windows`
-  + `build-linux`, con commitlint y semantic-release. Tres pre-releases
+  + `build-linux`, con commitlint y semantic-release. Cuatro pre-releases
   publicadas sin intervención manual.
 
 ## Pendiente / siguiente
@@ -94,15 +94,15 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
    `git switch main && git merge --ff-only beta && git push origin main` →
    `v1.0.0`. Conviene hacerlo después de instalar `beta.4` y comprobar que la
    tarjeta sale en la app instalada (el fallo que arregló `beta.3`).
-3. **Dependabot**: rama `origin/dependabot/npm_and_yarn/electron-42.11.16`
+2. **Dependabot**: rama `origin/dependabot/npm_and_yarn/electron-42.11.16`
    abierta (actualización de Electron). Sin revisar. GitHub además avisa de
    **34 vulnerabilidades en la rama por defecto** (11 altas, 16 moderadas,
    7 bajas): casi todas de Electron, y `electron-builder` arrastra las suyas.
    Es lo que más papeletas da en la rama `main`.
-4. **Android**: hay un plan completo en [PLAN-ANDROID.md](PLAN-ANDROID.md)
+3. **Android**: hay un plan completo en [PLAN-ANDROID.md](PLAN-ANDROID.md)
    (Capacitor 8 + núcleo JS compartido + jobs `verify-android`/`build-android`).
    **No se ha empezado**: hoy no hay nada que compilar para Android.
-5. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
+4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
    binarios de macOS** (solo Windows y Linux).
 
 ## Puntos abiertos y riesgos conocidos
