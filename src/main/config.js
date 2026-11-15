@@ -1,7 +1,7 @@
 'use strict';
 
-const { app } = require('electron');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const DEFAULTS = {
@@ -21,8 +21,40 @@ const DEFAULTS = {
 
 let cache = null;
 
+/**
+ * Carpeta de datos de la app.
+ *
+ * Fuera de Electron (por ejemplo en el script de consulta `scripts/probe.js`,
+ * que corre en CI sin display) no hay `app.getPath`, asi que se calcula con la
+ * convencion de cada sistema. Esto permite consultar las cuotas en Node puro,
+ * sin arrancar la GUI.
+ */
+function userDataDir() {
+  try {
+    // En Node plano, `require('electron')` devuelve la RUTA del binario (un
+    // string), no el modulo: por eso se comprueba antes de usar `app`.
+    const electron = require('electron');
+    const app = electron && electron.app;
+    if (app && typeof app.getPath === 'function') {
+      return app.getPath('userData');
+    }
+  } catch {
+    /* no estamos en Electron */
+  }
+
+  if (process.platform === 'win32') {
+    const base = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(base, 'Usagia');
+  }
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Usagia');
+  }
+  const base = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+  return path.join(base, 'Usagia');
+}
+
 function configPath() {
-  return path.join(app.getPath('userData'), 'config.json');
+  return path.join(userDataDir(), 'config.json');
 }
 
 function load() {

@@ -22,7 +22,7 @@
   "scripts": {
     "start": "node scripts/run.js",
     "dev": "node scripts/run.js --verbose",
-    "probe": "node scripts/run.js --probe",
+    "probe": "node scripts/probe.js",
     "preview": "node scripts/run.js --preview",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
