@@ -114,6 +114,28 @@ function releaseInfo(tag) {
   }
 }
 
+/** Lista las releases del repo, de la mas nueva a la mas vieja. */
+function listReleases() {
+  const res = gh(['release', 'list', '--repo', REPO, '--limit', '30', '--json', 'tagName,isPrerelease,url']);
+  if (res.code !== 0) return [];
+  try {
+    return JSON.parse(res.raw || '[]');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Ultima release de un tipo. `prerelease` true = la beta; false = la estable.
+ * No se fijan nombres: la version la calcula semantic-release y la primera
+ * beta sale como v1.0.0-beta.1.
+ */
+function latestRelease(kind) {
+  const releases = listReleases();
+  const match = releases.find((r) => Boolean(r.isPrerelease) === (kind === 'prerelease'));
+  return match ? match.tagName : null;
+}
+
 function verify(tag) {
   const info = releaseInfo(tag);
   if (!info) fail(`No existe la release ${tag}`);
@@ -125,14 +147,13 @@ function verify(tag) {
   if (!assets.length) fail(`La release ${tag} no tiene artefactos`);
 
   const required = {
-    windows: /\.exe$/i,
-    linuxDeb: /\.deb$/i,
-    linuxAppImage: /\.AppImage$/i,
+    'windows (.exe)': /\.exe$/i,
+    'linux (.deb)': /\.deb$/i,
+    'linux (.AppImage)': /\.AppImage$/i,
   };
   const found = {};
   for (const [key, re] of Object.entries(required)) {
-    const match = assets.find((name) => re.test(name));
-    found[key] = match || null;
+    found[key] = assets.find((name) => re.test(name)) || null;
   }
 
   for (const [key, name] of Object.entries(found)) {
@@ -159,13 +180,14 @@ async function main() {
   const [command, argument] = process.argv.slice(2);
 
   if (command === 'plan') {
-    console.log('  1. node scripts/publish-releases.js push-beta   -> v0.1.0-beta.1');
+    console.log('  1. node scripts/publish-releases.js push-beta       -> v1.0.0-beta.1');
     console.log('  2. node scripts/publish-releases.js wait beta');
-    console.log('  3. node scripts/publish-releases.js verify v0.1.0-beta.1');
-    console.log('  4. node scripts/publish-releases.js push-main   -> v0.1.0');
+    console.log('  3. node scripts/publish-releases.js verify-latest prerelease');
+    console.log('  4. node scripts/publish-releases.js push-main       -> v1.0.0');
     console.log('  5. node scripts/publish-releases.js wait main');
-    console.log('  6. node scripts/publish-releases.js verify v0.1.0');
-    console.log('  7. node scripts/publish-releases.js drop v0.1.0   (deja solo la beta)');
+    console.log('  6. node scripts/publish-releases.js verify-latest stable');
+    console.log('  7. node scripts/publish-releases.js drop-latest stable   (deja solo la beta)');
+    console.log('  8. node scripts/publish-releases.js list');
     return;
   }
 
@@ -190,11 +212,40 @@ async function main() {
     case 'verify':
       verify(argument);
       break;
+    case 'verify-latest': {
+      const tag = latestRelease(argument);
+      if (!tag) fail(`No hay ninguna release de tipo '${argument}'`);
+      verify(tag);
+      break;
+    }
     case 'drop':
       drop(argument);
       break;
+    case 'drop-latest': {
+      const tag = latestRelease(argument);
+      if (!tag) fail(`No hay ninguna release de tipo '${argument}'`);
+      drop(tag);
+      break;
+    }
+    case 'list': {
+      const releases = listReleases();
+      if (!releases.length) {
+        console.log('No hay releases todavia.');
+        break;
+      }
+      for (const r of releases) {
+        const info = releaseInfo(r.tagName);
+        const assets = (info?.assets || []).map((a) => a.name).join(', ') || 'SIN ARTEFACTOS';
+        console.log(`${r.isPrerelease ? 'beta   ' : 'estable'}  ${r.tagName}`);
+        console.log(`         ${assets}`);
+      }
+      break;
+    }
     default:
-      console.log('Uso: node scripts/publish-releases.js <push-beta|push-main|wait <branch>|verify <tag>|drop <tag>|plan>');
+      console.log(
+        'Uso: node scripts/publish-releases.js <push-beta|push-main|wait <branch>|' +
+          'verify <tag>|verify-latest <prerelease|stable>|drop <tag>|drop-latest <tipo>|list|plan>'
+      );
       process.exit(1);
   }
 }
