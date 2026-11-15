@@ -38,6 +38,7 @@ npm run probe            # consulta los proveedores y vuelca el resultado por co
 npm run preview          # abre la tarjeta sola, con datos reales, y guarda una captura
 npm run preview:settings # abre la ventana de configuración y guarda una captura
 npm test                 # pruebas de las cuentas (Node puro, sin GUI)
+npm run test:package     # pruebas del paquete (lo que se publica)
 npm run dist             # empaqueta instaladores (Windows / macOS / Linux)
 ```
 
@@ -271,7 +272,15 @@ pasa a ser interactiva para que se pueda pulsar su botón ⚙.
 - El tooltip de Windows admite unos 127 caracteres: la tarjeta es la vista
   completa.
 - La tarjeta es de solo lectura y no intercepta el ratón: puedes seguir
-  usando lo que hay debajo.
+  usando lo que hay debajo (salvo cuando el puntero está encima de la tarjeta,
+  que entonces se vuelve interactiva para poder pulsar su ⚙).
 - Los scripts de `scripts/` (`get-claude-usage.ps1`, `get-deepseek-balance.ps1`,
   `Get-AntigravityQuota.ps1`, `antigravity-quota.mjs`) también funcionan sueltos
   por consola.
+- **Al tocar el empaquetado**, recuerda: los scripts de PowerShell que la app
+  ejecuta en tiempo de ejecución (`find-tray-icon.ps1`, `cred-read.ps1`,
+  `get-claude-usage.ps1`) tienen que ir **desempaquetados** del `asar` (`build.files`
+  + `build.asarUnpack`) y su ruta se resuelve con
+  `src/main/local/script-path.js`. Sin eso, la app instalada arranca pero **la
+  tarjeta nunca sale al pasar el ratón**. Lo comprueba `npm run test:package`,
+  que corre en el job `verify` del pipeline.

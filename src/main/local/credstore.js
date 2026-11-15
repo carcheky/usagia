@@ -4,9 +4,9 @@
 // Se usa para apps que guardan su token OAuth ahí (Antigravity, Gemini CLI...).
 
 const { execFile } = require('child_process');
-const path = require('path');
+const scriptPath = require('./script-path');
 
-const SCRIPT = path.join(__dirname, '..', '..', '..', 'scripts', 'cred-read.ps1');
+const SCRIPT = scriptPath.script('cred-read.ps1');
 
 /**
  * El Administrador de credenciales de Windows es del SISTEMA, no del usuario:

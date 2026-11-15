@@ -14,15 +14,15 @@
 // El endpoint no es publico y la comunidad reporta ~5 peticiones por ventana
 // (HTTP 429), asi que la respuesta se cachea 10 minutos.
 
-const path = require('path');
 const { fetchJson, pct100, tone } = require('../http');
 const creds = require('../credentials');
 const ps = require('../local/ps');
+const scriptPath = require('../local/script-path');
 const { aggregate, claudeProjectsDir } = require('../local/jsonl-tokens');
 
 const USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
 const OAUTH_BETA = 'oauth-2025-04-20';
-const SCRIPT = path.join(__dirname, '..', '..', '..', 'scripts', 'get-claude-usage.ps1');
+const SCRIPT = scriptPath.script('get-claude-usage.ps1');
 const CACHE_MS = 10 * 60 * 1000;
 
 // La cache va por CUENTA: con varias cuentas de Claude, una respuesta de la

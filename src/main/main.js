@@ -2,8 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { pathToFileURL } = require('url');
-const { app, Tray, Menu, screen, nativeImage, ipcMain, shell, protocol, net } = require('electron');
+const { app, Tray, Menu, screen, nativeImage, ipcMain, shell, protocol } = require('electron');
 
 const config = require('./config');
 const card = require('./card');
@@ -375,6 +374,15 @@ app.on('window-all-closed', () => {
   // App de bandeja: la ventana de la tarjeta no debe cerrar la app.
 });
 
+/**
+ * Dónde se guardan las capturas de las vistas previas. En la app empaquetada
+ * no se puede escribir dentro del asar, así que van a la carpeta temporal.
+ */
+function previewPath(name) {
+  const dir = app.isPackaged ? app.getPath('temp') : path.join(__dirname, '..', '..');
+  return path.join(dir, name);
+}
+
 // Protocolo propio para servir el renderer: permite una CSP estricta
 // (file:// no permite 'self' en la CSP).
 protocol.registerSchemesAsPrivileged([
@@ -384,16 +392,41 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+// Tipos MIME de los ficheros del renderer.
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+};
+
 function registerAppProtocol() {
   const root = path.join(__dirname, '..', 'renderer');
-  protocol.handle('app', (request) => {
+  protocol.handle('app', async (request) => {
     const { pathname } = new URL(request.url);
-    const relative = pathname === '/' ? 'card.html' : pathname.replace(/^\/+/, '');
+    const relative =
+      pathname === '/' ? 'card.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
     const target = path.join(root, relative);
     if (!target.startsWith(root)) {
       return new Response('no permitido', { status: 403 });
     }
-    return net.fetch(pathToFileURL(target).toString());
+
+    // OJO: se lee con fs y NO con net.fetch. net.fetch va por el servicio de
+    // red de Chromium, que NO entiende el empaquetado asar: en la app
+    // instalada el renderer esta dentro de app.asar y la pagina se quedaria
+    // EN BLANCO (ni la tarjeta ni la ventana de configuracion se verian).
+    // fs si lo entiende, porque Electron parchea el modulo para el asar.
+    try {
+      const data = await fs.promises.readFile(target);
+      const type = MIME_TYPES[path.extname(target).toLowerCase()] || 'application/octet-stream';
+      return new Response(data, { headers: { 'content-type': type } });
+    } catch (err) {
+      console.error(`[usagia] no se pudo servir ${relative}: ${err.message}`);
+      return new Response(`no se pudo leer ${relative}`, { status: 404 });
+    }
   });
 }
 
@@ -466,7 +499,7 @@ app.whenReady().then(async () => {
     setTimeout(async () => {
       try {
         const image = await card.get().webContents.capturePage();
-        const file = path.join(__dirname, '..', '..', 'preview-card.png');
+        const file = previewPath('preview-card.png');
         fs.writeFileSync(file, image.toPNG());
         console.log(`[usagia] captura: ${file}`);
       } catch (err) {
@@ -520,7 +553,7 @@ app.whenReady().then(async () => {
 
     try {
       const image = await win.webContents.capturePage();
-      const file = path.join(__dirname, '..', '..', 'preview-settings.png');
+      const file = previewPath('preview-settings.png');
       fs.writeFileSync(file, image.toPNG());
       console.log(`[usagia] captura: ${file}`);
     } catch (err) {

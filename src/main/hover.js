@@ -9,13 +9,18 @@
 //    pixeles fisicos, asi que se convierten a DIP (unidades de Electron).
 
 const { execFile } = require('child_process');
-const path = require('path');
+const fs = require('fs');
 const { screen } = require('electron');
+const scriptPath = require('./local/script-path');
 
-const SCRIPT = path.join(__dirname, '..', '..', 'scripts', 'find-tray-icon.ps1');
+const SCRIPT = scriptPath.script('find-tray-icon.ps1');
 const WIN_CACHE_MS = 10000;
 
 let winCache = { at: 0, rect: null, hidden: false };
+
+if (process.argv.includes('--verbose')) {
+  console.log(`[usagia] script de bandeja: ${SCRIPT} (existe: ${fs.existsSync(SCRIPT)})`);
+}
 
 function runPowerShell(args, timeout = 12000) {
   return new Promise((resolve) => {
@@ -23,11 +28,21 @@ function runPowerShell(args, timeout = 12000) {
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT, ...args],
       { timeout, windowsHide: true, encoding: 'utf8' },
-      (err, stdout) => {
-        if (err) return resolve(null);
+      (err, stdout, stderr) => {
+        if (err) {
+          if (process.argv.includes('--verbose')) {
+            console.log(
+              `[usagia] el script de bandeja fallo: ${err.message} ${String(stderr || '').slice(0, 300)}`
+            );
+          }
+          return resolve(null);
+        }
         try {
           resolve(JSON.parse(String(stdout).trim()));
         } catch {
+          if (process.argv.includes('--verbose')) {
+            console.log(`[usagia] salida ilegible: ${String(stdout).slice(0, 200)}`);
+          }
           resolve(null);
         }
       }

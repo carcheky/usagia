@@ -122,6 +122,12 @@ jobs:
       - name: Pruebas de cuentas
         run: node scripts/test-accounts.js
 
+      # Paquete: los scripts de PowerShell que la app ejecuta en tiempo de
+      # ejecucion tienen que viajar DESEMPAQUETADOS. Sin eso, en la app
+      # instalada la tarjeta nunca sale al pasar el raton.
+      - name: Comprobacion del paquete
+        run: node scripts/test-package.js
+
   release:
     name: semantic-release
     needs: verify

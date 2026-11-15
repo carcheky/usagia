@@ -26,6 +26,7 @@
     "preview": "node scripts/run.js --preview",
     "preview:settings": "node scripts/run.js --settings",
     "test": "node scripts/test-accounts.js",
+    "test:package": "node scripts/test-package.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
@@ -43,7 +44,11 @@
     "files": [
       "src/**/*",
       "assets/**/*",
+      "scripts/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "scripts/**/*"
     ],
     "win": {
       "target": [

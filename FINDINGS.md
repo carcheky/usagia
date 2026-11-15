@@ -161,7 +161,49 @@ tarjeta o *Configuración…* en el menú del icono) donde se gestionan las
 - Las pruebas de este modelo están en `scripts/test-accounts.js` (Node puro) y
   las ejecuta el job `verify` del pipeline.
 
-## 6. Guiones sueltos que ya funcionan
+## 6. El paquete (asar): el fallo que no se veía en desarrollo
+
+**Medido el 2026-11-15 en la v1.0.0-beta.2 publicada.** La app instalada
+**no mostraba la tarjeta** al pasar el ratón, y el exe seemed funcionar
+(arrancaba, tenía icono, la ventana de configuración abría). En desarrollo
+todo iba bien, porque `npm start` no empaqueta nada.
+
+Causa: `build.files` solo incluía `src/**` y `assets/**`. **La carpeta
+`scripts/` no viajaba en el paquete**, así que en la app instalada faltaban
+los tres scripts de PowerShell que la app ejecuta en tiempo de ejecución:
+
+| Script | Para qué | Sin él |
+|---|---|---|
+| `find-tray-icon.ps1` | localizar el icono de la bandeja | **la tarjeta nunca sale** (no hay ancla) |
+| `cred-read.ps1` | leer el Administrador de credenciales | Antigravity ponía *"sin credencial"* |
+| `get-claude-usage.ps1` | cuota real de Claude | Claude solo enseñaba las transcripciones locales |
+
+Arreglo (tres cosas, las tres hacen falta):
+
+1. `build.files` incluye `scripts/**/*`.
+2. `build.asarUnpack` incluye `scripts/**/*`: dentro de `app.asar` (que es un
+   *archivo* con sistema de ficheros virtual) PowerShell no puede ejecutar un
+   `.ps1`.
+3. `src/main/local/script-path.js` traduce la ruta `app.asar\...` a
+   `app.asar.unpacked\...` antes de pasársela a PowerShell. **Cuidado al
+   trocear la cadena**: el separador va después de `app.asar`, si no sale
+   `app.asar.unpackedscripts\...` y la comprobación de existencia falla en
+   silencio.
+
+Lo blinda `scripts/test-package.js`, que ejecuta el job `verify` del pipeline.
+
+**Trucos de pruebas que casi costan un diagnóstico falso:**
+
+- `ELECTRON_RUN_AS_NODE=1` estaba en el entorno del shell: Electron se
+  ejecutaba como Node y **no abría ninguna ventana**. El síntoma (proceso
+  vivo, sin ventanas) es el de "la app no pinta nada". Se ve enseguida en la
+  salida: `bad option: --preview` (lo dice Node, no Electron).
+- Las coordenadas del ratón de Windows son **lógicas**, y UI Automation
+  devuelve **físicas**. Con escalado 200 % hay que dividir entre 2, o el
+  puntero se va a la esquina de la pantalla.
+- Los scripts de PowerShell necesitan **PowerShell 7** (`pwsh`), no el 5.1.
+
+## 7. Guiones sueltos que ya funcionan
 
 ```bash
 node scripts/antigravity-quota.mjs                       # cuota de Antigravity (JSON + resumen)
@@ -171,6 +213,7 @@ pwsh -File scripts/get-deepseek-balance.ps1 -Json         # saldo y gasto de Dee
 node scripts/check-antigravity-inference.js               # comprueba que Antigravity NO genera (429/403)
 npm run probe                                             # los cuatro proveedores desde la app
 node scripts/test-accounts.js                             # pruebas del modelo de cuentas
+node scripts/test-package.js                              # pruebas del paquete (scripts desempaquetados)
 npm run preview:settings                                  # captura de la ventana de configuración
 ```
 
