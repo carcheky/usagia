@@ -157,6 +157,18 @@ function drop(tag) {
 
 async function main() {
   const [command, argument] = process.argv.slice(2);
+
+  if (command === 'plan') {
+    console.log('  1. node scripts/publish-releases.js push-beta   -> v0.1.0-beta.1');
+    console.log('  2. node scripts/publish-releases.js wait beta');
+    console.log('  3. node scripts/publish-releases.js verify v0.1.0-beta.1');
+    console.log('  4. node scripts/publish-releases.js push-main   -> v0.1.0');
+    console.log('  5. node scripts/publish-releases.js wait main');
+    console.log('  6. node scripts/publish-releases.js verify v0.1.0');
+    console.log('  7. node scripts/publish-releases.js drop v0.1.0   (deja solo la beta)');
+    return;
+  }
+
   requireAuth();
 
   switch (command) {
@@ -180,15 +192,6 @@ async function main() {
       break;
     case 'drop':
       drop(argument);
-      break;
-    case 'plan':
-      console.log('  1. node scripts/publish-releases.js push-beta   -> v0.1.0-beta.1');
-      console.log('  2. node scripts/publish-releases.js wait beta');
-      console.log('  3. node scripts/publish-releases.js verify v0.1.0-beta.1');
-      console.log('  4. node scripts/publish-releases.js push-main   -> v0.1.0');
-      console.log('  5. node scripts/publish-releases.js wait main');
-      console.log('  6. node scripts/publish-releases.js verify v0.1.0');
-      console.log('  7. node scripts/publish-releases.js drop v0.1.0   (deja solo la beta)');
       break;
     default:
       console.log('Uso: node scripts/publish-releases.js <push-beta|push-main|wait <branch>|verify <tag>|drop <tag>|plan>');
