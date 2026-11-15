@@ -20,16 +20,16 @@ del código) y el árbol de trabajo está limpio.
 |---|---|---|
 | Última release publicada | **v1.0.0-beta.4** (2026-11-16 00:46 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
 | Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta` |
-| Rama de trabajo `beta` | `94b4c3f` | **Igual que `origin/beta`**: los 11 commits ya están empujados (2026-11-16 00:44) |
-| Rama `main` | `deebebb` | 11 commits por detrás de `beta` |
+| Rama de trabajo `beta` | `9530765` | **Igual que `origin/beta`**: los 12 commits de la revisión ya están empujados (2026-11-16 00:44-00:51) |
+| Rama `main` | `deebebb` | 14 commits por detrás de `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone semantic-release |
 
 Releases: <https://github.com/carcheky/usagia/releases>
 
-## Lo último: revisión a fondo del código (9 commits en `beta`, sin push)
+## Lo último: revisión a fondo del código (9 commits, ya en `v1.0.0-beta.4`)
 
 Una segunda sesión de DSH revisó el repo entero el 2026-11-15 23:31 → 00:15 y
-dejó 9 commits validados con commitlint:
+dejó 9 commits validados con commitlint (publicados en `v1.0.0-beta.4`):
 
 | Commit | Qué arregla |
 |---|---|
