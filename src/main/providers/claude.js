@@ -283,4 +283,7 @@ module.exports = {
   },
   resolve,
   fetchUsage,
+  // Expuestos para las pruebas (funciones puras).
+  parseUsage,
+  isOauthToken,
 };

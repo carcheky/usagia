@@ -25,12 +25,22 @@ const WINDOW_LABELS = { '5h': '5 h', weekly: 'semanal', daily: 'diario', monthly
 // el token de una no puede servirse para la otra.
 const tokenCache = new Map();
 
+/**
+ * Una credencial pegada a mano puede ser el access_token a secas o el JSON
+ * completo con access_token + refresh_token (lo que promete la pista del
+ * formulario). Antes todo lo manual se marcaba `raw` y el JSON entero iba
+ * como Bearer.
+ */
+function manualKind(value) {
+  return String(value || '').trim().startsWith('{') ? 'json' : 'raw';
+}
+
 async function resolve(ctx) {
   const manual = creds.firstValid([
     creds.fromUserConfig(ctx.config, 'antigravity', 'apiKey', ctx.instance),
     creds.fromEnv('antigravity'),
   ]);
-  if (manual) return { ...manual, kind: 'raw' };
+  if (manual) return { ...manual, kind: manualKind(manual.value) };
 
   const local = creds.antigravityToken();
   if (local) return { ...local, kind: 'raw' };
@@ -175,4 +185,8 @@ module.exports = {
   },
   resolve,
   fetchUsage,
+  // Expuestos para las pruebas (funciones puras o sin red con token vigente).
+  manualKind,
+  getAccessToken,
+  parseSummary,
 };

@@ -22,6 +22,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { fetchJson } = require('../http');
+
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 const ID_PATTERN = /["'](\d{6,}-[a-z0-9]+\.apps\.googleusercontent\.com)["']/g;
@@ -118,34 +120,32 @@ async function refreshAccessToken(refreshToken) {
 
   let lastError = null;
   for (const pair of pairs) {
-    try {
-      const res = await fetch(TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          client_id: pair.clientId,
-          client_secret: pair.clientSecret,
-        }).toString(),
-      });
+    // Con timeout: el refresco corre dentro del Promise.all de todos los
+    // proveedores, y un fetch colgado bloqueaba la actualizacion de TODOS.
+    const res = await fetchJson(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: pair.clientId,
+        client_secret: pair.clientSecret,
+      }).toString(),
+      timeoutMs: 15000,
+    });
 
-      if (!res.ok) {
-        lastError = `HTTP ${res.status}`;
-        continue;
-      }
-      const data = await res.json();
-      if (data.access_token) {
-        return {
-          accessToken: data.access_token,
-          clientId: pair.clientId,
-          expiresIn: Number(data.expires_in || 3600),
-        };
-      }
-      lastError = data.error || 'sin access_token';
-    } catch (err) {
-      lastError = err.message;
+    if (!res.ok) {
+      lastError = res.data?.error_description || res.data?.error || res.error;
+      continue;
     }
+    if (res.data?.access_token) {
+      return {
+        accessToken: res.data.access_token,
+        clientId: pair.clientId,
+        expiresIn: Number(res.data.expires_in || 3600),
+      };
+    }
+    lastError = res.data?.error || 'sin access_token';
   }
 
   throw new Error(
