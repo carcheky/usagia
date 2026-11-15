@@ -25,7 +25,7 @@
     "probe": "node scripts/probe.js",
     "preview": "node scripts/run.js --preview",
     "preview:settings": "node scripts/run.js --settings",
-    "test": "node scripts/test-accounts.js",
+    "test": "node scripts/test-accounts.js && node scripts/test-parsers.js",
     "test:package": "node scripts/test-package.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
