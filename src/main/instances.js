@@ -36,10 +36,6 @@ function catalog() {
   }));
 }
 
-function newId() {
-  return `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
-
 /** Etiqueta única: si el nombre ya existe, se le añade un sufijo. */
 function uniqueLabel(base, used) {
   let label = base;
@@ -63,6 +59,25 @@ function cleanCredentials(raw) {
 }
 
 /**
+ * Id ESTABLE para una cuenta que no trae uno (config.json editado a mano).
+ *
+ * No puede ser aleatorio: `list()` se llama en cada refresco y en cada
+ * repintado, y el id es la clave de `state.results` y de las caches por
+ * cuenta. Con un id distinto en cada llamada, el resultado guardado con un id
+ * nunca se encontraba con el siguiente, y la fila se quedaba en "…" para
+ * siempre. Se deriva del proveedor y de la etiqueta ya unica.
+ */
+function derivedId(provider, label) {
+  const slug = label
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${provider}:${slug || 'cuenta'}`;
+}
+
+/**
  * Normaliza una cuenta configurada por el usuario.
  * @returns {object|null} null si el proveedor no existe.
  */
@@ -76,7 +91,7 @@ function normalizeAccount(raw, used) {
   used.add(label.toLowerCase());
 
   return {
-    id: typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : newId(),
+    id: typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : derivedId(provider.id, label),
     provider: provider.id,
     label,
     enabled: raw.enabled !== false,
@@ -111,4 +126,4 @@ function byId(id) {
   return list().find((i) => i.id === id) || null;
 }
 
-module.exports = { list, byId, catalog, normalizeAccount, providerById, newId };
+module.exports = { list, byId, catalog, normalizeAccount, providerById };

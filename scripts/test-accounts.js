@@ -106,6 +106,23 @@ check('las cuentas sin nombre toman el del proveedor', () => {
   );
 });
 
+check('las cuentas sin id reciben un id ESTABLE entre llamadas', () => {
+  // Sin esto, el resultado guardado con un id no se encontraba con el
+  // siguiente `list()` y la fila se quedaba en "…" para siempre.
+  writeConfig({
+    accounts: [
+      { provider: 'minimax', label: 'Trabajo' },
+      { provider: 'minimax', label: 'Trabajo' },
+      { provider: 'claude', label: 'Cuenta Ñoña' },
+    ],
+  });
+  const first = instances.list().map((i) => i.id);
+  const second = instances.list().map((i) => i.id);
+  assert.deepStrictEqual(first, second);
+  assert.deepStrictEqual(first, ['minimax:trabajo', 'minimax:trabajo-2', 'claude:cuenta-nona']);
+  assert.strictEqual(new Set(first).size, 3, 'los ids derivados tienen que ser unicos');
+});
+
 check('las cuentas de un proveedor desconocido se descartan', () => {
   writeConfig({
     accounts: [
