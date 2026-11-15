@@ -75,18 +75,33 @@ async function collect() {
   return results;
 }
 
-async function refresh({ force = false } = {}) {
-  if (state.refreshing && !force) return;
-  state.refreshing = true;
-  broadcast();
+let refreshInFlight = null;
 
-  state.results = await collect();
-  state.updatedAt = Date.now();
-  state.refreshing = false;
+async function refresh() {
+  // Un refresco en curso se reutiliza: dos collect() a la vez solo duplican
+  // peticiones, y el que terminaba primero ponia refreshing=false con el
+  // otro aun en marcha.
+  if (refreshInFlight) return refreshInFlight;
 
-  updateTrayIcon();
-  updateTooltip();
-  broadcast();
+  refreshInFlight = (async () => {
+    state.refreshing = true;
+    broadcast();
+    try {
+      state.results = await collect();
+      state.updatedAt = Date.now();
+    } catch (err) {
+      console.error('[usagia] fallo el refresco:', err?.message || err);
+    } finally {
+      // Pase lo que pase, el estado no se queda "refrescando" para siempre
+      // (eso bloqueaba todos los refrescos periodicos posteriores).
+      state.refreshing = false;
+      refreshInFlight = null;
+    }
+    updateTrayIcon();
+    updateTooltip();
+    broadcast();
+  })();
+  return refreshInFlight;
 }
 
 function shortSummary(result) {
@@ -163,7 +178,7 @@ function buildMenu() {
   items.push({ type: 'separator' });
   items.push({
     label: 'Refrescar ahora',
-    click: () => refresh({ force: true }),
+    click: () => refresh(),
   });
   items.push({
     label: 'Configuración…',
@@ -180,12 +195,12 @@ function buildMenu() {
 
 /* ------------------------------------------------------------------- hover */
 
+let warnedHidden = false;
+let anchorFallback = false;
+
 function currentAnchor() {
   return anchorRect || (anchorFallback ? hover.taskbarFallbackRect() : null);
 }
-
-let warnedHidden = false;
-let anchorFallback = false;
 
 async function refreshAnchor() {
   const { rect, hidden } = await hover.getTrayAnchor(tray, MARKER);
@@ -283,7 +298,7 @@ function handlePointer() {
       console.log(`[usagia] tarjeta visible (ancla ${JSON.stringify(rect)})`);
       broadcast();
       // Si los datos son viejos, se refresca al vuelo.
-      if (Date.now() - state.updatedAt > 60000) refresh({ force: true });
+      if (Date.now() - state.updatedAt > 60000) refresh();
     }
   } else if (card.isVisible() && !overCard) {
     if (!hideTimer) {
@@ -355,9 +370,23 @@ function createCard() {
   card.create(path.join(__dirname, '..', 'preload', 'preload.js'));
 }
 
+/**
+ * (Re)programa el refresco periodico con el intervalo de la configuracion.
+ * Se llama al arrancar y cada vez que se guarda la configuracion: antes el
+ * intervalo se leia una sola vez y cambiar "Actualizar cada" no hacia nada
+ * hasta reiniciar la app.
+ */
+function scheduleRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  const seconds = Math.max(30, Number(config.load().refreshSeconds) || config.DEFAULTS.refreshSeconds);
+  refreshTimer = setInterval(() => refresh(), seconds * 1000);
+  if (process.argv.includes('--verbose')) {
+    console.log(`[usagia] refresco cada ${seconds} s`);
+  }
+}
+
 function startTimers() {
-  const cfg = config.load();
-  refreshTimer = setInterval(() => refresh(), Math.max(30, cfg.refreshSeconds) * 1000);
+  scheduleRefresh();
   anchorTimer = setInterval(() => refreshAnchor(), 10000);
   pollTimer = setInterval(handlePointer, 150);
 }
@@ -468,7 +497,7 @@ app.whenReady().then(async () => {
       );
     }
   });
-  ipcMain.on('card:refresh', () => refresh({ force: true }));
+  ipcMain.on('card:refresh', () => refresh());
   ipcMain.on('card:open', (_event, url) => {
     if (url && /^https?:\/\//.test(url)) shell.openExternal(url);
   });
@@ -479,14 +508,16 @@ app.whenReady().then(async () => {
   // pedir y la tarjeta se repinta.
   settings.register({
     onSaved: () => {
-      refresh({ force: true });
+      // Solo si la app esta en modo normal: en las vistas previas no hay timer.
+      if (refreshTimer) scheduleRefresh();
+      refresh();
     },
   });
 
   // Modo vista previa: abre la tarjeta con datos reales, fija en pantalla.
   if (process.argv.includes('--preview')) {
     createCard();
-    await refresh({ force: true });
+    await refresh();
     const display = screen.getPrimaryDisplay();
     const area = display.workArea;
     card.get().setBounds({ x: area.x + area.width - 420, y: area.y + 40, width: 380, height: 240 });
@@ -573,7 +604,7 @@ app.whenReady().then(async () => {
   createTray();
   startTimers();
 
-  await refresh({ force: true });
+  await refresh();
   await refreshAnchor();
 });
 
