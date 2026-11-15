@@ -19,6 +19,11 @@ const args = process.argv.slice(2);
 const MAX_RESTARTS = 10;
 const RESTART_DELAY_MS = 1500;
 
+// Un sondeo es de una sola vez: si falla, reintentar 10 veces solo multiplica
+// el tiempo de espera del job de CI. El watchdog es para la app de bandeja,
+// que debe vivir siempre.
+const ONE_SHOT = args.includes('--probe') || args.includes('--preview');
+
 const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;
 
@@ -34,9 +39,9 @@ function launch() {
 
   child.on('exit', (code, signal) => {
     if (stopping) return;
-    if (code === 0) {
-      console.log('[usagia] cerrado.');
-      process.exit(0);
+    if (code === 0 || ONE_SHOT) {
+      if (code !== 0) console.error(`[usagia] Electron termino con codigo ${code} (${signal}).`);
+      process.exit(code || 0);
     }
     restarts += 1;
     if (restarts > MAX_RESTARTS) {

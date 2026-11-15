@@ -82,12 +82,16 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      # Comprobacion de humo: la app arranca, consulta los cuatro proveedores y
-      # sale con codigo 0. Sin credenciales, los proveedores responden
-      # "unconfigured", que NO es un fallo: lo que se comprueba aqui es que el
-      # arranque, el registro de proveedores y el volcado por consola funcionan.
+      # Comprobacion de humo: se consultan los cuatro proveedores y se sale con
+      # codigo 0. Sin credenciales, los proveedores responden "unconfigured",
+      # que NO es un fallo: lo que se comprueba aqui es que la resolucion de
+      # credenciales y las consultas funcionan.
+      #
+      # Se usa `scripts/probe.js` (Node PURO) y no la app de Electron: en un
+      # runner no hay display, y Electron sin servidor X revienta con
+      # STATUS_BREAKPOINT. Los proveedores solo necesitan fetch y fs.
       - name: Comprobacion de humo
-        run: node scripts/run.js --probe
+        run: node scripts/probe.js
 
   release:
     name: semantic-release
