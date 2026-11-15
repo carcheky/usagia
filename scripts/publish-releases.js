@@ -82,23 +82,58 @@ async function waitForRun(branch, timeoutMinutes = 45) {
   const deadline = Date.now() + timeoutMinutes * 60 * 1000;
   console.log(`Esperando al workflow de '${branch}'...`);
 
-  let seen = new Set();
+  // Se espera a la CORRUNTE: la mas reciente que aun no estaba terminada al
+  // empezar. Si se coge cualquier run completada, se puede fijar en una vieja
+  // que fallo por otra causa y dar una conclusion falsa.
+  const known = new Set();
+  let target = null;
+
   while (Date.now() < deadline) {
     const runs = listRuns(branch);
     for (const run of runs) {
-      if (seen.has(run.databaseId)) continue;
-      seen.add(run.databaseId);
-      console.log(`  · ${run.displayTitle} -> ${run.status}/${run.conclusion || '-'}`);
+      if (!known.has(run.databaseId)) {
+        known.add(run.databaseId);
+        console.log(`  · ${run.displayTitle} -> ${run.status}/${run.conclusion || '-'}`);
+      }
+      if (!target && run.status === 'in_progress' || (!target && run.status === 'queued')) {
+        target = run.databaseId;
+      }
     }
-    const finished = runs.find((r) => r.status === 'completed');
-    if (finished) {
+
+    // La run mas reciente que ya termino es la nuestra si no hay ninguna en
+    // curso: se toma la de mayor createdAt.
+    const finished = runs
+      .filter((r) => r.status === 'completed')
+      .sort((a, b) => (a.databaseId < b.databaseId ? 1 : -1))[0];
+
+    if (!target && finished) {
       ok(`Workflow de '${branch}': ${finished.conclusion}`);
       if (finished.conclusion !== 'success') {
         console.log(`  ${finished.url}`);
-        fail(`El workflow de '${branch}》 termino con ${finished.conclusion}`);
+        fail(`El workflow de '${branch}' termino con ${finished.conclusion}`);
       }
       return finished;
     }
+
+    if (target) {
+      const current = gh(['run', 'view', String(target), '--repo', REPO, '--json', 'status,conclusion,url']);
+      if (current.code === 0) {
+        try {
+          const data = JSON.parse(current.raw || '{}');
+          if (data.status === 'completed') {
+            ok(`Workflow de '${branch}': ${data.conclusion}`);
+            if (data.conclusion !== 'success') {
+              console.log(`  ${data.url}`);
+              fail(`El workflow de '${branch}' termino con ${data.conclusion}`);
+            }
+            return data;
+          }
+        } catch {
+          /* se reintenta en la siguiente vuelta */
+        }
+      }
+    }
+
     await new Promise((r) => setTimeout(r, 15000));
   }
   fail(`El workflow de '${branch}' no termino en ${timeoutMinutes} minutos`);
@@ -116,7 +151,9 @@ function releaseInfo(tag) {
 
 /** Lista las releases del repo, de la mas nueva a la mas vieja. */
 function listReleases() {
-  const res = gh(['release', 'list', '--repo', REPO, '--limit', '30', '--json', 'tagName,isPrerelease,url']);
+  // OJO: `gh release list --json` NO admite "url" (los campos validos son
+  // createdAt, isDraft, isImmutable, isPrerelease, name, tagName...).
+  const res = gh(['release', 'list', '--repo', REPO, '--limit', '30', '--json', 'tagName,isPrerelease']);
   if (res.code !== 0) return [];
   try {
     return JSON.parse(res.raw || '[]');
