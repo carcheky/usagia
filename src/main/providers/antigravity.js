@@ -11,7 +11,7 @@
 // Endpoint: POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary
 // Son llamadas de metadatos: no consumen cuota de modelos.
 
-const { fetchJson, used, tone } = require('../http');
+const { fetchJson, used, tone, fmtPercent1 } = require('../http');
 const creds = require('../credentials');
 const credstore = require('../local/credstore');
 const client = require('../local/antigravity-client');
@@ -123,9 +123,9 @@ function parseSummary(data) {
       const consumed = used(remaining);
       metrics.push({
         label: window ? `${groupName} · ${window}` : groupName,
-        value: `${(consumed * 100).toFixed(consumed >= 0.995 || consumed === 0 ? 0 : 1)}% usado`,
+        value: `${fmtPercent1(consumed)} usado`,
         short: `${Math.round(consumed * 100)}%`,
-        remaining: `queda ${(remaining * 100).toFixed(remaining >= 0.995 || remaining === 0 ? 0 : 1)}%`,
+        remaining: `queda ${fmtPercent1(remaining)}`,
         pct: consumed,
         tone: tone(remaining),
       });

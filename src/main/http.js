@@ -52,9 +52,21 @@ async function fetchJson(url, options = {}) {
  * @returns {number|null} 0-1, o null si el valor no es numerico
  */
 function pct100(value) {
+  // Number(null) y Number('') son 0: un campo ausente se convertia en "0 %",
+  // que para un restante significa "agotado" (critico). Ausente = null.
+  if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
   return n / 100;
+}
+
+/**
+ * Porcentaje 0-1 con un decimal solo cuando hace falta: 15.4 %, 99 %, 0 %.
+ * (Antes salia "99.0 %".)
+ */
+function fmtPercent1(p) {
+  if (p === null || p === undefined) return '—';
+  return `${Number((p * 100).toFixed(1))}%`;
 }
 
 /**
@@ -99,4 +111,4 @@ function fmtDuration(ms) {
   return `${m} min`;
 }
 
-module.exports = { fetchJson, pct100, used, tone, fmtPercent, fmtDuration };
+module.exports = { fetchJson, pct100, used, tone, fmtPercent, fmtPercent1, fmtDuration };
