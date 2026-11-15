@@ -125,6 +125,15 @@ fichero (app de bandeja).
 - **Electron no arranca en el sandbox** (`GPU process launch failed:
   error_code=18`), así que `npm run preview` y `preview:settings` no se pueden
   ejecutar desde una sesión de DSH: hay que lanzarlos fuera.
+- **Cómo se lanzan fuera del sandbox** (probado el 2026-11-16 00:42): con
+  `ELECTRON_RUN_AS_NODE` **vacío** (si está activo, Electron corre como Node y
+  responde *"bad option: --disable-gpu"*, que es el síntoma engañoso) y con
+  `--disable-gpu --disable-gpu-sandbox --no-sandbox`. Los errores de caché de
+  GPU son ruido: la app funciona igual.
+- **Las vistas previas ya no mueren en silencio** con la app en marcha: antes
+  el bloqueo de instancia única las echaba (código 0, sin decir nada) y no se
+  llegaba a sacar la captura. Ahora `--preview` y `--settings` están exentos
+  (como `--probe`) y el segundo arranque de la app explica por qué se cierra.
 - El endpoint de cuota de Claude estaba devolviendo **HTTP 429** durante la
   revisión del 2026-11-16 00:00 (límite de ~5 peticiones por ventana). Con el
   `trap` nuevo del `.ps1` el motivo sale entero: *"HTTP 429: límite de

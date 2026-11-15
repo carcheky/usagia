@@ -393,10 +393,22 @@ function startTimers() {
 
 function singleInstance() {
   if (!app.requestSingleInstanceLock()) {
+    // Sin este mensaje, un segundo arranque se cierra con codigo 0 y sin
+    // explicar nada: parece que la app no hace nada.
+    console.log('[usagia] ya hay otra instancia en marcha; se cierra esta.');
     app.quit();
     return false;
   }
   return true;
+}
+
+/**
+ * Las vistas previas no exigen instancia unica: pintan su propia ventana y
+ * se cierran solas, asi que pueden convivir con la app en marcha (si no, al
+ * abrir la app instalada el preview moria en silencio y sin captura).
+ */
+function isPreviewMode() {
+  return process.argv.includes('--preview') || process.argv.includes('--settings');
 }
 
 app.on('window-all-closed', () => {
@@ -472,7 +484,7 @@ app.whenReady().then(async () => {
     return;
   }
 
-  if (!singleInstance()) return;
+  if (!isPreviewMode() && !singleInstance()) return;
 
   if (process.platform === 'darwin' && app.dock) app.dock.hide();
 

@@ -46,10 +46,31 @@ dejó 9 commits validados con commitlint:
 **Estado de las pruebas** (ejecutadas el 2026-11-16 00:30 en este checkout):
 `npm test` → **OK** (cuentas + parsers) · `npm run test:package` → **OK**.
 
-**Lo que esa sesión NO pudo comprobar**: `npm run preview` y
-`preview:settings` (Electron no arranca dentro del sandbox de DSH:
-`GPU process launch failed: error_code=18`). Falta una comprobación visual de
-la tarjeta y de la ventana de configuración **fuera** del sandbox.
+**Lo que esa sesión NO pudo comprobar** (ya comprobado después, más abajo):
+`npm run preview` y `preview:settings` (Electron no arranca dentro del sandbox
+de DSH: `GPU process launch failed: error_code=18`).
+
+## Verificación de la UI (2026-11-16 00:42, esta sesión)
+
+Con `danger-full-access` y arrancando Electron con `--disable-gpu`
+(`ELECTRON_RUN_AS_NODE` vacío), **las dos vistas previas funcionan** y se
+comprobó a ojo:
+
+- **Tarjeta**: Minimax 45 % / 78 % usado (datos vivos del harness), Antigravity
+  15,4 % (credenciales de Windows), DeepSeek $33,64 + ¥4,65, y Claude cayendo
+  a transcripciones locales **avisando del motivo** ("cuota remota no
+  disponible: …"): el arreglo del otro agente funcionando.
+- **Configuración**: la ventana abre, el botón *Probar* responde
+  ("ventana 5 h: 46 % usado · semanal: 78 % usado") y *Guardar* escribe. Las
+  ayudas muestran ya el texto nuevo de Claude ("Token OAuth (sk-ant-oat…)…
+  una clave API sk-ant-api no sirve para la cuota").
+
+**Bug encontrado y corregido al verificarlo**: `npm run preview` y
+`npm run preview:settings` **morían en silencio** (código 0, sin una línea de
+salida) si la app estaba en marcha, porque el bloqueo de instancia única se
+aplicaba también a las vistas previas. `--probe` ya estaba exento; ahora lo
+están las vistas previas (`isPreviewMode()` en `src/main/main.js`) y, además,
+el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
 
 ## Qué funciona (verificado)
 
@@ -70,19 +91,17 @@ la tarjeta y de la ventana de configuración **fuera** del sandbox.
 ## Pendiente / siguiente
 
 1. **Publicar la revisión**: `git push origin beta` → `v1.0.0-beta.4`
-   (9 fixes + tests). Es la decisión del usuario: los commits están hechos y
-   validados, pero **no se empuja nada sin su visto bueno**.
-2. **Comprobar la UI fuera del sandbox**: `npm run preview` y
-   `npm run preview:settings` (Electron no arranca dentro de DSH).
-3. **Primera versión estable**: cuando `beta.4` esté bien en la app instalada,
+   (9 fixes + tests + el arreglo de la vista previa). Los commits están hechos
+   y validados; falta el `push`, que es la decisión del usuario.
+2. **Primera versión estable**: cuando `beta.4` esté bien en la app instalada,
    `git switch main && git merge --ff-only beta && git push origin main` →
    `v1.0.0`.
-4. **Dependabot**: rama `origin/dependabot/npm_and_yarn/electron-42.11.16`
+3. **Dependabot**: rama `origin/dependabot/npm_and_yarn/electron-42.11.16`
    abierta (actualización de Electron). Sin revisar.
-5. **Android**: hay un plan completo en [PLAN-ANDROID.md](PLAN-ANDROID.md)
+4. **Android**: hay un plan completo en [PLAN-ANDROID.md](PLAN-ANDROID.md)
    (Capacitor 8 + núcleo JS compartido + jobs `verify-android`/`build-android`).
    **No se ha empezado**: hoy no hay nada que compilar para Android.
-6. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
+5. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
    binarios de macOS** (solo Windows y Linux).
 
 ## Puntos abiertos y riesgos conocidos
