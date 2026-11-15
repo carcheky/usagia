@@ -149,6 +149,41 @@ la app lo invierte a **usado**, como hacen todos los paneles) están
 documentados en **[FINDINGS.md](FINDINGS.md)**. Ese fichero es la fuente
 compartida con el resto de agentes que trabajen sobre estas cuotas.
 
+## Releases
+
+Las versiones las publica **GitHub Actions**, no una persona. La versión la
+decide el mensaje del commit (conventional commits) y **nunca se escribe a
+mano**.
+
+| Rama | Qué publica |
+|---|---|
+| `beta` | Pre-releases: `v1.1.0-beta.1`, `v1.1.0-beta.2`… |
+| `main` | Versiones estables: `v1.1.0` |
+
+`beta` es la rama de trabajo; `main` es la de publicación y solo recibe
+`beta` por *fast-forward*.
+
+```bash
+git push origin beta                                          # -> v1.1.0-beta.N
+git switch main && git merge --ff-only beta && git push origin main   # -> v1.1.0
+```
+
+El pipeline (`.github/workflows/release.yml`) encadena:
+
+```
+commits (commitlint) -> verify (humo de la app) -> release (semantic-release)
+                                                         |
+                                    +--------------------+--------------------+
+                                    |                                         |
+                             build-windows                          build-linux
+                        NSIS + portable .exe                  AppImage + deb
+```
+
+Cada build compila **desde el tag** que nombra la release, no desde el HEAD de
+la rama, y adjunta sus binarios a esa misma release. La versión va incrustada
+en el binario (`--config.extraMetadata.version=`); en `package.json` queda
+`0.0.0` porque la gestiona semantic-release.
+
 ## Interacción
 
 | Gesto | Qué hace |
