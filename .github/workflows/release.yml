@@ -37,31 +37,54 @@ jobs:
 
       # Rango real del push. `github.event.before` no siempre sirve, y cuando no
       # sirve el pipeline se queda ROJO PARA SIEMPRE, porque `before` seguiria
-      # apuntando al mismo commit huerfano en cada push posterior. Los dos casos
+      # apuntando al mismo commit huerfano en cada push posterior. Los casos
       # que lo rompen:
       #   1. Primer push a una rama nueva: `before` es todo-ceros.
       #   2. Tras un force-push, un squash o un rebase, ese sha deja de ser
       #      alcanzable y `actions/checkout` con fetch-depth 0 no lo trae ->
       #      `fatal: Invalid revision range d69c06b..HEAD`.
+      #   3. MEDIDO el 2026-11-15 (este repo): tras un force-push, `before` apuntaba
+      #      al commit viejo, que ya no era alcanzable. El `git cat-file -e` de mas
+      #      abajo lo detecta, pero hace falta el `merge-base` explicito: commitlint
+      #      busca el ancestro COMUN y falla con "Cannot find merge-base between
+      #      'fecba85' and 'HEAD'" aunque el sha exista en el repositorio.
       - name: Resolver el rango de commits del push
         id: rango
         run: |
           ANTES="${{ github.event.before }}"
           VACIO="0000000000000000000000000000000000000000"
+          SIN_MERGE_BASE=0
+
           if [ -z "$ANTES" ] || [ "$ANTES" = "$VACIO" ]; then
             ANTES="$(git rev-parse HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)"
             echo "El evento no trae \`before\` utilizable: se usa HEAD~1"
           elif ! git cat-file -e "${ANTES}^{commit}" 2>/dev/null; then
             ANTES="$(git rev-parse HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)"
             echo "El \`before\` del evento no es un commit alcanzable de este checkout (force-push, squash o rebase): se usa HEAD~1"
+          elif ! git merge-base "$ANTES" HEAD >/dev/null 2>&1; then
+            # El sha existe pero NO es ancestro de HEAD: commitlint no hallaria
+            # un ancestro comun y fallaria con "Cannot find merge-base".
+            SIN_MERGE_BASE=1
+            ANTES="$(git rev-parse HEAD~1 2>/dev/null || git rev-list --max-parents=0 HEAD)"
+            echo "El \`before\` del evento no es ancestro de HEAD (history reescrito): se usa HEAD~1"
           fi
+
           echo "desde=$ANTES" >> "$GITHUB_OUTPUT"
+          echo "sin_merge_base=$SIN_MERGE_BASE" >> "$GITHUB_OUTPUT"
 
       # Sin esto, un mensaje mal escrito NO da error: semantic-release lo ignora y
       # simplemente no publica nada. El fallo silencioso de "no hay release" es
       # justo el que hace poco fiable un pipeline de releases.
+      #
+      # Si el rango resuelto fuera de un solo commit, commitlint se queda sin
+      # nada que comprobar; se avisa pero no se rompe el pipeline por eso.
       - name: Comprobar los mensajes con commitlint
-        run: npx --yes @commitlint/cli@latest --from "${{ steps.rango.outputs.desde }}" --to HEAD --verbose
+        run: |
+          if [ "$(git rev-list --count "${{ steps.rango.outputs.desde }}..HEAD" 2>/dev/null || echo 0)" -eq 0 ]; then
+            echo "El push no trae commits nuevos que validar."
+            exit 0
+          fi
+          npx --yes @commitlint/cli@latest --from "${{ steps.rango.outputs.desde }}" --to HEAD --verbose
 
   verify:
     name: Verificar la app
