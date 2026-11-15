@@ -39,15 +39,41 @@ function cacheKey(ctx, credential) {
   return `${instanceId}:${kind}:${hash}`;
 }
 
+/**
+ * El endpoint de uso solo acepta tokens OAuth de la sesion (sk-ant-oat…).
+ * Una clave API (sk-ant-api…, la habitual en ANTHROPIC_API_KEY) NO sirve:
+ * si se enviara, la consulta fallaria y, al contar como credencial "manual",
+ * ademas impediria probar la sesion local. Por eso se descarta aqui.
+ */
+function isOauthToken(value) {
+  return /^sk-ant-oat/i.test(String(value || '').trim());
+}
+
+/**
+ * Credencial de la cuenta. `kind`:
+ *  - manual:  token OAuth pegado por el usuario -> HTTP directo.
+ *  - oauth:   token de ~/.claude/.credentials.json -> HTTP directo
+ *             (en Windows, el script, que ademas sabe leer la cache cifrada).
+ *  - desktop: sin token en claro; en Windows el script descifra la cache de
+ *             Claude Desktop (DPAPI + AES-GCM). Antes este caso devolvia null
+ *             y el script NUNCA llegaba a ejecutarse, que era justo el
+ *             escenario para el que se escribio.
+ * `ignored` lleva la fuente de una clave API descartada, para avisar.
+ */
 async function resolve(ctx) {
   const manual = creds.firstValid([
     creds.fromUserConfig(ctx.config, 'claude', 'apiKey', ctx.instance),
     creds.fromEnv('claude'),
   ]);
-  if (manual) return { ...manual, kind: 'manual' };
+  if (manual && isOauthToken(manual.value)) return { ...manual, kind: 'manual' };
+  const ignored = manual ? `${manual.source} (${manual.hint})` : null;
 
   const oauth = creds.claudeCodeToken();
-  if (oauth) return { ...oauth, kind: 'oauth' };
+  if (oauth) return { ...oauth, kind: 'oauth', ignored };
+
+  if (process.platform === 'win32') {
+    return { value: '', source: 'Claude Desktop', hint: 'cache cifrada', kind: 'desktop', ignored };
+  }
   return null;
 }
 
@@ -131,7 +157,19 @@ function parseUsage(data) {
   return { metrics, notes };
 }
 
-/** Consulta remota de la cuota. */
+/** Primera linea util de un stderr de PowerShell, para el aviso. */
+function firstLine(text) {
+  const line = String(text || '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find(Boolean);
+  return line ? line.slice(0, 160) : 'sin detalle';
+}
+
+/**
+ * Consulta remota de la cuota.
+ * @returns {Promise<{metrics, notes, source}|{error:string}>}
+ */
 async function remoteUsage(ctx, credential) {
   // Una credencial puesta a mano (token OAuth de otra cuenta, por ejemplo) va
   // siempre por HTTP: el script de PowerShell solo sirve para la sesion local
@@ -139,17 +177,19 @@ async function remoteUsage(ctx, credential) {
   const useScript = process.platform === 'win32' && credential.kind !== 'manual';
   if (useScript) {
     const result = await ps.runScript(SCRIPT, ['-Json']);
-    if (!result.ok || !result.stdout.trim()) return null;
+    if (!result.ok) return { error: `sesión de Claude Desktop: ${firstLine(result.stderr)}` };
+    if (!result.stdout.trim()) return { error: 'sesión de Claude Desktop: el script no devolvió nada' };
+    let parsed;
     try {
-      const parsed = parseUsage(JSON.parse(result.stdout));
-      if (parsed.metrics.length) return { ...parsed, source: 'Claude (sesión)' };
-    } catch {
-      return null;
+      parsed = parseUsage(JSON.parse(result.stdout));
+    } catch (err) {
+      return { error: `respuesta ilegible de la sesión: ${err.message}` };
     }
-    return null;
+    if (!parsed.metrics.length) return { error: 'la sesión respondió sin cuotas' };
+    return { ...parsed, source: 'Claude (sesión)' };
   }
 
-  if (!credential) return null;
+  if (!credential.value) return { error: 'sin token OAuth' };
 
   const res = await fetchJson(USAGE_ENDPOINT, {
     headers: {
@@ -158,10 +198,10 @@ async function remoteUsage(ctx, credential) {
       Accept: 'application/json',
     },
   });
-  if (!res.ok) return null;
+  if (!res.ok) return { error: res.error };
 
   const parsed = parseUsage(res.data);
-  if (!parsed.metrics.length) return null;
+  if (!parsed.metrics.length) return { error: 'respuesta sin cuotas' };
   return { ...parsed, source: credential.source };
 }
 
@@ -194,26 +234,34 @@ async function fetchUsage(ctx) {
     return hit.result;
   }
 
-  const remote = credential ? await remoteUsage(ctx, credential) : null;
+  const remote = credential ? await remoteUsage(ctx, credential) : { error: 'sin sesión de Claude' };
+  const warnings = [];
+  if (credential?.ignored) {
+    warnings.push(`se ignora la clave API de ${credential.ignored}: la cuota solo se consulta con un token OAuth`);
+  }
+
   let result;
-  if (remote) {
+  if (!remote.error) {
     result = {
       status: 'ok',
       summary: remote.metrics.map((m) => `${m.label}: ${m.value}`).join(' · '),
       metrics: remote.metrics,
-      note: remote.notes.join(' · '),
+      note: [...remote.notes, ...warnings].join(' · '),
       source: remote.source,
     };
   } else {
+    // Respaldo: transcripciones locales. El motivo por el que no se pudo
+    // consultar la cuota real se deja en la nota, para que no pase en silencio.
+    warnings.unshift(`cuota remota no disponible: ${remote.error}`);
     const local = localUsage();
     if (!local) {
-      result = { status: 'unconfigured', summary: 'sin sesión', metrics: [] };
+      result = { status: 'unconfigured', summary: 'sin sesión', metrics: [], note: warnings.join(' · ') };
     } else {
       result = {
         status: 'ok',
         summary: local.metrics.map((m) => `${m.label}: ${m.value}`).join(' · '),
         metrics: local.metrics,
-        note: local.notes.join(' · '),
+        note: [...local.notes, ...warnings].join(' · '),
         source: 'Claude Code (local)',
       };
     }
@@ -229,9 +277,9 @@ module.exports = {
   color: '#d97757',
   url: 'https://claude.ai/settings/usage',
   credential: {
-    label: 'Token OAuth o clave API',
+    label: 'Token OAuth',
     placeholder: 'sk-ant-oat01-…',
-    hint: 'Pega el token de otra cuenta de Claude. Vacío = se usa la sesión de Claude Desktop.',
+    hint: 'Token OAuth (sk-ant-oat…) de otra cuenta de Claude; una clave API sk-ant-api no sirve para la cuota. Vacío = se usa la sesión de Claude Desktop.',
   },
   resolve,
   fetchUsage,

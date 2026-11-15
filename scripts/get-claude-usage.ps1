@@ -33,6 +33,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# La app lee stdout/stderr como UTF-8; sin esto PowerShell escribe con la
+# pagina de codigos de la consola y las tildes llegan rotas.
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+
+# Cualquier fallo sale por stderr como UNA linea con el motivo y codigo 1. Sin
+# esto, PowerShell 7 pinta el error "conciso" (ruta:linea, la linea de codigo,
+# tildes...) y la app, que solo muestra la primera linea, ensenaba
+# "Exception: ...ps1:156" en vez de "HTTP 429: limite de peticiones".
+trap {
+  [Console]::Error.WriteLine($_.Exception.Message)
+  exit 1
+}
+
 # ---------------------------------------------------------------- helpers ----
 function Get-OsCryptKey {
   param([string]$Path)
