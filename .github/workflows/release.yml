@@ -216,8 +216,10 @@ jobs:
       - name: Instalar dependencias
         run: |
           npm ci
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libfuse2
+          # libfuse2 hace falta en algunos runners para el AppImage (en otros
+          # el paquete se llama libfuse2t64). Es opcional para COMPILAR, asi que
+          # que no se instale no puede tumbar la build.
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libfuse2t64 || true
 
       - name: Empaquetar AppImage y deb
         run: >-
