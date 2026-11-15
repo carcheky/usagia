@@ -134,7 +134,12 @@ function register(hooks = {}) {
     if (typeof general.showOnHover === 'boolean') {
       patch.showOnHover = general.showOnHover;
     }
-    config.save(patch);
+    try {
+      config.save(patch);
+    } catch (err) {
+      // El disco ha fallado: se le dice al usuario, no "Guardado".
+      return { ok: false, error: err.message, accounts };
+    }
     onSaved();
     return { ok: true, accounts };
   });

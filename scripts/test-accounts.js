@@ -199,6 +199,26 @@ check('guardar y volver a leer conserva las cuentas', () => {
   assert.strictEqual(list[1].enabled, false);
 });
 
+check('si el disco falla, guardar lanza y la cache no cambia', () => {
+  writeConfig({ accounts: [{ id: 'k1', provider: 'minimax', label: 'Antes' }] });
+  assert.strictEqual(instances.list()[0].label, 'Antes');
+
+  // Se bloquea la carpeta de datos poniendo un FICHERO donde iria.
+  const dir = path.dirname(config.configPath());
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.writeFileSync(dir, 'bloqueo');
+  try {
+    assert.throws(
+      () => config.save({ accounts: [{ id: 'k2', provider: 'minimax', label: 'Despues' }] }),
+      /no se pudo guardar/
+    );
+    // La configuracion en memoria sigue siendo la que hay en disco.
+    assert.strictEqual(instances.list()[0].label, 'Antes');
+  } finally {
+    fs.rmSync(dir, { force: true });
+  }
+});
+
 check('borrar todas las cuentas vuelve a la autodeteccion', () => {
   writeConfig({
     accounts: [{ id: 'x1', provider: 'minimax', label: 'Temporal' }],

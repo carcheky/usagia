@@ -88,19 +88,28 @@ function load() {
   return cache;
 }
 
-/** Escribe la configuración en disco y actualiza la caché. */
+/**
+ * Escribe la configuración en disco y actualiza la caché.
+ * @throws si no se puede escribir: la caché NO se toca, para que la app no
+ *   siga con una configuración que no existe en disco.
+ */
 function write(next) {
+  const file = configPath();
   try {
-    fs.mkdirSync(path.dirname(configPath()), { recursive: true });
-    fs.writeFileSync(configPath(), JSON.stringify(next, null, 2), 'utf8');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(next, null, 2), 'utf8');
   } catch (err) {
     console.error('[usagia] no se pudo guardar la configuración:', err.message);
-    return false;
+    throw new Error(`no se pudo guardar ${file}: ${err.message}`);
   }
   cache = next;
-  return true;
 }
 
+/**
+ * Aplica un parche y lo persiste.
+ * @throws si el disco falla (antes se devolvía la config "guardada" igual y
+ *   la ventana decía "Guardado" aunque no se hubiera escrito nada).
+ */
 function save(patch) {
   const next = normalize({ ...load(), ...(patch || {}) });
   write(next);

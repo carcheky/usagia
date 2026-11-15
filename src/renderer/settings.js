@@ -251,6 +251,11 @@ document.getElementById('save').addEventListener('click', async () => {
         showOnHover: showOnHoverEl.checked,
       },
     });
+    if (!result.ok) {
+      // Se deja el formulario tal cual: el usuario puede reintentar.
+      setStatus(result.error || 'no se pudo guardar', 'error');
+      return;
+    }
     state.accounts = result.accounts || [];
     render();
     setStatus('Guardado', 'ok');
