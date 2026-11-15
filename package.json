@@ -1,11 +1,20 @@
 {
   "name": "usagia",
   "productName": "Usagia",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "App de bandeja para ver el uso actual de las IAs configuradas (Minimax, Claude, Antigravity, DeepSeek...) al pasar el ratón por el icono.",
   "main": "src/main/main.js",
   "license": "MIT",
   "private": true,
+  "author": "carcheky",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carcheky/usagia.git"
+  },
+  "homepage": "https://github.com/carcheky/usagia",
+  "bugs": {
+    "url": "https://github.com/carcheky/usagia/issues"
+  },
   "scripts": {
     "start": "node scripts/run.js",
     "dev": "node scripts/run.js --verbose",
@@ -14,7 +23,8 @@
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist:linux": "electron-builder --linux",
+    "release:dry": "npx --yes semantic-release@25 --dry-run"
   },
   "devDependencies": {
     "electron": "^38.0.0",
@@ -23,6 +33,7 @@
   "build": {
     "appId": "com.usagia.tray",
     "productName": "Usagia",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "src/**/*",
       "assets/**/*",
@@ -47,7 +58,15 @@
         "AppImage",
         "deb"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "synopsis": "Uso actual de tus IAs en la bandeja del sistema",
+      "description": "App de bandeja que muestra el consumo actual de las IAs configuradas (Minimax, Claude, Antigravity, DeepSeek) al pasar el raton por el icono."
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }
