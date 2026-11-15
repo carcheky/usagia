@@ -63,10 +63,17 @@
       "description": "App de bandeja que muestra el consumo actual de las IAs configuradas (Minimax, Claude, Antigravity, DeepSeek) al pasar el raton por el icono."
     },
     "nsis": {
+      "artifactName": "${productName}-Setup-${version}-${os}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "${productName}-portable-${version}-${os}-${arch}.${ext}"
+    },
+    "deb": {
+      "artifactName": "${name}_${version}_${arch}.${ext}"
     }
   }
 }
