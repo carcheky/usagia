@@ -52,17 +52,21 @@ tienes en el sistema, en este orden:
 
 1. La credencial que hayas pegado para **esa cuenta** en la ventana de
    configuración (si la dejas vacía, se sigue bajando por la lista).
-2. Variables de entorno: `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`,
-   `GOOGLE_API_KEY`, `ANTIGRAVITY_TOKEN`.
+2. Variables de entorno: `MINIMAX_API_KEY`, `DEEPSEEK_API_KEY`,
+   `GOOGLE_API_KEY`, `ANTIGRAVITY_TOKEN`. (`ANTHROPIC_API_KEY` también se lee,
+   pero **no sirve para la cuota de Claude**: el endpoint solo acepta tokens
+   OAuth `sk-ant-oat…`; la app descarta la clave API y lo avisa en la nota.)
 3. El harness DSH (`~/.dsh/.credentials.yaml`): la clave de Minimax y el grant
    OAuth de la cuenta de DeepSeek.
 4. Los almacenes nativos de cada herramienta:
    - **Antigravity**: Administrador de credenciales de Windows, destino
      `gemini:antigravity` (el `refresh_token` se canjea por un `access_token`).
-   - **Claude**: la caché cifrada de Claude Desktop
+   - **Claude**: el token OAuth de Claude Code
+     (`~/.claude/.credentials.json` → `claudeAiOauth.accessToken`) y, en Windows,
+     la caché cifrada de Claude Desktop
      (`%APPDATA%\Claude\config.json` → `oauth:tokenCacheV2`, DPAPI + AES-256-GCM).
-     Necesita **PowerShell 7** (`pwsh`), porque Windows PowerShell 5.1 no trae
-     `AesGcm`.
+     La caché necesita **PowerShell 7** (`pwsh`), porque Windows PowerShell 5.1 no
+     trae `AesGcm`.
 
 Si un proveedor no está configurado, aparece en la tarjeta como *"sin
 credencial"* en lugar de desaparecer.

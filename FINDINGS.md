@@ -47,9 +47,20 @@ son lo que queda (comportamiento del API "remains"). La app usa solo los
 | Proveedor | Endpoint | Autenticación | Credencial en esta máquina |
 |---|---|---|---|
 | Minimax | `GET https://api.minimax.io/v1/token_plan/remains` | `Bearer sk-cp-…` | `MINIMAX_API_KEY` del harness DSH (`~/.dsh/.credentials.yaml`) |
-| Claude | `GET https://api.anthropic.com/api/oauth/usage` | `Bearer sk-ant-oat…` + `anthropic-beta: oauth-2025-04-20` | cache cifrada de Claude Desktop (`%APPDATA%\Claude\config.json` → `oauth:tokenCacheV2`, DPAPI + AES-256-GCM) |
+| Claude | `GET https://api.anthropic.com/api/oauth/usage` | `Bearer sk-ant-oat…` + `anthropic-beta: oauth-2025-04-20` (**solo OAuth**) | cache cifrada de Claude Desktop (`%APPDATA%\Claude\config.json` → `oauth:tokenCacheV2`, DPAPI + AES-256-GCM) |
 | Antigravity | `POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary` | `Bearer ya29…` (Google OAuth) | Administrador de credenciales de Windows, destino `gemini:antigravity` → `refresh_token` → `oauth2.googleapis.com/token` |
 | DeepSeek | `GET https://platform.deepseek.com/api/v0/users/get_user_summary` | cabecera `x-dsh-auth-token: <token>` (NO es `Bearer`) | grant OAuth `deepseek-account-platform/default` del harness |
+
+**La credencial de Claude tiene que ser un token OAuth (`sk-ant-oat…`).** Una
+clave API (`sk-ant-api…`, la de `ANTHROPIC_API_KEY`) **no vale** para la cuota:
+el endpoint la rechaza, y como la app la habría tomado como credencial "manual",
+además de fallar impediría consultar la sesión local. Por eso `resolve()` la
+descarta y avisa en la nota de la tarjeta. Fuentes de token OAuth, en orden:
+
+1. Token pegado a mano en la configuración de la cuenta (otra cuenta de Claude).
+2. `~/.claude/.credentials.json` → `claudeAiOauth.accessToken` (Claude Code).
+3. La caché cifrada de Claude Desktop, que solo se puede leer en Windows y con
+   el script de PowerShell (`scripts/get-claude-usage.ps1`).
 
 Además, DeepSeek expone `/api/v0/usage/amount?month&year` (tokens por modelo) y
 `/api/v0/usage/cost?month&year` (coste). Si algún día hay una API key `sk-` de
@@ -89,6 +100,35 @@ de golpe"** que apunta a `npm run probe` de esta app como forma rápida de ver
 las cuatro cuotas juntas, y una tabla de estado que coincide con las cifras
 anteriores. La coordinación vive en los dos lados: `AGENTS.md` (enrutado) y este
 fichero (app de bandeja).
+
+### Medición del 2026-11-16 00:20 (desde una sesión de DSH)
+
+| Recurso | Lo que queda | Lo usado | Cómo se midió |
+|---|---|---|---|
+| Minimax | 62 % (5 h) · 22 % (semanal) | **38 %** · **78 %** | `npm run probe` (HTTP directo) |
+| DeepSeek | $33,64 + ¥4,65 de bonus | 22,4 M tokens, 475 peticiones | `npm run probe` (HTTP directo) |
+| Claude | — | — | **no medible desde el sandbox** (ver abajo) |
+| Antigravity | — | — | **no medible desde el sandbox** (ver abajo) |
+
+**Lo que se midió y lo que no, y por qué (no es un fallo de la app):**
+
+- `npm run probe` da **`spawn EPERM`** en Claude y Antigravity: el sandbox de
+  DSH no permite que Node lance un proceso hijo capturando su salida por tubería
+  (`stdio: 'pipe'`). Los proveedores que van por HTTP directo (Minimax,
+  DeepSeek) funcionan. Se esquivó lanzando el script suelto con redirección a
+  fichero.
+- **PowerShell no puede hacer HTTPS en el sandbox**: `Invoke-RestMethod` falla
+  con *"The SSL connection could not be established"* contra **todos** los hosts
+  (minimax, anthropic, deepseek). El `fetch` de Node sí funciona. O sea: el
+  `.ps1` de Claude **descifra bien** la caché (llega hasta la petición) y lo que
+  falla es el TLS de PowerShell, no el descifrado.
+- **Electron no arranca en el sandbox** (`GPU process launch failed:
+  error_code=18`), así que `npm run preview` y `preview:settings` no se pueden
+  ejecutar desde una sesión de DSH: hay que lanzarlos fuera.
+- El endpoint de cuota de Claude estaba devolviendo **HTTP 429** durante la
+  revisión del 2026-11-16 00:00 (límite de ~5 peticiones por ventana). Con el
+  `trap` nuevo del `.ps1` el motivo sale entero: *"HTTP 429: límite de
+  peticiones del endpoint de uso"*.
 
 ## 4. Puntos abiertos (para el otro agente)
 

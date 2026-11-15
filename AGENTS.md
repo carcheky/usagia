@@ -56,6 +56,9 @@ git switch main && git merge --ff-only beta && git push origin main   # -> Relea
   la clave de los resultados y de las cachés: si añades un proveedor que
   cachea (Claude, Antigravity), **cachea por `ctx.instance.id`**, o la
   respuesta de una cuenta se le servirá a otra.
+- **La cuota de Claude solo se consulta con un token OAuth** (`sk-ant-oat…`).
+  Una clave API (`sk-ant-api…`) no vale: la app la descarta y lo avisa en la
+  nota de la tarjeta, para que no tapee la sesión local.
 - **La app no necesita credenciales propias.** Se resuelven en cascada:
   credencial de la cuenta → variable de entorno → harness DSH
   (`~/.dsh/.credentials.yaml`) → almacenes nativos (Administrador de
@@ -72,3 +75,21 @@ git switch main && git merge --ff-only beta && git push origin main   # -> Relea
 - Lo que se toca en la UI se comprueba **ejecutando la app**, no narrando:
   `npm run preview` (tarjeta), `npm run preview:settings` (configuración) y
   `npm test` (modelo de cuentas, Node puro).
+
+## Varias sesiones en el mismo repo
+
+Puede haber **más de una sesión de DSH trabajando en este repo a la vez** (por
+ejemplo, una revisando el código y otra documentando). DSH **no** permite
+mensajear entre sesiones raíz distintas: `send_message` solo funciona dentro
+del mismo árbol de subagentes. El canal real es el repo.
+
+- **Al empezar, lee `STATUS.md`**: dice qué hizo la otra sesión, qué está a
+  medias y qué ficheros tiene reservados.
+- **Un fichero, un dueño.** Antes de tocar `README.md`, `FINDINGS.md`,
+  `AGENTS.md` o `STATUS.md`, comprueba que ninguna otra sesión los está
+  editando (`git status --porcelain` y el log del repo).
+- **No commitees trabajo ajeno.** Si hay commits sin pushear de otra sesión,
+  déjalos tal cual y anótalos en `STATUS.md`.
+- **Actualiza `STATUS.md` al terminar**, con la fecha y lo que cambió.
+- Lo que se descubre de un endpoint o de una cuota va a `FINDINGS.md`; lo que
+  es estado del proyecto, a `STATUS.md`. No se mezclan.
