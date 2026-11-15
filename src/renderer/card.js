@@ -3,9 +3,20 @@
 const rowsEl = document.getElementById('rows');
 const updatedEl = document.getElementById('updated');
 const hintEl = document.getElementById('hint');
+const gearEl = document.getElementById('gear');
 let lastState = null;
 let lastHeight = 0;
+let lastGear = null;
 const MAX_METRICS = 4;
+
+// Boton de configuracion. La tarjeta es "click-through" (para no tapar la
+// barra de tareas), asi que el boton solo recibe clics cuando el raton esta
+// encima de la tarjeta: el proceso principal la vuelve interactiva entonces.
+gearEl?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  console.log('clic en el boton de configuracion');
+  window.usagia?.settings();
+});
 
 function relativeTime(ts) {
   if (!ts) return 'sin datos';
@@ -98,8 +109,8 @@ function render(payload) {
   updatedEl.textContent = payload.refreshing ? 'actualizando…' : relativeTime(payload.updatedAt);
   if (hintEl) {
     hintEl.textContent = payload.pinned
-      ? 'Fijado · pasa el ratón o haz clic en el icono para soltarlo'
-      : 'Actualización automática · pasa el ratón por el icono · clic para fijar';
+      ? 'Fijado · pasa el ratón o haz clic en el icono para soltarlo · ⚙ para configurar'
+      : 'Actualización automática · pasa el ratón por el icono · clic para fijar · ⚙ para configurar';
   }
   reportSize();
 }
@@ -108,15 +119,28 @@ function reportSize() {
   const card = document.querySelector('.card');
   if (!card) return;
   const height = Math.ceil(card.getBoundingClientRect().height);
-  if (Math.abs(height - lastHeight) < 1) return;
+  const gear = document.getElementById('gear');
+  const rect = gear ? gear.getBoundingClientRect() : null;
+  const payload = { width: 380, height };
+  if (rect) {
+    payload.gear = {
+      x: Math.round(rect.x + rect.width / 2),
+      y: Math.round(rect.y + rect.height / 2),
+    };
+  }
+  if (Math.abs(height - lastHeight) < 1 && lastGear) return;
   lastHeight = height;
-  window.usagia?.reportSize({ width: 380, height });
+  lastGear = payload.gear || null;
+  window.usagia?.reportSize(payload);
 }
 
 window.usagia?.onState((payload) => {
   lastState = payload;
   render(payload);
 });
+// La tarjeta puede cargarse DESPUES de que el proceso principal haya
+// enviado el estado: al avisar, el proceso se lo vuelve a mandar.
+window.usagia?.ready();
 window.addEventListener('resize', reportSize);
 setInterval(() => {
   if (lastState && !lastState.refreshing) {

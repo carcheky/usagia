@@ -24,6 +24,8 @@
     "dev": "node scripts/run.js --verbose",
     "probe": "node scripts/probe.js",
     "preview": "node scripts/run.js --preview",
+    "preview:settings": "node scripts/run.js --settings",
+    "test": "node scripts/test-accounts.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",

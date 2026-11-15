@@ -8,11 +8,23 @@ const { app, Tray, Menu, screen, nativeImage, ipcMain, shell, protocol, net } = 
 const config = require('./config');
 const card = require('./card');
 const hover = require('./hover');
-const { providers } = require('./providers');
+const instances = require('./instances');
+const settings = require('./settings');
+const { byId } = require('./providers');
 
 const MARKER = 'Usagia';
 const ASSETS = path.join(__dirname, '..', '..', 'assets');
 const TOOLTIP_MAX = 120;
+
+// La vista previa de la configuracion trabaja sobre una carpeta de datos
+// temporal: al pulsar "Guardar" no debe tocar la configuracion de verdad.
+const PREVIEW_CONFIG_DIR =
+  process.argv.includes('--settings')
+    ? path.join(require('os').tmpdir(), 'usagia-preview-settings')
+    : null;
+if (PREVIEW_CONFIG_DIR) {
+  app.setPath('userData', PREVIEW_CONFIG_DIR);
+}
 
 let tray = null;
 let anchorRect = null;
@@ -23,30 +35,43 @@ let pollTimer = null;
 let hideTimer = null;
 let pinned = false;
 let suppressHover = false;
+let lastPointerLog = 0;
 
 /* ------------------------------------------------------------------ datos */
 
+// Cuentas activas (una o varias por proveedor) con su ultimo resultado.
 function orderedResults() {
-  return providers.map((p) => ({ provider: p, result: state.results[p.id] || null }));
+  return instances
+    .list()
+    .filter((instance) => instance.enabled)
+    .map((instance) => {
+      const provider = byId(instance.provider);
+      return { instance, provider, result: state.results[instance.id] || null };
+    })
+    .filter((entry) => entry.provider);
 }
 
 async function collect() {
-  const ctx = { config: config.load() };
+  const cfg = config.load();
   const results = {};
   await Promise.all(
-    providers.map(async (provider) => {
-      if (!config.isProviderEnabled(provider.id)) return;
-      try {
-        results[provider.id] = await provider.fetchUsage(ctx);
-      } catch (err) {
-        results[provider.id] = {
-          status: 'error',
-          summary: 'error',
-          metrics: [],
-          error: err?.message || String(err),
-        };
-      }
-    })
+    instances
+      .list()
+      .filter((instance) => instance.enabled)
+      .map(async (instance) => {
+        const provider = byId(instance.provider);
+        if (!provider) return;
+        try {
+          results[instance.id] = await provider.fetchUsage({ config: cfg, instance });
+        } catch (err) {
+          results[instance.id] = {
+            status: 'error',
+            summary: 'error',
+            metrics: [],
+            error: err?.message || String(err),
+          };
+        }
+      })
   );
   return results;
 }
@@ -116,9 +141,9 @@ function updateTrayIcon() {
 function updateTooltip() {
   if (!tray) return;
   const lines = [MARKER];
-  for (const { provider, result } of orderedResults()) {
+  for (const { instance, result } of orderedResults()) {
     if (!result) continue;
-    lines.push(`${provider.label}: ${shortSummary(result)}`);
+    lines.push(`${instance.label}: ${shortSummary(result)}`);
   }
   let text = lines.join('\n');
   if (text.length > TOOLTIP_MAX) text = `${text.slice(0, TOOLTIP_MAX - 1)}…`;
@@ -130,9 +155,9 @@ function updateTooltip() {
 
 function buildMenu() {
   const items = [];
-  for (const { provider, result } of orderedResults()) {
+  for (const { instance, provider, result } of orderedResults()) {
     items.push({
-      label: `${provider.label}: ${shortSummary(result)}`,
+      label: `${instance.label}: ${shortSummary(result)}`,
       click: provider.url ? () => shell.openExternal(provider.url) : undefined,
     });
   }
@@ -142,7 +167,11 @@ function buildMenu() {
     click: () => refresh({ force: true }),
   });
   items.push({
-    label: 'Configuración',
+    label: 'Configuración…',
+    click: () => settings.open(),
+  });
+  items.push({
+    label: 'Abrir archivo de configuración',
     click: () => shell.openPath(config.configPath()),
   });
   items.push({ type: 'separator' });
@@ -207,12 +236,27 @@ function notifyHiddenIcon() {
 
 function handlePointer() {
   const cfg = config.load();
-  if (!cfg.showOnHover && !pinned) return;
+  if (!cfg.showOnHover && !pinned) {
+    card.setInteractive(false);
+    return;
+  }
 
   const point = screen.getCursorScreenPoint();
   const rect = currentAnchor();
   const overIcon = hover.inside(point, rect, 6);
   const overCard = card.isVisible() && hover.inside(point, card.bounds(), 2);
+
+  // La tarjeta es click-through (no tapa la barra de tareas), pero en cuanto el
+  // puntero esta encima se vuelve interactiva: asi se puede pulsar su boton
+  // de configuracion.
+  card.setInteractive(overCard);
+
+  if (process.argv.includes('--verbose') && Date.now() - lastPointerLog > 1000) {
+    lastPointerLog = Date.now();
+    console.log(
+      `[usagia] puntero ${JSON.stringify(point)} icono=${overIcon} tarjeta=${overCard} visible=${card.isVisible()}`
+    );
+  }
 
   // Con la tarjeta fijada permanece abierta aunque el raton se vaya.
   if (pinned) {
@@ -262,9 +306,10 @@ function broadcast() {
     updatedAt: state.updatedAt,
     refreshing: state.refreshing,
     pinned,
-    providers: orderedResults().map(({ provider, result }) => ({
-      id: provider.id,
-      label: provider.label,
+    providers: orderedResults().map(({ instance, provider, result }) => ({
+      id: instance.id,
+      label: instance.label,
+      provider: provider.id,
       color: provider.color,
       status: result?.status || 'pending',
       summary: result?.summary || '',
@@ -371,10 +416,38 @@ app.whenReady().then(async () => {
 
   registerAppProtocol();
 
-  ipcMain.on('card:size', (_event, size) => card.resize(size));
+  ipcMain.on('card:size', (_event, size) => {
+    card.resize(size);
+    if (process.argv.includes('--verbose') && size?.gear) {
+      const bounds = card.bounds();
+      if (!bounds) return;
+      const display = screen.getDisplayMatching(bounds);
+      const scale = display.scaleFactor || 1;
+      const dip = {
+        x: Math.round(bounds.x + size.gear.x),
+        y: Math.round(bounds.y + size.gear.y),
+      };
+      console.log(
+        `[usagia] boton de configuracion en DIP ${JSON.stringify(dip)} fisico ${JSON.stringify({
+          x: Math.round(display.bounds.x + dip.x * scale),
+          y: Math.round(display.bounds.y + dip.y * scale),
+        })}`
+      );
+    }
+  });
   ipcMain.on('card:refresh', () => refresh({ force: true }));
   ipcMain.on('card:open', (_event, url) => {
     if (url && /^https?:\/\//.test(url)) shell.openExternal(url);
+  });
+  ipcMain.on('card:settings', () => settings.open());
+  ipcMain.on('card:ready', () => broadcast());
+
+  // La ventana de configuracion avisa cuando guarda: los datos se vuelven a
+  // pedir y la tarjeta se repinta.
+  settings.register({
+    onSaved: () => {
+      refresh({ force: true });
+    },
   });
 
   // Modo vista previa: abre la tarjeta con datos reales, fija en pantalla.
@@ -401,6 +474,65 @@ app.whenReady().then(async () => {
       }
       app.exit(0);
     }, 2500);
+    return;
+  }
+
+  // Modo vista previa de la configuracion: abre la ventana y hace una captura
+  // para poder revisarlo desde fuera.
+  if (process.argv.includes('--settings')) {
+    const win = settings.open();
+    win.once('ready-to-show', () => win.show());
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Comprobacion de que el boton "Probar" llega al proceso principal.
+    try {
+      const answer = await win.webContents.executeJavaScript(
+        `(async () => {
+           const botones = [...document.querySelectorAll('button')].filter((b) => b.textContent === 'Probar');
+           if (!botones.length) return 'sin botones Probar';
+           botones[0].click();
+           await new Promise((r) => setTimeout(r, 6000));
+           const nota = document.querySelector('.acc-note');
+           return nota ? nota.textContent : 'sin nota';
+         })()`
+      );
+      console.log(`[usagia] boton Probar -> ${answer}`);
+    } catch (err) {
+      console.log(`[usagia] el boton Probar fallo: ${err.message}`);
+    }
+
+    // Comprobacion de que "Guardar" escribe la configuracion.
+    try {
+      const answer = await win.webContents.executeJavaScript(
+        `(async () => {
+           const guardar = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Guardar');
+           if (!guardar) return 'sin boton Guardar';
+           guardar.click();
+           await new Promise((r) => setTimeout(r, 1500));
+           const estado = document.getElementById('status');
+           return estado ? estado.textContent : 'sin estado';
+         })()`
+      );
+      console.log(`[usagia] boton Guardar -> ${answer} (${config.configPath()})`);
+    } catch (err) {
+      console.log(`[usagia] el boton Guardar fallo: ${err.message}`);
+    }
+
+    try {
+      const image = await win.webContents.capturePage();
+      const file = path.join(__dirname, '..', '..', 'preview-settings.png');
+      fs.writeFileSync(file, image.toPNG());
+      console.log(`[usagia] captura: ${file}`);
+    } catch (err) {
+      console.log(`[usagia] captura falló: ${err.message}`);
+    }
+    // La carpeta de datos temporal no se deja tirada.
+    try {
+      fs.rmSync(PREVIEW_CONFIG_DIR, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+    } catch {
+      /* da igual */
+    }
+    app.exit(0);
     return;
   }
 

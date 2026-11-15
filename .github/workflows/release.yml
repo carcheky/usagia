@@ -116,6 +116,12 @@ jobs:
       - name: Comprobacion de humo
         run: node scripts/probe.js
 
+      # Cuentas: varias instancias del mismo proveedor, cada una con su
+      # credencial, y la cascada de resolucion. Es lo que sostiene la ventana
+      # de configuracion.
+      - name: Pruebas de cuentas
+        run: node scripts/test-accounts.js
+
   release:
     name: semantic-release
     needs: verify

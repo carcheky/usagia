@@ -95,8 +95,17 @@ function fromEnv(providerId) {
   return null;
 }
 
-/** Credenciales guardadas por el usuario en el config de la app. */
-function fromUserConfig(config, providerId, field) {
+/**
+ * Credenciales guardadas por el usuario.
+ *
+ * Prioridad: la credencial de la CUENTA (cada cuenta puede tener la suya) y,
+ * si no la tiene, la credencial global del proveedor (formato antiguo).
+ */
+function fromUserConfig(config, providerId, field, instance) {
+  const own = instance?.credentials?.[field];
+  if (own !== undefined && own !== null && String(own).trim()) {
+    return cand(own, 'configuración de la app', 'cuenta configurada a mano');
+  }
   const entry = config.credentials?.[providerId];
   if (!entry) return null;
   return cand(entry[field], 'configuración de la app', 'introducida a mano');

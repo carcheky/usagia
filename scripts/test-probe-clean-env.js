@@ -32,6 +32,12 @@ const env = {
   DEEPSEEK_API_KEY: '',
   ANTHROPIC_API_KEY: '',
   GOOGLE_API_KEY: '',
+  // El Administrador de credenciales de Windows es del SISTEMA: un HOME falso
+  // no lo esconde, y su credencial de Antigravity no se puede renovar sin el
+  // IDE instalado (LOCALAPPDATA tambien es falso). Sin esta variable, el
+  // sondeo fallaria en la maquina del autor y daria un falso positivo: en el
+  // runner de CI no hay ninguna credencial guardada, asi que alli no hace falta.
+  USAGIA_SIMULATE_CLEAN_ENV: '1',
 };
 delete env.ELECTRON_RUN_AS_NODE;
 

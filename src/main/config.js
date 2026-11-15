@@ -13,9 +13,15 @@ const DEFAULTS = {
   hoverCloseDelayMs: 400,
   // Idioma de las etiquetas de la tarjeta.
   locale: 'es',
-  // Activación por proveedor: {} = usar el valor por defecto del proveedor.
+  // Cuentas configuradas por el usuario. Cada cuenta es una instancia de un
+  // proveedor y puede haber VARIAS del mismo proveedor (una por cuenta).
+  // Lista vacía = autodetección: una cuenta por proveedor.
+  accounts: [],
+  // Obsoleto, se mantiene por compatibilidad con configuraciones anteriores:
+  // activación por proveedor: {} = usar el valor por defecto del proveedor.
   providers: {},
-  // Credenciales escritas a mano (tienen prioridad sobre la autodetección).
+  // Obsoleto, se mantiene por compatibilidad: credenciales globales escritas
+  // a mano (siguen siendo la última fuente antes de las variables de entorno).
   credentials: {},
 };
 
@@ -57,30 +63,53 @@ function configPath() {
   return path.join(userDataDir(), 'config.json');
 }
 
-function load() {
-  if (cache) return cache;
-  let file = {};
+function readFile() {
   try {
-    file = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
-    file = {};
+    return {};
   }
-  cache = { ...DEFAULTS, ...file };
-  cache.providers = { ...(file.providers || {}) };
-  cache.credentials = { ...(file.credentials || {}) };
+}
+
+/** Rellena los huecos y normaliza los tipos del archivo de configuración. */
+function normalize(file) {
+  const base = { ...DEFAULTS, ...file };
+  base.providers = { ...(file.providers || {}) };
+  base.credentials = { ...(file.credentials || {}) };
+  base.accounts = Array.isArray(file.accounts)
+    ? file.accounts.filter((a) => a && typeof a === 'object').map((a) => ({ ...a }))
+    : [];
+  return base;
+}
+
+function load() {
+  if (!cache) cache = normalize(readFile());
   return cache;
 }
 
-function save(patch) {
-  const next = { ...load(), ...(patch || {}) };
-  cache = next;
+/** Escribe la configuración en disco y actualiza la caché. */
+function write(next) {
   try {
     fs.mkdirSync(path.dirname(configPath()), { recursive: true });
     fs.writeFileSync(configPath(), JSON.stringify(next, null, 2), 'utf8');
   } catch (err) {
     console.error('[usagia] no se pudo guardar la configuración:', err.message);
+    return false;
   }
+  cache = next;
+  return true;
+}
+
+function save(patch) {
+  const next = normalize({ ...load(), ...(patch || {}) });
+  write(next);
   return next;
+}
+
+/** Vacía la caché: la siguiente lectura vuelve al archivo. */
+function invalidate() {
+  cache = null;
 }
 
 function isProviderEnabled(id, fallback = true) {
@@ -89,4 +118,13 @@ function isProviderEnabled(id, fallback = true) {
   return entry.enabled;
 }
 
-module.exports = { load, save, isProviderEnabled, configPath, DEFAULTS };
+module.exports = {
+  load,
+  save,
+  write,
+  invalidate,
+  isProviderEnabled,
+  configPath,
+  userDataDir,
+  DEFAULTS,
+};

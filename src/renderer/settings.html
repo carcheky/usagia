@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; font-src 'self';" />
+    <title>Usagia · Configuración</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-head">
+        <h1>Configuración</h1>
+        <p class="sub">
+          Añade o modifica las cuentas de tus IAs. Puedes tener varias del mismo proveedor
+          (una por cuenta): cada una aparece como una fila en la tarjeta.
+        </p>
+      </header>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Cuentas y modelos</h2>
+          <button class="btn ghost" id="add" type="button">+ Añadir cuenta</button>
+        </div>
+        <div id="accounts" class="accounts"></div>
+        <p class="hint" id="empty" hidden>
+          No hay cuentas configuradas: se muestran las cuentas detectadas automáticamente,
+          una por proveedor, usando las credenciales que ya tengas en el sistema.
+        </p>
+      </section>
+
+      <section class="block">
+        <h2>General</h2>
+        <div class="grid">
+          <label class="field">
+            <span>Actualizar cada (segundos)</span>
+            <input type="number" id="refresh" min="30" step="10" />
+          </label>
+          <label class="field">
+            <span>Cerrar la tarjeta tras (ms)</span>
+            <input type="number" id="hoverDelay" min="0" step="50" />
+          </label>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="showOnHover" />
+          <span>Mostrar la tarjeta al pasar el ratón por el icono de la bandeja</span>
+        </label>
+      </section>
+
+      <footer class="page-foot">
+        <button class="btn ghost" id="reveal" type="button">Abrir archivo</button>
+        <span class="spacer"></span>
+        <span class="status" id="status"></span>
+        <button class="btn ghost" id="cancel" type="button">Cancelar</button>
+        <button class="btn primary" id="save" type="button">Guardar</button>
+      </footer>
+    </div>
+    <script src="settings.js"></script>
+  </body>
+</html>

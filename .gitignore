@@ -8,3 +8,7 @@ Thumbs.db
 config.json
 .env
 .env.*
+
+# Capturas de las vistas previas (--preview / --settings)
+preview-card.png
+preview-settings.png

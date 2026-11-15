@@ -25,14 +25,26 @@ const OAUTH_BETA = 'oauth-2025-04-20';
 const SCRIPT = path.join(__dirname, '..', '..', '..', 'scripts', 'get-claude-usage.ps1');
 const CACHE_MS = 10 * 60 * 1000;
 
-let cache = { at: 0, result: null };
+// La cache va por CUENTA: con varias cuentas de Claude, una respuesta de la
+// cuenta A no puede servirse para la cuenta B.
+const cache = new Map();
+
+/** Clave de cache por cuenta, sin guardar el token en claro. */
+function cacheKey(ctx, credential) {
+  const instanceId = ctx.instance?.id || 'claude';
+  const kind = credential?.kind || 'none';
+  const value = String(credential?.value || '');
+  let hash = 5381;
+  for (let i = 0; i < value.length; i += 1) hash = ((hash << 5) + hash + value.charCodeAt(i)) | 0;
+  return `${instanceId}:${kind}:${hash}`;
+}
 
 async function resolve(ctx) {
   const manual = creds.firstValid([
-    creds.fromUserConfig(ctx.config, 'claude', 'apiKey'),
+    creds.fromUserConfig(ctx.config, 'claude', 'apiKey', ctx.instance),
     creds.fromEnv('claude'),
   ]);
-  if (manual) return { ...manual, kind: 'apiKey' };
+  if (manual) return { ...manual, kind: 'manual' };
 
   const oauth = creds.claudeCodeToken();
   if (oauth) return { ...oauth, kind: 'oauth' };
@@ -120,8 +132,12 @@ function parseUsage(data) {
 }
 
 /** Consulta remota de la cuota. */
-async function remoteUsage(ctx) {
-  if (process.platform === 'win32') {
+async function remoteUsage(ctx, credential) {
+  // Una credencial puesta a mano (token OAuth de otra cuenta, por ejemplo) va
+  // siempre por HTTP: el script de PowerShell solo sirve para la sesion local
+  // de Claude Desktop.
+  const useScript = process.platform === 'win32' && credential.kind !== 'manual';
+  if (useScript) {
     const result = await ps.runScript(SCRIPT, ['-Json']);
     if (!result.ok || !result.stdout.trim()) return null;
     try {
@@ -133,9 +149,7 @@ async function remoteUsage(ctx) {
     return null;
   }
 
-  // macOS / Linux: el token esta en ~/.claude/.credentials.json.
-  const credential = await resolve(ctx);
-  if (!credential || credential.kind !== 'oauth') return null;
+  if (!credential) return null;
 
   const res = await fetchJson(USAGE_ENDPOINT, {
     headers: {
@@ -173,11 +187,14 @@ function formatTokens(n) {
 }
 
 async function fetchUsage(ctx) {
-  if (cache.result && Date.now() - cache.at < CACHE_MS) {
-    return cache.result;
+  const credential = await resolve(ctx);
+  const key = cacheKey(ctx, credential);
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) {
+    return hit.result;
   }
 
-  const remote = await remoteUsage(ctx);
+  const remote = credential ? await remoteUsage(ctx, credential) : null;
   let result;
   if (remote) {
     result = {
@@ -202,7 +219,7 @@ async function fetchUsage(ctx) {
     }
   }
 
-  cache = { at: Date.now(), result };
+  cache.set(key, { at: Date.now(), result });
   return result;
 }
 
@@ -211,6 +228,11 @@ module.exports = {
   label: 'Claude',
   color: '#d97757',
   url: 'https://claude.ai/settings/usage',
+  credential: {
+    label: 'Token OAuth o clave API',
+    placeholder: 'sk-ant-oat01-…',
+    hint: 'Pega el token de otra cuenta de Claude. Vacío = se usa la sesión de Claude Desktop.',
+  },
   resolve,
   fetchUsage,
 };

@@ -9,6 +9,7 @@ const CARD_WIDTH = 380;
 
 let win = null;
 let anchor = null;
+let interactive = false;
 
 function create(preloadPath) {
   win = new BrowserWindow({
@@ -41,6 +42,11 @@ function create(preloadPath) {
   win.webContents.on('did-finish-load', () => {
     if (process.argv.includes('--preview')) console.log('[usagia] card cargada');
   });
+  if (process.argv.includes('--verbose')) {
+    win.webContents.on('console-message', (_event, level, message) => {
+      console.log(`[tarjeta] ${message}`);
+    });
+  }
   win.on('closed', () => {
     win = null;
   });
@@ -114,6 +120,26 @@ function setAnchor(rect) {
   anchor = rect;
 }
 
+/**
+ * La tarjeta es "click-through" para no tapar la barra de tareas: los clics
+ * pasan de largo. Cuando el puntero esta ENCIMA de la tarjeta se vuelve
+ * interactiva, para que se puedan pulsar sus botones (el de configuracion).
+ */
+function setInteractive(on) {
+  if (!win) return;
+  const value = Boolean(on);
+  if (value === interactive) return;
+  interactive = value;
+  win.setIgnoreMouseEvents(!value, { forward: !value });
+  if (process.argv.includes('--verbose')) {
+    console.log(`[usagia] tarjeta interactiva=${value}`);
+  }
+}
+
+function isInteractive() {
+  return interactive;
+}
+
 function show() {
   if (!win) return;
   win.showInactive();
@@ -121,6 +147,7 @@ function show() {
 
 function hide() {
   if (!win) return;
+  setInteractive(false);
   win.hide();
 }
 
@@ -144,6 +171,8 @@ module.exports = {
   position,
   resize,
   setAnchor,
+  setInteractive,
+  isInteractive,
   show,
   hide,
   isVisible,

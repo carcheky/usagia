@@ -8,18 +8,22 @@
 
 const path = require('path');
 
-const { providers } = require(path.join(__dirname, '..', 'src', 'main', 'providers'));
-const config = require(path.join(__dirname, '..', 'src', 'main', 'config'));
+const root = path.join(__dirname, '..', 'src', 'main');
+const { byId } = require(path.join(root, 'providers'));
+const config = require(path.join(root, 'config'));
+const instances = require(path.join(root, 'instances'));
 
 async function collect() {
-  const ctx = { config: config.load() };
+  const cfg = config.load();
   const results = {};
-  for (const provider of providers) {
-    if (!config.isProviderEnabled(provider.id)) continue;
+  for (const instance of instances.list()) {
+    if (!instance.enabled) continue;
+    const provider = byId(instance.provider);
+    if (!provider) continue;
     try {
-      results[provider.id] = await provider.fetchUsage(ctx);
+      results[instance.id] = await provider.fetchUsage({ config: cfg, instance });
     } catch (err) {
-      results[provider.id] = {
+      results[instance.id] = {
         status: 'error',
         summary: 'error',
         metrics: [],

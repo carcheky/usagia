@@ -21,11 +21,13 @@ const HOST = 'https://cloudcode-pa.googleapis.com';
 
 const WINDOW_LABELS = { '5h': '5 h', weekly: 'semanal', daily: 'diario', monthly: 'mensual' };
 
-let tokenCache = { accessToken: null, expiresAt: 0 };
+// El access_token se cachea por CUENTA: con varias cuentas de Antigravity,
+// el token de una no puede servirse para la otra.
+const tokenCache = new Map();
 
 async function resolve(ctx) {
   const manual = creds.firstValid([
-    creds.fromUserConfig(ctx.config, 'antigravity', 'apiKey'),
+    creds.fromUserConfig(ctx.config, 'antigravity', 'apiKey', ctx.instance),
     creds.fromEnv('antigravity'),
   ]);
   if (manual) return { ...manual, kind: 'raw' };
@@ -58,8 +60,11 @@ async function getAccessToken(credential) {
   if (token?.access_token && expiry > Date.now() + 120000) {
     return token.access_token;
   }
-  if (tokenCache.accessToken && tokenCache.expiresAt > Date.now() + 120000) {
-    return tokenCache.accessToken;
+
+  const key = token?.refresh_token || credential.value;
+  const cached = tokenCache.get(key);
+  if (cached && cached.expiresAt > Date.now() + 120000) {
+    return cached.accessToken;
   }
   if (!token?.refresh_token) {
     throw new Error('la credencial de Antigravity está caducada y no tiene refresh_token');
@@ -74,11 +79,11 @@ async function getAccessToken(credential) {
     );
   }
 
-  tokenCache = {
+  tokenCache.set(key, {
     accessToken: refreshed.accessToken,
     expiresAt: Date.now() + (refreshed.expiresIn || 3600) * 1000,
-  };
-  return tokenCache.accessToken;
+  });
+  return refreshed.accessToken;
 }
 
 async function fetchQuotaSummary(accessToken) {
@@ -163,6 +168,11 @@ module.exports = {
   label: 'Antigravity',
   color: '#8b7cf6',
   url: 'https://antigravity.google/',
+  credential: {
+    label: 'Credencial de Google',
+    placeholder: '{"token": {...}}',
+    hint: 'JSON con access_token/refresh_token, o el token a secas. Vacío = se busca en Windows.',
+  },
   resolve,
   fetchUsage,
 };

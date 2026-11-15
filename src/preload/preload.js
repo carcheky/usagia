@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld('usagia', {
   reportSize: (size) => ipcRenderer.send('card:size', size),
   refresh: () => ipcRenderer.send('card:refresh'),
   open: (url) => ipcRenderer.send('card:open', url),
+  settings: () => ipcRenderer.send('card:settings'),
+  ready: () => ipcRenderer.send('card:ready'),
 });

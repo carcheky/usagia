@@ -50,10 +50,17 @@ git switch main && git merge --ff-only beta && git push origin main   # -> Relea
 
 ## Reglas de la app
 
-- **La app no guarda credenciales.** Se resuelven en cascada: configuración
-  propia → variables de entorno → harness DSH (`~/.dsh/.credentials.yaml`) →
-  almacenes nativos (Administrador de credenciales de Windows, caché cifrada de
-  Claude Desktop). Si añades un proveedor, sigue esa cadena.
+- **Cada proveedor se resuelve por cuenta, no por id.** Una "cuenta" es un
+  proveedor + un nombre + su credencial + su interruptor, y puede haber
+  **varias del mismo proveedor** (una por cuenta de IA). El id de la cuenta es
+  la clave de los resultados y de las cachés: si añades un proveedor que
+  cachea (Claude, Antigravity), **cachea por `ctx.instance.id`**, o la
+  respuesta de una cuenta se le servirá a otra.
+- **La app no necesita credenciales propias.** Se resuelven en cascada:
+  credencial de la cuenta → variable de entorno → harness DSH
+  (`~/.dsh/.credentials.yaml`) → almacenes nativos (Administrador de
+  credenciales de Windows, caché cifrada de Claude Desktop). Si añades un
+  proveedor, sigue esa cadena.
 - **Los porcentajes se normalizan a "usado"**, que es como los muestran todos
   los paneles. La escala es fija por proveedor (`pct100()`), nunca se adivina.
 - **La semántica de cada endpoint está en `FINDINGS.md`**, que es la fuente
@@ -62,3 +69,6 @@ git switch main && git merge --ff-only beta && git push origin main   # -> Relea
 - La app corre en segundo plano y **no debe morir en silencio**: el lanzador
   (`scripts/run.js`) tiene un watchdog que la relanza si Electron muere de
   forma anormal.
+- Lo que se toca en la UI se comprueba **ejecutando la app**, no narrando:
+  `npm run preview` (tarjeta), `npm run preview:settings` (configuración) y
+  `npm test` (modelo de cuentas, Node puro).

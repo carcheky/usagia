@@ -34,9 +34,11 @@ npm start            # arranca la app (icono en la bandeja)
 Otros comandos:
 
 ```bash
-npm run probe        # consulta los proveedores y vuelca el resultado por consola
-npm run preview      # abre la tarjeta sola, con datos reales, y guarda una captura
-npm run dist         # empaqueta instaladores (Windows / macOS / Linux)
+npm run probe            # consulta los proveedores y vuelca el resultado por consola
+npm run preview          # abre la tarjeta sola, con datos reales, y guarda una captura
+npm run preview:settings # abre la ventana de configuración y guarda una captura
+npm test                 # pruebas de las cuentas (Node puro, sin GUI)
+npm run dist             # empaqueta instaladores (Windows / macOS / Linux)
 ```
 
 > Si `npm install` no descarga el binario de Electron (política de scripts de
@@ -44,10 +46,11 @@ npm run dist         # empaqueta instaladores (Windows / macOS / Linux)
 
 ## Cómo se autentican los proveedores
 
-La app **no guarda claves**: lee las credenciales que ya tienes en el sistema,
-en este orden:
+Por defecto la app **no necesita claves propias**: lee las credenciales que ya
+tienes en el sistema, en este orden:
 
-1. Lo que escribas en `%APPDATA%\Usagia\config.json` (o `~/.config/Usagia/config.json`).
+1. La credencial que hayas pegado para **esa cuenta** en la ventana de
+   configuración (si la dejas vacía, se sigue bajando por la lista).
 2. Variables de entorno: `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`,
    `GOOGLE_API_KEY`, `ANTIGRAVITY_TOKEN`.
 3. El harness DSH (`~/.dsh/.credentials.yaml`): la clave de Minimax y el grant
@@ -65,23 +68,51 @@ credencial"* en lugar de desaparecer.
 
 ## Configuración
 
-Archivo: `%APPDATA%\Usagia\config.json` (ruta exacta en
-`app.getPath('userData')`).
+Hay una **ventana de configuración** dentro de la app: el botón **⚙** de la
+tarjeta (o *Configuración…* en el menú del clic derecho). Ahí se pueden:
+
+- **Añadir cuentas**: se admite **varias cuentas del mismo proveedor** (una por
+  cuenta de IA). Cada cuenta tiene su nombre, su credencial y su interruptor
+  de activación, y aparece como una fila propia en la tarjeta.
+- **Modificar** cualquiera de ellas, probar la credencial (*Probar*) y
+  borrarla.
+- Ajustar los valores generales (cada cuánto se refresca, si se muestra al
+  pasar el ratón, cuánto tarda en cerrarse).
+
+Todo se guarda en `%APPDATA%\Usagia\config.json` (ruta exacta en
+`app.getPath('userData')`):
 
 ```json
 {
   "refreshSeconds": 120,
   "showOnHover": true,
   "hoverCloseDelayMs": 400,
-  "providers": {
-    "minimax": { "enabled": true },
-    "deepseek": { "enabled": false }
-  },
-  "credentials": {
-    "minimax": { "apiKey": "sk-..." }
-  }
+  "accounts": [
+    {
+      "id": "a1b2c3",
+      "provider": "minimax",
+      "label": "Trabajo",
+      "enabled": true,
+      "credentials": { "apiKey": "sk-cp-..." }
+    },
+    {
+      "id": "a4d5e6",
+      "provider": "minimax",
+      "label": "Personal",
+      "enabled": true,
+      "credentials": {}
+    }
+  ]
 }
 ```
+
+- `accounts` vacío = **autodetección**: una cuenta por proveedor, con las
+  credenciales que ya haya en el sistema.
+- `credentials` dentro de una cuenta es **opcional**: si está vacío, esa cuenta
+  usa la cascada habitual (variable de entorno → harness DSH → almacén
+  nativo).
+- Los dos campos antiguos (`providers` y `credentials` globales) siguen
+  funcionando: son la última fuente antes de las variables de entorno.
 
 ## Añadir un proveedor nuevo
 
@@ -93,6 +124,12 @@ module.exports = {
   label: 'Mi IA',
   color: '#ff00ff',
   url: 'https://panel.miia.com/',
+  // Metadatos para la ventana de configuración (opcional, pero recomendado).
+  credential: {
+    label: 'Clave API',
+    placeholder: 'sk-...',
+    hint: 'Déjalo vacío para que se busque sola en el sistema.',
+  },
   async resolve(ctx) {           // devuelve { value, source } o null
     return { value: process.env.MIIA_KEY, source: 'entorno' };
   },
@@ -108,6 +145,31 @@ module.exports = {
 ```
 
 2. Regístralo en `src/main/providers/index.js`.
+
+El `ctx` que recibe el proveedor lleva la cuenta actual, así que cada cuenta
+puede usar su propia credencial:
+
+```js
+ctx.config                  // la configuración completa
+ctx.instance.id             // id de la cuenta (clave de los resultados y de las cachés)
+ctx.instance.provider       // 'miia'
+ctx.instance.label          // nombre que ve el usuario
+ctx.instance.credentials    // { apiKey: '...' } de ESTA cuenta
+```
+
+Para leer la credencial de la cuenta usa la cascada de siempre:
+
+```js
+const creds = require('../credentials');
+const credential = creds.firstValid([
+  creds.fromUserConfig(ctx.config, 'miia', 'apiKey', ctx.instance),
+  creds.fromEnv('miia'),
+]);
+```
+
+Si el proveedor necesita cachear algo por cuenta (Claude y Antigravity lo
+hacen), la clave de caché debe incluir el id de la cuenta: si no, la respuesta
+de una cuenta se le sirve a otra.
 
 El contrato de una métrica:
 
@@ -130,14 +192,18 @@ proveedor. Está explicado en detalle en [FINDINGS.md](FINDINGS.md).
 src/main/
   main.js            arranque, bandeja, temporizadores, menú
   card.js            ventana de la tarjeta (sin foco, no roba clics)
+  settings.js        ventana de configuración (cuentas y ajustes)
+  instances.js       cuentas: normalización, catálogo y lista efectiva
   hover.js           detección de la zona del icono según plataforma
   config.js          configuración persistente
   credentials.js     resolución de credenciales en cascada
   http.js            fetch con timeout y helpers de formato
   providers/         un módulo por proveedor
   local/             credstore (Windows), PowerShell, agregador de transcripciones
-src/preload/preload.js
-src/renderer/        tarjeta (HTML/CSS/JS)
+src/preload/
+  preload.js         puente de la tarjeta
+  settings-preload.js puente de la ventana de configuración
+src/renderer/        tarjeta y ventana de configuración (HTML/CSS/JS)
 scripts/             scripts de PowerShell/Node auxiliares
 ```
 
@@ -190,10 +256,12 @@ en el binario (`--config.extraMetadata.version=`); en `package.json` queda
 |---|---|
 | **Pasar el ratón** por el icono | Aparece la tarjeta; se oculta al apartar el ratón |
 | **Clic** en el icono | Fija la tarjeta (toggle): se queda abierta hasta otro clic |
-| **Clic derecho** en el icono | Menú con el resumen de cada IA (clic en uno abre su panel), refresco y salida |
+| **⚙** en la tarjeta | Abre la ventana de configuración (cuentas y ajustes) |
+| **Clic derecho** en el icono | Menú con el resumen de cada IA (clic en uno abre su panel), refresco, configuración y salida |
 
-La tarjeta es de solo lectura y no intercepta el ratón: puedes seguir usando lo
-que hay debajo.
+La tarjeta no intercepta el ratón mientras no tengas el puntero encima: puedes
+seguir usando lo que hay debajo. En cuanto el puntero entra en la tarjeta, ésta
+pasa a ser interactiva para que se pueda pulsar su botón ⚙.
 
 ## Notas y límites
 

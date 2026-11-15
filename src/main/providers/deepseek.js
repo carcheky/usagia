@@ -19,7 +19,7 @@ const BALANCE_ENDPOINT = 'https://api.deepseek.com/user/balance';
 
 async function resolve(ctx) {
   const manual = creds.firstValid([
-    creds.fromUserConfig(ctx.config, 'deepseek', 'apiKey'),
+    creds.fromUserConfig(ctx.config, 'deepseek', 'apiKey', ctx.instance),
     creds.fromEnv('deepseek'),
   ]);
   if (manual) return { ...manual, kind: 'apiKey' };
@@ -200,6 +200,11 @@ module.exports = {
   label: 'DeepSeek',
   color: '#4d6bfe',
   url: 'https://platform.deepseek.com/usage',
+  credential: {
+    label: 'Clave API o token de sesión',
+    placeholder: 'sk-…',
+    hint: 'Clave sk- de la API, o el token x-dsh-auth-token de la plataforma. Vacío = sesión del harness.',
+  },
   resolve,
   fetchUsage,
 };

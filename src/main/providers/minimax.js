@@ -11,7 +11,7 @@ const ENDPOINT = 'https://api.minimax.io/v1/token_plan/remains';
 
 async function resolve(ctx) {
   return creds.firstValid([
-    creds.fromUserConfig(ctx.config, 'minimax', 'apiKey'),
+    creds.fromUserConfig(ctx.config, 'minimax', 'apiKey', ctx.instance),
     creds.fromEnv('minimax'),
     creds.fromDsh('minimax'),
   ]);
@@ -83,6 +83,11 @@ module.exports = {
   label: 'Minimax',
   color: '#ff6a3d',
   url: 'https://platform.minimaxi.com/',
+  credential: {
+    label: 'Clave API',
+    placeholder: 'sk-cp-…',
+    hint: 'Clave del plan M (empieza por sk-cp-). Si la dejas vacía se busca sola en el sistema.',
+  },
   resolve,
   fetchUsage,
 };

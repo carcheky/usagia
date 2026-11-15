@@ -133,9 +133,33 @@ fichero (app de bandeja).
 - **Watchdog**: `scripts/run.js` relanza Electron si muere con código distinto
   de 0 (por ejemplo si otra sesión lo mata). Un cierre normal desde el menú de
   la bandeja (código 0) no se relanza. Máximo 10 reintentos.
-- La tarjeta no intercepta el ratón: no impide usar lo que hay debajo.
+- La tarjeta no intercepta el ratón: no impide usar lo que hay debajo. **Salvo
+  cuando el puntero está encima de la tarjeta**, que entonces pasa a ser
+  interactiva (`setIgnoreMouseEvents(false)`) para que se pueda pulsar su
+  botón ⚙. La carta que el sistema envía al proceso principal va en DIP, y el
+  ratón de Windows usa coordenadas lógicas: con escalado 200 % hay que
+  dividir por 2 para colocar el puntero.
 - En Windows el tooltip del sistema está limitado a ~127 caracteres: ahí cabe
   el resumen corto de las cuatro IAs; la tarjeta es la vista completa.
+
+### Cuentas (varias del mismo proveedor)
+
+Desde la v1.1 la app tiene una **ventana de configuración** (botón ⚙ de la
+tarjeta o *Configuración…* en el menú del icono) donde se gestionan las
+**cuentas**:
+
+- Una cuenta = un proveedor + un nombre + su credencial + su interruptor.
+- Se admiten **varias cuentas del mismo proveedor** (una por cuenta de IA):
+  la tarjeta muestra una fila por cuenta.
+- `config.json` -> `accounts: [{ id, provider, label, enabled, credentials }]`.
+  Si `accounts` está vacío, se usa la autodetección (una cuenta por proveedor).
+- La credencial de una cuenta tiene prioridad sobre la global del proveedor
+  (`credentials.<provider>`), y esa sobre las variables de entorno.
+- **El id de la cuenta es la clave de los resultados y de las cachés**: Claude
+  y Antigravity cachean por cuenta, porque si no la respuesta de una cuenta se
+  le sirve a otra. Lo mismo con `ctx.instance` en el `ctx` de cada proveedor.
+- Las pruebas de este modelo están en `scripts/test-accounts.js` (Node puro) y
+  las ejecuta el job `verify` del pipeline.
 
 ## 6. Guiones sueltos que ya funcionan
 
@@ -146,5 +170,7 @@ pwsh -File scripts/get-claude-usage.ps1 -Json             # cuota de Claude
 pwsh -File scripts/get-deepseek-balance.ps1 -Json         # saldo y gasto de DeepSeek
 node scripts/check-antigravity-inference.js               # comprueba que Antigravity NO genera (429/403)
 npm run probe                                             # los cuatro proveedores desde la app
+node scripts/test-accounts.js                             # pruebas del modelo de cuentas
+npm run preview:settings                                  # captura de la ventana de configuración
 ```
 
