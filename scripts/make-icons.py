@@ -73,6 +73,17 @@ def main():
     )
     print("assets/icon.png + assets/icon.ico")
 
+    # Conjunto de iconos para Linux: electron-builder lo acepta como carpeta
+    # y lo usa para el .desktop, el AppImage y el .deb. Sin esto, el paquete
+    # de Linux sale con el icono por defecto de Electron.
+    icons = ASSETS / "icons"
+    icons.mkdir(exist_ok=True)
+    base = gauge(COLORS["ok"], fill_ratio=0.72)
+    for size in (16, 24, 32, 48, 64, 128, 256, 512):
+        base.resize((size, size), Image.LANCZOS).save(icons / f"{size}x{size}.png")
+    base.resize((512, 512), Image.LANCZOS).save(icons / "icon.png")
+    print(f"assets/icons/ ({len(list(icons.glob('*.png')))} ficheros)")
+
 
 if __name__ == "__main__":
     main()

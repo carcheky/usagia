@@ -6,7 +6,11 @@
   "main": "src/main/main.js",
   "license": "MIT",
   "private": true,
-  "author": "carcheky",
+  "author": {
+    "name": "carcheky",
+    "email": "carcheky@users.noreply.github.com"
+  },
+  "desktopName": "usagia",
   "repository": {
     "type": "git",
     "url": "https://github.com/carcheky/usagia.git"
@@ -58,9 +62,11 @@
         "AppImage",
         "deb"
       ],
+      "icon": "assets/icons",
       "category": "Utility",
       "synopsis": "Uso actual de tus IAs en la bandeja del sistema",
-      "description": "App de bandeja que muestra el consumo actual de las IAs configuradas (Minimax, Claude, Antigravity, DeepSeek) al pasar el raton por el icono."
+      "description": "App de bandeja que muestra el consumo actual de las IAs configuradas (Minimax, Claude, Antigravity, DeepSeek) al pasar el raton por el icono.",
+      "syncDesktopName": true
     },
     "nsis": {
       "artifactName": "${productName}-Setup-${version}-${os}-${arch}.${ext}",
