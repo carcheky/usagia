@@ -137,7 +137,8 @@ function buildAccount(account) {
 
   enabled.addEventListener('change', () => {
     data.enabled = enabled.checked;
-    row.classList.toggle('disabled', !enabled);
+    // OJO: `enabled` es el <input>, siempre truthy; lo que vale es .checked.
+    row.classList.toggle('disabled', !enabled.checked);
   });
 
   cred.addEventListener('input', () => {
