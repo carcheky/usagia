@@ -18,10 +18,10 @@ del código) y el árbol de trabajo está limpio.
 
 | Qué | Valor | Nota |
 |---|---|---|
-| Última release publicada | **v1.0.0-beta.3** (2026-11-15 21:20 UTC) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos |
+| Última release publicada | **v1.0.0-beta.4** (2026-11-16 00:46 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
 | Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta` |
-| Rama de trabajo `beta` | `3205e12` (local) | `origin/beta` está en `442f1ef`: **9 commits sin empujar** |
-| Rama `main` | `deebebb` | 10 commits por detrás de `beta` |
+| Rama de trabajo `beta` | `94b4c3f` | **Igual que `origin/beta`**: los 11 commits ya están empujados (2026-11-16 00:44) |
+| Rama `main` | `deebebb` | 11 commits por detrás de `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone semantic-release |
 
 Releases: <https://github.com/carcheky/usagia/releases>
@@ -90,14 +90,15 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
 
 ## Pendiente / siguiente
 
-1. **Publicar la revisión**: `git push origin beta` → `v1.0.0-beta.4`
-   (9 fixes + tests + el arreglo de la vista previa). Los commits están hechos
-   y validados; falta el `push`, que es la decisión del usuario.
-2. **Primera versión estable**: cuando `beta.4` esté bien en la app instalada,
+1. **Primera versión estable**: `beta.4` ya está publicada y verificada; falta
    `git switch main && git merge --ff-only beta && git push origin main` →
-   `v1.0.0`.
+   `v1.0.0`. Conviene hacerlo después de instalar `beta.4` y comprobar que la
+   tarjeta sale en la app instalada (el fallo que arregló `beta.3`).
 3. **Dependabot**: rama `origin/dependabot/npm_and_yarn/electron-42.11.16`
-   abierta (actualización de Electron). Sin revisar.
+   abierta (actualización de Electron). Sin revisar. GitHub además avisa de
+   **34 vulnerabilidades en la rama por defecto** (11 altas, 16 moderadas,
+   7 bajas): casi todas de Electron, y `electron-builder` arrastra las suyas.
+   Es lo que más papeletas da en la rama `main`.
 4. **Android**: hay un plan completo en [PLAN-ANDROID.md](PLAN-ANDROID.md)
    (Capacitor 8 + núcleo JS compartido + jobs `verify-android`/`build-android`).
    **No se ha empezado**: hoy no hay nada que compilar para Android.
@@ -153,6 +154,7 @@ Documentados en detalle en [FINDINGS.md §3](FINDINGS.md):
 
 | Versión | Fecha | Contenido |
 |---|---|---|
+| v1.0.0-beta.4 | 2026-11-16 | La revisión a fondo completa (9 commits: Claude, Antigravity, ids de cuenta, guardado, `pct100(null)`, tests de parsers) + el arreglo de la vista previa que moría en silencio |
 | v1.0.0-beta.3 | 2026-11-15 | fix: los scripts de PowerShell no viajaban en el paquete (la tarjeta no salía en la app instalada) |
 | v1.0.0-beta.2 | 2026-11-15 | feat: ventana de configuración con varias cuentas por proveedor · fix: el script de publicación espera a la run en curso |
 | v1.0.0-beta.1 | 2026-11-15 | feat: app de bandeja inicial · fixes de empaquetado Linux, nombres de artefacto, sondeo del CI y rango de commitlint |
