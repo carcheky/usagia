@@ -30,14 +30,14 @@
 | Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
 | Qué funciona (verificado) | 337 |
 | Pendiente / siguiente | 356 |
-| Puntos abiertos y riesgos conocidos | 381 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 405 |
-| Reparto entre sesiones (acuerdo) | 424 |
-| Cómo mantener este fichero | 446 |
-| Decisiones que son del usuario | 459 |
-| Notas para quien siga | 466 |
-| Retomar (en 5 minutos) | 473 |
-| Actualización automática desde la app (2026-11-16 18:45) | 488 |
+| Puntos abiertos y riesgos conocidos | 380 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 404 |
+| Reparto entre sesiones (acuerdo) | 423 |
+| Cómo mantener este fichero | 445 |
+| Decisiones que son del usuario | 458 |
+| Notas para quien siga | 465 |
+| Retomar (en 5 minutos) | 472 |
+| Actualización automática desde la app (2026-11-16 18:45) | 487 |
 <!-- fin-índice -->
 
 ## Lo último: items 12 y 17 completados (2026-11-16 20:50)
@@ -363,8 +363,7 @@ Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en ve
    electron-builder, solo afecta al build).
 3. ~~**Android**~~: **DESCARTADO** por coste. El plan está en
    [PLAN-ANDROID.md](PLAN-ANDROID.md) por si se retoma en el futuro.
-4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
-   binarios de macOS** (solo Windows y Linux).
+4. ~~**macOS**~~: **DESCARTADO**. No se genera binario para macOS.
 5. ~~**Cola de la revisión a fondo**~~: **COMPLETADA** (`6f82da5`, `4cdc332`).
    Items 12 (cifrado con `safeStorage`) y 17 (código muerto) arreglados.
    Nueva suite `test-crypto.js`. Ver
