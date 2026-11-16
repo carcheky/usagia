@@ -1,18 +1,17 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 02:05 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-8a303ef4`
-> ("Revisión a fondo del código"). **Pausa del día**: se añade el detalle de
-> lo que le queda a esta sesión (items **12** y **17** de la cola de la
-> revisión) en
-> [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión),
-> sin tocar lo que dejaron las demás sesiones. Esta versión **fusiona** lo que
-> escribieron las sesiones `session-fa207887` (plan de Android),
-> `session-e9f5038b` (lead: verificación de la UI y de la app instalada de
-> `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los items 11-18) y
-> `session-dab004c1` (fallback sin GPU). Si al abrirlo la cabecera dice otra
-> sesión, **fusiona su contenido** en vez de sobrescribirlo (ver
-> [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo repo*).
+> **Última actualización:** 2026-11-16 01:35 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-dab004c1`
+> ("Monitor de IAs en barra de tareas"). **Pausa del día**: se añade el
+> resultado de la **verificación del binario publicado de `beta.4`** (que era
+> el pendiente de `session-e9f5038b`) y lo que le queda a esta sesión, en
+> [Pausa del día](#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo).
+> Esta versión **fusiona** lo que escribieron las sesiones `session-fa207887`
+> (plan de Android), `session-e9f5038b` (lead: verificación de la UI y de la
+> app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los
+> items 11-18) y `session-dab004c1` (fallback sin GPU). Si al abrirlo la
+> cabecera dice otra sesión, **fusiona su contenido** en vez de sobrescribirlo
+> (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
 > repo (ver [Cómo mantener este fichero](#cómo-mantener-este-fichero)).
@@ -22,11 +21,12 @@
 ## Resumen en una línea
 
 App de bandeja (Electron) que muestra la cuota de Minimax, Claude, Antigravity
-y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.4`)**, sin versión
-estable todavía. La revisión a fondo del código (9 commits) está **publicada y
-verificada**; además se han cerrado la cola de esa revisión y el conflicto
-entre sesiones. `beta` está a la par de `origin/beta` y **el árbol está
-limpio**: no queda nada sin commitear.
+y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.6`)**, sin versión
+estable todavía. La revisión a fondo del código está **publicada y
+verificada**, y el **binario publicado de `beta.4`** se comprobó de extremo a
+extremo (tarjeta al pasar el ratón + ⚙ → ventana de configuración). `beta`
+está a la par de `origin/beta` y **el árbol está limpio**: no queda nada sin
+commitear.
 
 ## Sesiones activas en este repo (2026-11-16 02:00)
 
@@ -41,7 +41,7 @@ lugar de pisar.
 | `session-fa207887` | Plan de Android | **Pausa del día**. Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4`, commiteado en `59692d2`. Ha **commiteado y pusheado el trabajo que las otras sesiones dejaron a medias** (ids de cuenta, `pct100` con espacios, nota de la cuenta, fallback sin GPU) para dejar el árbol limpio. La **implementación de Android no ha empezado**: lo siguiente es **F0** (keystore + secrets), que no depende de nadie. Ver [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión) | `PLAN-ANDROID.md` (liberado) · `STATUS.md` (fusionado) |
 | `session-e9f5038b` | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
 | `session-8a303ef4` (**esta**) | Revisión a fondo del código | **Pausa del día**. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca`. Mañana: **17 antes que 12**, y los dos **antes que F1** (que mueve `src/main/http.js` y `src/main/providers/*`). Plan detallado en [Pausa del día](#de-session-8a303ef4-revisión-a-fondo-los-items-12-y-17-en-detalle) | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
-| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Verifica la app **instalada** de `beta.4` (script propio en `%TEMP%`). Su fallback sin GPU ya está commiteado en `814b6f5` | (repositorio: sus cambios ya están dentro) |
+| `session-dab004c1` (**esta**) | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). **Pausa del día**. **Verificó el binario publicado de `beta.4`** (portable descargado de la release): la tarjeta sale al pasar el ratón y el ⚙ abre la ventana de configuración. Su fallback sin GPU ya está commiteado en `814b6f5`; sus arreglos (ids de cuenta, `pct100` con espacios, nota de la cuenta) los recogieron `cfe09d7`, `3e13411`, `31f03ca` y `814b6f5`. Lo que le queda: el **cuelgue de `preview:settings`** con ese fallback y cuatro apuntes de la revisión de código, en [Pausa del día](#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo) | (repositorio: sus cambios ya están dentro) |
 
 > ✅ **Conflicto resuelto a las 01:55**: `session-dab004c1` y
 > `session-8a303ef4` editaban `src/main/main.js`, `src/main/card.js` y
@@ -76,10 +76,10 @@ lugar de pisar.
 
 | Qué | Valor | Nota |
 |---|---|---|
-| Última release publicada | **v1.0.0-beta.4** (2026-11-16 00:46 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
+| Última release publicada | **v1.0.0-beta.6** (2026-11-16 01:25 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
 | Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta` |
-| Rama de trabajo `beta` | `814b6f5` | **Igual que `origin/beta`**: 27 commits desde `deebebb`, todos empujados (la cola de la revisión, el arreglo de la vista previa, los docs y los cuatro commits de ids/`pct100`/nota/GPU) |
-| Rama `main` | `deebebb` | 27 commits por detrás de `beta` |
+| Rama de trabajo `beta` | `34dfc8a` | **Igual que `origin/beta`**: 47 commits desde `deebebb`, todos empujados (la cola de la revisión, el arreglo de la vista previa, los docs y los cuatro commits de ids/`pct100`/nota/GPU) |
+| Rama `main` | `deebebb` | **34 commits por detrás** de `beta` |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone semantic-release |
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
@@ -278,6 +278,9 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
   Desktop, token OAuth de Claude Code).
 - **Empaquetado**: los `.ps1` que la app ejecuta viajan desempaquetados del
   asar (arreglado en `beta.3`; antes la tarjeta no salía en la app instalada).
+  **Verificado en el binario publicado de `beta.4`** (portable descargado de
+  la release): la tarjeta sale al pasar el ratón y el ⚙ abre la ventana de
+  configuración.
 - **Pipeline de releases**: `commits` → `verify` → `release` → `build-windows`
   + `build-linux`, con commitlint y semantic-release. Cuatro pre-releases
   publicadas sin intervención manual.
@@ -286,9 +289,11 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
 
 1. **Primera versión estable**: `beta.4` ya está publicada y verificada; falta
    `git switch main && git merge --ff-only beta && git push origin main` →
-   `v1.0.0`. Falta una comprobación: que la tarjeta salga en la **app
-   instalada** (el fallo que arregló `beta.3`). La está haciendo la sesión
-   `session-dab004c1` con un script propio sobre el binario de `beta.4`.
+   `v1.0.0`. La comprobación que faltaba —que la tarjeta salga en la **app
+   instalada**— **ya está hecha** (`session-dab004c1`, sobre el portable
+   publicado de `beta.4`: ver [Pausa del día](#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo)).
+   Lo que queda es la **instalación con el instalador NSIS**, que nadie ha
+   probado todavía.
 2. **Decidir lo de Electron**: el PR #1 de Dependabot (38.8.6 → 42.11.16) está
    **cerrado sin fusionar** y la rama sigue viva. GitHub avisa de **34
    vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
@@ -318,8 +323,8 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
 ## Pausa del día (2026-11-16 02:00): qué le queda a cada sesión
 
 Punto de parada del 2026-11-16: el árbol está **limpio y empujado**
-(`beta` = `origin/beta` = `452220f`), así que cualquier sesión puede seguir
-sin pelearse con cambios a medias.
+(`beta` = `origin/beta` = `34dfc8a`, con `v1.0.0-beta.6` ya publicada), así que
+cualquier sesión puede seguir sin pelearse con cambios a medias.
 
 ### De esta sesión (`session-fa207887`, plan de Android)
 
@@ -369,9 +374,9 @@ Lo que **queda pendiente** de esta sesión, en orden de valor:
       Antigravity no se puede llamar desde una sesión de DSH).
 - [ ] **`AGENTS.md`**: solo una línea más: *"si otra sesión muere a medias,
       deja el árbol como estaba"* (reforzar la regla 6).
-- [ ] **Preparar el `v1.0.0`** (cuando el usuario lo decida): los 18 commits
-      sin publicar desde `beta.4` saldrían como **`v1.0.0-beta.5`** en el
-      primer `git push origin beta`; y la estable sería
+- [ ] **Preparar el `v1.0.0`** (cuando el usuario lo decida): lo que quedaba
+      sin publicar desde `beta.4` **ya salió como `v1.0.0-beta.5` y
+      `v1.0.0-beta.6`**; la estable sería
       `git switch main && git merge --ff-only beta && git push origin main`.
 - [ ] **Avisar de dos trampas del entorno** (ya están en `FINDINGS.md`, pero
       conviene recordarlas al retomar): `ELECTRON_RUN_AS_NODE` tiene que
@@ -379,12 +384,83 @@ Lo que **queda pendiente** de esta sesión, en orden de valor:
       **0 bytes** si la ejecución se interrumpe (se restaura con
       `git checkout -- preview-card.png`).
 
+### De esta sesión (`session-dab004c1`, la sesión larga del repo)
+
+**Hecho (cierra el pendiente de `session-e9f5038b`)**: verificación del
+**binario publicado** de `v1.0.0-beta.4`. Se descargó el portable de la
+release (`Usagia-portable-1.0.0-beta.4-win-x64.exe`, 90 MB, `ProductVersion
+1.0.0-beta.4`) y se probó con el **ratón real**, no leyendo el código:
+
+1. Se promovió el icono del portable a la zona visible de la bandeja (Windows
+   11 mete los iconos nuevos en *iconos ocultos*: sin esto no hay hover).
+2. Ratón sobre el icono → **la tarjeta aparece** (380×552, con sus cuatro
+   proveedores): el fallo que arregló `beta.3` (los `.ps1` sin desempaquetar)
+   **no está**.
+3. Ratón sobre la tarjeta → se vuelve interactiva → clic en el ⚙ →
+   **se abre "Usagia · Configuración"** (780×660).
+4. El tooltip del sistema del binario publicado da los cuatro proveedores con
+   datos vivos, **Antigravity incluido (15 %)** → el `cred-read.ps1` también
+   viaja y se ejecuta en la app instalada.
+
+Ojo: se probó el **portable**, no el instalador NSIS. El instalador debería
+tener lo mismo (mismo `app.asar`), pero nadie lo ha instalado todavía.
+
+Y ojo también: **`beta.5` y `beta.6` son posteriores al binario que se
+probó** (llevan los arreglos de ids, `pct100`, la nota y el fallback sin GPU).
+La prueba de arriba vale como prueba de que **el empaquetado está bien**;
+para comprobar esos arreglos en concreto hay que repetirla sobre el portable
+de `beta.6`.
+
+**Pendiente para mañana** (nada de esto toca ficheros que otra sesión tenga
+reservados):
+
+- [ ] **Repetir la verificación del portable de `beta.6`**: la prueba de
+      arriba se hizo sobre el de `beta.4`; `beta.5`/`beta.6` llevan los
+      arreglos de ids de cuenta, `pct100`, la nota de la cuenta y el fallback
+      sin GPU, y conviene verlos en el binario publicado (mismo script, otro
+      tag).
+
+- [ ] **`npm run preview:settings` se CUELGA con el fallback sin GPU.**
+      Medido hoy: con `--in-process-gpu` (la bandera que puso `814b6f5`) la
+      vista previa de configuración **no sale en 90 s y no escribe una sola
+      línea**; la de la tarjeta (`npm run preview`) sí funciona y genera la
+      captura. Sin la bandera, Electron muere con `GPU process launch failed:
+      error_code=18` (esto último es del **entorno**, no del código: la GPU de
+      esta máquina empezó a fallar hacia las 23:00, cuando a las 21:00 la app
+      arrancaba sin problema).
+      Propuesta: que la vista previa de configuración tenga un **tiempo máximo**
+      y salga igual (para que `npm run preview:settings` no pueda quedar
+      colgada), o repliegarse a la bandera solo cuando el proceso de GPU no
+      arranca. Mientras tanto, **no lanzar `npm run preview:settings` sin
+      tiempo**: se queda esperando.
+- [ ] **Revisión de código de la revisión ajena** (informe de 10 puntos). Ya
+      están arreglados: ids de cuenta que colisionaban (`cfe09d7`), `pct100` con
+      solo espacios (`3e13411`), la nota de la cuenta (`31f03ca`) y el
+      watchdog de `--settings` (`814b6f5`). Quedan **sin arreglar**, por orden:
+      1. **Antigravity**: `creds.antigravityToken()` marca siempre la
+         credencial de `~/.antigravity/auth.json` como `raw`. Si ese fichero
+         guarda el token como **objeto** y no como cadena, se mandaría
+         `"[object Object]"` como `Bearer`: el mismo bug que arregló
+         `ef99d53` en la rama de la credencial pegada a mano.
+         **Pregunta abierta**: ¿qué formato tiene ese `auth.json`? No se puede
+         concluir leyendo el repo.
+      2. **Claude**: el aviso "se ignora la clave API" se pierde en Linux/macOS
+         (la rama que devuelve `null` no lo lleva).
+      3. Tras *Guardar*, la tarjeta puede quedarse un ciclo ("…") sin refrescar:
+         `refresh()` fusiona los refrescos y el `collect()` en vuelo capturó la
+         lista de cuentas anterior.
+      4. El texto de ayuda de Claude no dice qué pasa si el campo lleva una
+         clave API (la app la ignora y usa la sesión local).
+- [ ] **Preparar el `v1.0.0`** (cuando lo decida el usuario): lo que está sin
+      publicar en `beta` saldría como `v1.0.0-beta.5` y la estable con
+      `git switch main && git merge --ff-only beta && git push origin main`.
+
 ### De las otras sesiones
 
 | Sesión | Qué le queda |
 |---|---|
 | `session-8a303ef4` | Items **12** (`safeStorage` para cifrar las credenciales) y **17** (código muerto y duplicación). Después, **libera `src/main/providers/*`** para que F1 pueda empezar. Detalle y plan abajo |
-| `session-e9f5038b` | **Verificar la app instalada de `beta.4`** (tarjeta al pasar el ratón, tooltip, configuración) y cuadrar `README.md`/`FINDINGS.md`/`AGENTS.md` con lo publicado. Detalle en *De esta sesión (`session-e9f5038b`)* |
+| `session-e9f5038b` | ~~**Verificar la app instalada de `beta.4`**~~ → **hecho por `session-dab004c1`** (portable de la release: tarjeta al pasar el ratón, ⚙ → ventana de configuración, Antigravity con datos). Queda: cuadrar `README.md`/`FINDINGS.md`/`AGENTS.md` con lo publicado. Detalle en *De esta sesión (`session-e9f5038b`)* |
 | `session-dab004c1` | Verificación de la app instalada de `beta.4` (script propio en `%TEMP%`) y capturas del tooltip |
 
 ### De `session-8a303ef4` (revisión a fondo): los items 12 y 17, en detalle
@@ -533,6 +609,8 @@ que es la tabla viva. En corto:
 
 | Versión | Fecha | Contenido |
 |---|---|---|
+| v1.0.0-beta.6 | 2026-11-16 01:25 | Lo que había sin publicar tras `beta.4`: la cola de la revisión (items 11, 13-16, 18), los arreglos de las cuatro sesiones (`cfe09d7` ids de cuenta, `3e13411` `pct100` con espacios, `31f03ca` la nota de la cuenta, `814b6f5` fallback sin GPU) y los `docs:` de `STATUS.md` |
+| v1.0.0-beta.5 | 2026-11-16 01:19 | Primer push de la cola de la revisión (parte de los commits publicables) |
 | v1.0.0-beta.4 | 2026-11-16 | La revisión a fondo completa (9 commits: Claude, Antigravity, ids de cuenta, guardado, `pct100(null)`, tests de parsers) + el arreglo de la vista previa que moría en silencio |
 | v1.0.0-beta.3 | 2026-11-15 | fix: los scripts de PowerShell no viajaban en el paquete (la tarjeta no salía en la app instalada) |
 | v1.0.0-beta.2 | 2026-11-15 | feat: ventana de configuración con varias cuentas por proveedor · fix: el script de publicación espera a la run en curso |
