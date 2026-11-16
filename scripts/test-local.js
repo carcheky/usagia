@@ -183,9 +183,25 @@ t.check('los valores por defecto y la ruta del fichero', () => {
   assert.strictEqual(cfg.refreshSeconds, 120);
   assert.strictEqual(cfg.showOnHover, true);
   assert.strictEqual(cfg.hoverCloseDelayMs, 400);
+  // De fabrica: buscar actualizaciones, en el canal automático.
+  assert.strictEqual(cfg.updateCheck, true);
+  assert.strictEqual(cfg.updateChannel, 'auto');
   assert.deepStrictEqual(cfg.accounts, []);
   assert.ok(config.configPath().startsWith(home), config.configPath());
   assert.ok(config.configPath().endsWith(path.join('Usagia', 'config.json')));
+});
+
+t.check('un canal de actualización desconocido vuelve al automático (y updateCheck solo acepta booleanos)', () => {
+  t.writeFile(config.configPath(), { updateChannel: 'nightly', updateCheck: 'si' });
+  config.invalidate();
+  const cfg = config.load();
+  assert.strictEqual(cfg.updateChannel, 'auto');
+  assert.strictEqual(cfg.updateCheck, true, 'un valor no booleano usa el defecto');
+
+  t.writeFile(config.configPath(), { updateChannel: 'beta', updateCheck: false });
+  config.invalidate();
+  assert.strictEqual(config.load().updateChannel, 'beta');
+  assert.strictEqual(config.load().updateCheck, false);
 });
 
 t.check('un fichero roto o con tipos malos se normaliza en vez de reventar', () => {
@@ -249,8 +265,8 @@ t.check('lo que llega del renderer se normaliza: ids unicos, proveedores reales,
   assert.deepStrictEqual(settings.sanitizeAccounts('nada'), []);
 });
 
-t.check('snapshot() lleva catalogo, cuentas, ajustes generales y la ruta del fichero', () => {
-  t.writeFile(config.configPath(), { refreshSeconds: 77, accounts: [{ provider: 'deepseek', label: 'DS' }] });
+t.check('snapshot() lleva catalogo, cuentas, ajustes generales, version y la ruta del fichero', () => {
+  t.writeFile(config.configPath(), { refreshSeconds: 77, updateChannel: 'beta', accounts: [{ provider: 'deepseek', label: 'DS' }] });
   config.invalidate();
   const snap = settings.snapshot();
   assert.strictEqual(snap.catalog.length, 4);
@@ -259,6 +275,9 @@ t.check('snapshot() lleva catalogo, cuentas, ajustes generales y la ruta del fic
     ['DS']
   );
   assert.strictEqual(snap.general.refreshSeconds, 77);
+  assert.strictEqual(snap.general.updateCheck, true);
+  assert.strictEqual(snap.general.updateChannel, 'beta');
+  assert.ok(typeof snap.currentVersion === 'string');
   assert.strictEqual(snap.configPath, config.configPath());
 });
 

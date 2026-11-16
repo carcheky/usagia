@@ -280,3 +280,10 @@ input.name {
 .status.error {
   color: var(--critical);
 }
+
+.update-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}

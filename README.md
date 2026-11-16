@@ -83,6 +83,33 @@ tarjeta (o *Configuración…* en el menú del clic derecho). Ahí se pueden:
   borrarla.
 - Ajustar los valores generales (cada cuánto se refresca, si se muestra al
   pasar el ratón, cuánto tarda en cerrarse).
+- Elegir el **canal de actualización** (automático, solo estables o con
+  betas) y comprobar a mano si hay una versión nueva (_Buscar ahora_).
+
+## Actualizaciones
+
+La app mira las releases publicadas en GitHub y avisa cuando hay una nueva:
+
+- **Tarjeta**: una franja arriba con `v<instalada> → v<nueva> disponible` y un
+  botón *Descargar* que abre la release.
+- **Menú del icono**: *Buscar actualizaciones* y la versión actual (o el
+  salto, si hay una nueva).
+- **Ventana de configuración**: el interruptor de búsqueda automática, el
+  canal y la versión instalada.
+- **Notificación del sistema**: una sola vez por versión, y solo en la app
+  empaquetada.
+
+**El canal** (`updateChannel`) decide qué versiones cuentan:
+
+| Valor | Qué enseña |
+|---|---|
+| `auto` (defecto) | Sigue a la versión instalada: una beta avisa de betas nuevas (y de la estable, que va por delante); una estable solo de estables |
+| `stable` | Solo versiones estables |
+| `beta` | Estables y betas |
+
+La comparación es semver: `1.0.0 < 1.0.1 < 1.1.0 < 2.0.0`, y una beta es menor
+que su estable (`1.0.0-beta.0010 < 1.0.0`). Se comprueba al arrancar y cada 6
+horas (sin gastar cuota: es la API pública de GitHub).
 
 Todo se guarda en `%APPDATA%\Usagia\config.json` (ruta exacta en
 `app.getPath('userData')`):
@@ -92,6 +119,8 @@ Todo se guarda en `%APPDATA%\Usagia\config.json` (ruta exacta en
   "refreshSeconds": 120,
   "showOnHover": true,
   "hoverCloseDelayMs": 400,
+  "updateCheck": true,
+  "updateChannel": "auto",
   "accounts": [
     {
       "id": "a1b2c3",

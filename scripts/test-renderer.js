@@ -92,8 +92,8 @@ function loadCard() {
   card.className = 'card';
   body.appendChild(card);
   const byId = {};
-  for (const id of ['rows', 'updated', 'hint', 'gear']) {
-    const el = new FakeElement('div');
+  for (const id of ['rows', 'updated', 'hint', 'gear', 'updateBanner', 'updateText', 'updateLink']) {
+    const el = new FakeElement(id === 'updateLink' ? 'button' : 'div');
     el.id = id;
     byId[id] = el;
     card.appendChild(el);
@@ -103,7 +103,7 @@ function loadCard() {
     createElement: (tag) => new FakeElement(tag),
     querySelector: (selector) => body.querySelector(selector),
   };
-  const bridge = { stateHandler: null, sizes: [], ready: 0, settingsOpened: 0 };
+  const bridge = { stateHandler: null, sizes: [], ready: 0, settingsOpened: 0, opened: [] };
   const window = {
     usagia: {
       onState: (fn) => {
@@ -116,6 +116,7 @@ function loadCard() {
       settings: () => {
         bridge.settingsOpened += 1;
       },
+      open: (url) => bridge.opened.push(url),
     },
     addEventListener: () => {},
   };
@@ -292,6 +293,35 @@ t.check('el tope de altura del proceso principal se aplica como max-height, y la
   const before = world.bridge.sizes.length;
   world.render(basePayload([{ id: 'x', label: 'X', status: 'ok', primary: '', metrics: [] }]));
   assert.strictEqual(world.bridge.sizes.length, before);
+});
+
+t.check('la version nueva sale en el banner, y su boton abre la pagina de descarga', () => {
+  const world = loadCard();
+  // Sin actualizacion no hay banner.
+  world.render(basePayload([]));
+  assert.strictEqual(world.byId.updateBanner.hidden, true);
+  assert.strictEqual(world.byId.updateText.textContent, '');
+
+  world.render(
+    basePayload([], {
+      currentVersion: '1.0.0-beta.0010',
+      updateInfo: { version: '1.0.1', tag: 'v1.0.1', url: 'https://github.com/carcheky/usagia/releases/tag/v1.0.1' },
+    })
+  );
+  assert.strictEqual(world.byId.updateBanner.hidden, false);
+  assert.strictEqual(world.byId.updateText.textContent, 'v1.0.0-beta.0010 → v1.0.1 disponible', 'la version instalada y la nueva, en el banner');
+
+  // El boton abre la release y no deja pasar el clic.
+  let stopped = false;
+  world.byId.updateLink.listeners.click({ stopPropagation: () => (stopped = true) });
+  assert.deepStrictEqual(world.bridge.opened, ['https://github.com/carcheky/usagia/releases/tag/v1.0.1']);
+  assert.ok(stopped);
+
+  // Si la actualizacion desaparece, el banner se esconde.
+  world.render(basePayload([]));
+  assert.strictEqual(world.byId.updateBanner.hidden, true);
+  world.byId.updateLink.listeners.click({ stopPropagation: () => {} });
+  assert.deepStrictEqual(world.bridge.opened, ['https://github.com/carcheky/usagia/releases/tag/v1.0.1'], 'sin URL no se abre nada');
 });
 
 t.check('el pie: "actualizando…" mientras refresca, "hace N s" despues, y la pista cambia al fijar', () => {

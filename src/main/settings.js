@@ -9,6 +9,7 @@ const { BrowserWindow, ipcMain, shell } = require('electron');
 
 const config = require('./config');
 const instances = require('./instances');
+const updates = require('./updates');
 const { byId } = require('./providers');
 
 let win = null;
@@ -64,6 +65,13 @@ function get() {
 /** Datos que necesita el renderer para pintar el formulario. */
 function snapshot() {
   const cfg = config.load();
+  let currentVersion = '0.0.0';
+  try {
+    const { app } = require('electron');
+    currentVersion = app.getVersion() || '0.0.0';
+  } catch {
+    /* fuera de Electron */
+  }
   return {
     catalog: instances.catalog(),
     accounts: instances.list(),
@@ -71,7 +79,10 @@ function snapshot() {
       refreshSeconds: cfg.refreshSeconds,
       showOnHover: cfg.showOnHover,
       hoverCloseDelayMs: cfg.hoverCloseDelayMs,
+      updateCheck: cfg.updateCheck,
+      updateChannel: cfg.updateChannel,
     },
+    currentVersion,
     configPath: config.configPath(),
   };
 }
@@ -139,6 +150,12 @@ function register(hooks = {}) {
     if (typeof general.showOnHover === 'boolean') {
       patch.showOnHover = general.showOnHover;
     }
+    if (typeof general.updateCheck === 'boolean') {
+      patch.updateCheck = general.updateCheck;
+    }
+    if (['auto', 'stable', 'beta'].includes(general.updateChannel)) {
+      patch.updateChannel = general.updateChannel;
+    }
     try {
       config.save(patch);
     } catch (err) {
@@ -159,6 +176,18 @@ function register(hooks = {}) {
 
   ipcMain.on('settings:close', () => {
     if (win && !win.isDestroyed()) win.close();
+  });
+
+  ipcMain.handle('settings:checkUpdates', async () => {
+    const cfg = config.load();
+    let currentVersion = '0.0.0';
+    try {
+      const { app } = require('electron');
+      currentVersion = app.getVersion() || '0.0.0';
+    } catch {
+      /* fuera de Electron */
+    }
+    return updates.checkForUpdates(currentVersion, cfg.updateChannel);
   });
 }
 

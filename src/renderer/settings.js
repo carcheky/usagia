@@ -9,6 +9,10 @@ const statusEl = document.getElementById('status');
 const refreshEl = document.getElementById('refresh');
 const hoverDelayEl = document.getElementById('hoverDelay');
 const showOnHoverEl = document.getElementById('showOnHover');
+const updateCheckEl = document.getElementById('updateCheck');
+const updateChannelEl = document.getElementById('updateChannel');
+const checkNowEl = document.getElementById('checkNow');
+const versionInfoEl = document.getElementById('versionInfo');
 
 const state = {
   catalog: [],
@@ -260,6 +264,8 @@ document.getElementById('save').addEventListener('click', async () => {
         refreshSeconds: Number(refreshEl.value),
         hoverCloseDelayMs: Number(hoverDelayEl.value),
         showOnHover: showOnHoverEl.checked,
+        updateCheck: updateCheckEl.checked,
+        updateChannel: updateChannelEl.value,
       },
     });
     if (!result.ok) {
@@ -286,6 +292,27 @@ document.getElementById('reveal').addEventListener('click', async () => {
   }
 });
 
+checkNowEl?.addEventListener('click', async () => {
+  checkNowEl.disabled = true;
+  checkNowEl.textContent = 'Buscando…';
+  try {
+    const result = await window.usagiaSettings.checkUpdates();
+    if (result.available && result.latest) {
+      setStatus(`¡Nueva versión ${result.latest.version} disponible!`, 'ok');
+    } else if (result.error) {
+      setStatus(`Error: ${result.error}`, 'error');
+    } else {
+      setStatus('Ya tienes la última versión', 'ok');
+    }
+    setTimeout(() => setStatus(''), 4000);
+  } catch (err) {
+    setStatus(err?.message || String(err), 'error');
+  } finally {
+    checkNowEl.disabled = false;
+    checkNowEl.textContent = 'Buscar ahora';
+  }
+});
+
 async function init() {
   try {
     const data = await window.usagiaSettings.get();
@@ -298,6 +325,11 @@ async function init() {
     refreshEl.value = general.refreshSeconds ?? 120;
     hoverDelayEl.value = general.hoverCloseDelayMs ?? 400;
     showOnHoverEl.checked = general.showOnHover !== false;
+    updateCheckEl.checked = general.updateCheck !== false;
+    updateChannelEl.value = general.updateChannel || 'auto';
+    if (versionInfoEl) {
+      versionInfoEl.textContent = `Versión actual: ${data.currentVersion || '—'}`;
+    }
     render();
   } catch (err) {
     setStatus(`No se pudo cargar la configuración: ${err?.message || err}`, 'error');

@@ -4,9 +4,13 @@ const rowsEl = document.getElementById('rows');
 const updatedEl = document.getElementById('updated');
 const hintEl = document.getElementById('hint');
 const gearEl = document.getElementById('gear');
+const updateBannerEl = document.getElementById('updateBanner');
+const updateTextEl = document.getElementById('updateText');
+const updateLinkEl = document.getElementById('updateLink');
 let lastState = null;
 let lastHeight = 0;
 let lastGear = null;
+let lastUpdateUrl = null;
 const MAX_METRICS = 4;
 
 // Boton de configuracion. La tarjeta es "click-through" (para no tapar la
@@ -16,6 +20,14 @@ gearEl?.addEventListener('click', (event) => {
   event.stopPropagation();
   console.log('clic en el boton de configuracion');
   window.usagia?.settings();
+});
+
+// Boton de descarga de la actualizacion.
+updateLinkEl?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (lastUpdateUrl) {
+    window.usagia?.open(lastUpdateUrl);
+  }
 });
 
 function relativeTime(ts) {
@@ -66,6 +78,18 @@ function render(payload) {
   if (cardEl && payload.maxHeight) {
     const max = `${payload.maxHeight}px`;
     if (cardEl.style.maxHeight !== max) cardEl.style.maxHeight = max;
+  }
+
+  // Banner de actualizacion disponible.
+  if (payload.updateInfo && updateBannerEl && updateTextEl) {
+    updateBannerEl.hidden = false;
+    const current = payload.currentVersion || '—';
+    const next = payload.updateInfo.version || '—';
+    updateTextEl.textContent = `v${current} → v${next} disponible`;
+    lastUpdateUrl = payload.updateInfo.url || null;
+  } else if (updateBannerEl) {
+    updateBannerEl.hidden = true;
+    lastUpdateUrl = null;
   }
 
   for (const provider of payload.providers || []) {

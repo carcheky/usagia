@@ -46,6 +46,30 @@
         </label>
       </section>
 
+      <section class="block">
+        <h2>Actualizaciones</h2>
+        <div class="update-row">
+          <label class="check">
+            <input type="checkbox" id="updateCheck" />
+            <span>Buscar actualizaciones automáticamente</span>
+          </label>
+          <button class="btn tiny" id="checkNow" type="button">Buscar ahora</button>
+        </div>
+        <label class="field" style="margin-top: 10px;">
+          <span>Canal de actualización</span>
+          <select id="updateChannel">
+            <option value="auto">Automático (según la versión instalada)</option>
+            <option value="stable">Estable (solo versiones estables)</option>
+            <option value="beta">Beta (incluye versiones de prueba)</option>
+          </select>
+        </label>
+        <p class="hint" id="updateHint">
+          En automático, una beta avisa de las betas nuevas (y de la estable, que va por delante);
+          una estable solo avisa de estables.
+        </p>
+        <p class="hint" id="versionInfo">Versión actual: —</p>
+      </section>
+
       <footer class="page-foot">
         <button class="btn ghost" id="reveal" type="button">Abrir archivo</button>
         <span class="spacer"></span>

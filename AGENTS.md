@@ -112,6 +112,7 @@ ver `scripts/test-lib.js`). Tarda un segundo. Es lo que ejecuta el job
 | `test-local.js` | `summary.js` (cabecera de la fila y menú), `jsonl-tokens` (respaldo de Claude), `script-path` (el `app.asar.unpacked` de `beta.3`), `hover.inside`, normalización de `config`, `settings.sanitizeAccounts/snapshot/test` | Al tocar cualquiera de esos módulos |
 | `test-renderer.js` | `src/renderer/card.js` con un DOM mínimo: sin barra sin porcentaje, barra llena con lo consumido (saldo al revés), reinicio junto a su barra, punto con el tono de la cuota, `+N más`, `max-height`, pie | Al tocar la tarjeta |
 | `test-release.js` | `scripts/release.js`: clasificación de commits, qué publica, versión base, numeración `beta.NNNN`, changelog | Al tocar el pipeline de releases |
+| `test-updates.js` | `src/main/updates.js`: parseo y comparación de versiones (semver y betas), canales `auto`/`stable`/`beta`, qué es "más nueva", búsqueda con `fetch` simulado y errores de red | Al tocar la búsqueda de actualizaciones o los canales |
 | `test-package.js` | `build.files`/`asarUnpack`: los `.ps1` viajan desempaquetados, el renderer va en el paquete | Al tocar `package.json` → `build` |
 
 Fuera de `npm test`, porque hace red de verdad: `npm run test:ci-env`

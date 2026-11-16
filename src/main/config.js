@@ -13,6 +13,13 @@ const DEFAULTS = {
   hoverCloseDelayMs: 400,
   // Idioma de las etiquetas de la tarjeta.
   locale: 'es',
+  // Buscar actualizaciones automáticamente.
+  updateCheck: true,
+  // Canal de actualización: 'auto' (sigue a la versión instalada), 'stable'
+  // (solo estables) o 'beta' (incluye las betas). Por defecto 'auto': la app
+  // todavía no ha publicado ninguna estable, y con 'stable' fijo la
+  // comprobación no encontraría nunca nada.
+  updateChannel: 'auto',
   // Cuentas configuradas por el usuario. Cada cuenta es una instancia de un
   // proveedor y puede haber VARIAS del mismo proveedor (una por cuenta).
   // Lista vacía = autodetección: una cuenta por proveedor.
@@ -83,6 +90,10 @@ function normalize(file) {
   base.accounts = Array.isArray(file.accounts)
     ? file.accounts.filter((a) => a && typeof a === 'object').map((a) => ({ ...a }))
     : [];
+  // Normalizar los ajustes de actualizaciones.
+  if (typeof base.updateCheck !== 'boolean') base.updateCheck = DEFAULTS.updateCheck;
+  const UPDATE_CHANNELS = ['auto', 'stable', 'beta'];
+  if (!UPDATE_CHANNELS.includes(base.updateChannel)) base.updateChannel = DEFAULTS.updateChannel;
   return base;
 }
 

@@ -11,6 +11,7 @@ const instances = require('./instances');
 const settings = require('./settings');
 const availability = require('./availability');
 const tooltip = require('./tooltip');
+const updates = require('./updates');
 // La cabecera de la fila y la linea del menu: funciones puras, probadas en
 // scripts/test-local.js.
 const { shortSummary, primarySummary } = require('./summary');
@@ -43,11 +44,12 @@ if (process.argv.includes('--preview') || process.argv.includes('--settings')) {
 
 let tray = null;
 let anchorRect = null;
-let state = { results: {}, updatedAt: 0, refreshing: false };
+let state = { results: {}, updatedAt: 0, refreshing: false, updateInfo: null };
 let refreshTimer = null;
 let anchorTimer = null;
 let pollTimer = null;
 let hideTimer = null;
+let updateCheckTimer = null;
 let pinned = false;
 let suppressHover = false;
 let lastPointerLog = 0;
@@ -135,6 +137,106 @@ function globalTone() {
   return availability.computeAvailability(results).tone;
 }
 
+/* ---------------------------------------------------------- actualizaciones */
+
+/**
+ * Obtiene la versión actual de la app.
+ * En desarrollo es "0.0.0"; en producción es la que inyecta electron-builder.
+ */
+function currentVersion() {
+  try {
+    return app.getVersion() || '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
+/** Última versión de la que ya se avisó, para no repetir el aviso cada 6 h. */
+let notifiedVersion = null;
+
+/**
+ * Comprueba si hay una versión nueva y actualiza el estado.
+ */
+async function checkForUpdates() {
+  const cfg = config.load();
+  if (!cfg.updateCheck) {
+    state.updateInfo = null;
+    broadcast();
+    return;
+  }
+
+  try {
+    const result = await updates.checkForUpdates(currentVersion(), cfg.updateChannel);
+    if (result.available && result.latest) {
+      state.updateInfo = result.latest;
+      console.log(`[usagia] nueva versión disponible: ${result.latest.version}`);
+      notifyUpdate(result.latest);
+    } else {
+      // Al cambiar de canal o tras actualizar, el aviso viejo ya no vale.
+      state.updateInfo = null;
+      if (result.error) console.log(`[usagia] error al buscar actualizaciones: ${result.error}`);
+    }
+  } catch (err) {
+    state.updateInfo = null;
+    console.log(`[usagia] error al buscar actualizaciones: ${err.message}`);
+  }
+  broadcast();
+}
+
+/**
+ * Notificación nativa de nueva versión disponible.
+ *
+ * Solo en la app empaquetada (en desarrollo la version es "0.0.0" y saldria
+ * un aviso en cada arranque) y una sola vez por version (si no, el aviso se
+ * repite en cada comprobacion de cada 6 h).
+ */
+function notifyUpdate(info) {
+  if (!info || notifiedVersion === info.version) return;
+  if (!app.isPackaged) return;
+  if (process.platform !== 'win32' && process.platform !== 'darwin') return;
+  try {
+    const { Notification } = require('electron');
+    if (!Notification.isSupported()) return;
+    notifiedVersion = info.version;
+    const notification = new Notification({
+      title: 'Nueva versión de Usagia',
+      body: `La versión ${info.version} está disponible. Haz clic para descargarla.`,
+      silent: true,
+    });
+    notification.on('click', () => {
+      if (info.url) shell.openExternal(info.url);
+    });
+    notification.show();
+  } catch (err) {
+    console.log('[usagia] no se pudo mostrar el aviso de actualización:', err.message);
+  }
+}
+
+/**
+ * Programa la comprobación periódica de actualizaciones.
+ * Se comprueba una vez al arrancar (con un pequeño retraso, para no bloquear)
+ * y luego cada 6 horas.
+ */
+let updateCheckStart = null;
+
+function scheduleUpdateCheck() {
+  if (updateCheckTimer) clearInterval(updateCheckTimer);
+  if (updateCheckStart) clearTimeout(updateCheckStart);
+  updateCheckTimer = null;
+  updateCheckStart = null;
+
+  const cfg = config.load();
+  if (!cfg.updateCheck) return;
+
+  updateCheckStart = setTimeout(() => {
+    updateCheckStart = null;
+    checkForUpdates();
+  }, 5000);
+
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  updateCheckTimer = setInterval(() => checkForUpdates(), SIX_HOURS);
+}
+
 /* ------------------------------------------------------------------ bandeja */
 
 function iconFor(tone) {
@@ -193,6 +295,10 @@ function buildMenu() {
     click: () => refresh(),
   });
   items.push({
+    label: 'Buscar actualizaciones',
+    click: () => checkForUpdates(),
+  });
+  items.push({
     label: 'Configuración…',
     click: () => settings.open(),
   });
@@ -200,6 +306,22 @@ function buildMenu() {
     label: 'Abrir archivo de configuración',
     click: () => shell.openPath(config.configPath()),
   });
+
+  // Mostrar la versión actual y, si hay actualización, enlace para descargar.
+  items.push({ type: 'separator' });
+  const version = currentVersion();
+  if (state.updateInfo) {
+    items.push({
+      label: `Versión ${version} → ${state.updateInfo.version} disponible`,
+      click: () => shell.openExternal(state.updateInfo.url),
+    });
+  } else {
+    items.push({
+      label: `Versión ${version}`,
+      enabled: false,
+    });
+  }
+
   items.push({ type: 'separator' });
   items.push({ label: 'Salir', click: () => app.quit() });
   return Menu.buildFromTemplate(items);
@@ -359,6 +481,9 @@ function broadcast() {
     // que la tarjeta CREZCA sola hasta ese limite (y solo entonces
     // aparezca el scroll).
     maxHeight: cardMaxHeight(),
+    // Información de actualización disponible.
+    updateInfo: state.updateInfo,
+    currentVersion: currentVersion(),
     providers: orderedResults().map(({ instance, provider, result }) => ({
       id: instance.id,
       label: instance.label,
@@ -447,6 +572,7 @@ function watchDisplayChanges() {
 
 function startTimers() {
   scheduleRefresh();
+  scheduleUpdateCheck();
   anchorTimer = setInterval(() => refreshAnchor(), 10000);
   pollTimer = setInterval(handlePointer, 150);
   watchDisplayChanges();
@@ -586,7 +712,11 @@ app.whenReady().then(async () => {
   settings.register({
     onSaved: () => {
       // Solo si la app esta en modo normal: en las vistas previas no hay timer.
-      if (refreshTimer) scheduleRefresh();
+      if (refreshTimer) {
+        scheduleRefresh();
+        // Cambiar de canal o volver a activar la busqueda debe notarse ya.
+        scheduleUpdateCheck();
+      }
       refresh();
     },
   });
@@ -711,5 +841,7 @@ app.on('will-quit', () => {
   clearInterval(refreshTimer);
   clearInterval(anchorTimer);
   clearInterval(pollTimer);
+  clearInterval(updateCheckTimer);
+  if (updateCheckStart) clearTimeout(updateCheckStart);
   if (hideTimer) clearTimeout(hideTimer);
 });

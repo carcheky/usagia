@@ -1,13 +1,14 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 13:20 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-tests`
-> (suite completa de pruebas: 8 suites, 154 pruebas, runner único,
-> regla "sin prueba no hay fix" en `AGENTS.md`). Ver
-> [Lo último: la suite de pruebas](#lo-último-la-suite-de-pruebas-2026-11-16-1320).
-> Antes de ella escribió `session-lead-quota`
-> ("Claude en gris: cuota real, barras intuitivas y color del icono"). Aporta
-> el **arreglo de la cuota de Claude** (no salía por un token caducado), el
+> **Última actualización:** 2026-11-16 13:50 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-updates`
+> (**búsqueda de actualizaciones** con canal configurable: tarjeta, menú de
+> bandeja, ventana de configuración y aviso del sistema). Ver
+> [Lo último: las actualizaciones](#lo-último-las-actualizaciones-2026-11-16-1350).
+> Antes de ella escribió `session-tests` (suite completa de pruebas: 9 suites
+> tras esta sesión, 189 pruebas, runner único, regla "sin prueba no hay fix"
+> en [AGENTS.md](AGENTS.md)). Aporta el **arreglo de la cuota de Claude** (no
+> salía por un token caducado), el
 > **repintado de las barras** (llenas y rojas al 100 %, sin barras grises sin
 > porcentaje), el **orden canónico de las ventanas** (la 5 h primero en todos
 > los proveedores), las **notas que ya no se cortan con "..."**, el **modelo
@@ -16,6 +17,9 @@
 > (`src/main/availability.js`) y el **fin del scroll por 3 píxeles** (el tope
 > es la pantalla menos la barra de tareas), con sus commits y su entrada en
 > [Lo último](#lo-último-la-cuota-las-barras-y-el-icono-2026-11-16-0955).
+> **Ojo: otra sesión está activa** (`dcd6277 fix(availability): show critical
+> only when all long windows are exhausted`, 13:46): toca
+> `src/main/availability.js` y su prueba, y no se ha tocado nada suyo.
 > Esta versión **fusiona** lo que escribieron las sesiones `session-fa207887`
 > (plan de Android), `session-e9f5038b` (lead: verificación de la UI y de la
 > app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los
@@ -32,12 +36,13 @@
 ## Resumen en una línea
 
 App de bandeja (Electron) que muestra la cuota de Minimax, Claude, Antigravity
-y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.6`)**, sin versión
-estable todavía. La revisión a fondo del código está **publicada y
-verificada**, y el **binario publicado de `beta.4`** se comprobó de extremo a
-extremo (tarjeta al pasar el ratón + ⚙ → ventana de configuración). **Sin
-publicar**: el arreglo de la cuota de Claude y el repintado de las barras
-(2026-11-16 02:35). `beta` está a la par de `origin/beta`.
+y DeepSeek. **Publicada**: `v1.0.0` (primera estable, 2026-11-16 12:43 local)
+y la pre-release `v1.0.1-beta.0002`. La revisión a fondo del código está
+**publicada y verificada**, y el **binario publicado de `beta.4`** se comprobó
+de extremo a extremo (tarjeta al pasar el ratón + ⚙ → ventana de
+configuración). **Nuevo**: la app **avisa de las versiones nuevas** (tarjeta,
+menú, configuración y aviso del sistema) con **canal configurable**
+(`auto`/`stable`/`beta`). `beta` está a la par de `origin/beta`.
 
 ## Sesiones activas en este repo (2026-11-16 02:00)
 
@@ -54,6 +59,7 @@ lugar de pisar.
 | `session-8a303ef4` (**esta**) | Revisión a fondo del código | **Pausa del día**. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca`. Mañana: **17 antes que 12**, y los dos **antes que F1** (que mueve `src/main/http.js` y `src/main/providers/*`). Plan detallado en [Pausa del día](#de-session-8a303ef4-revisión-a-fondo-los-items-12-y-17-en-detalle) | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
 | `session-dab004c1` (**esta**) | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). **Pausa del día**. **Verificó el binario publicado de `beta.4`** (portable descargado de la release): la tarjeta sale al pasar el ratón y el ⚙ abre la ventana de configuración. Su fallback sin GPU ya está commiteado en `814b6f5`; sus arreglos (ids de cuenta, `pct100` con espacios, nota de la cuenta) los recogieron `cfe09d7`, `3e13411`, `31f03ca` y `814b6f5`. Lo que le queda: el **cuelgue de `preview:settings`** con ese fallback y cuatro apuntes de la revisión de código, en [Pausa del día](#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo) | (repositorio: sus cambios ya están dentro) |
 | `session-tests` (**esta**) | Suite completa de pruebas | **Hecho y commiteado**: runner `scripts/test.js`, `scripts/test-lib.js` (HOME falso + `fetch` simulado), 5 suites nuevas (proveedores, credenciales, módulos locales, renderer, releases), `primarySummary`/`shortSummary` movidos a `src/main/summary.js`, `release.js` con funciones puras exportadas, regla en `AGENTS.md`. `npm test` → 8 suites, 154 pruebas, ~1 s | `scripts/test*.js` · `scripts/release.js` · `src/main/summary.js` · `src/main/main.js` (solo el `require`) · `src/main/config.js` (`normalize`) · `package.json` (`scripts`) · `.github/workflows/release.yml` (job `verify`) · `AGENTS.md` · `STATUS.md` |
+| `session-updates` (**esta**) | Búsqueda de actualizaciones | **Hecho y commiteado** (`feat:`): `src/main/updates.js`, canal `auto`/`stable`/`beta`, tarjeta, menú, configuración y aviso del sistema; suite nueva `scripts/test-updates.js`. En [Lo último: las actualizaciones](#lo-último-las-actualizaciones-2026-11-16-1350) | `src/main/updates.js` · `src/main/main.js` · `src/main/config.js` · `src/main/settings.js` · `src/preload/settings-preload.js` · `src/renderer/card.{html,css,js}` · `src/renderer/settings.{html,css,js}` · `scripts/test-updates.js` · `scripts/test-renderer.js` · `scripts/test-local.js` · `README.md` · `AGENTS.md` · `STATUS.md` |
 | `session-lead-quota` | Cuota de Claude y barras | **Hecho y commiteado**: la cuota real de Claude (el token de la CLI estaba caducado) y el repintado de las barras (llenas y rojas al 100 %, sin barras grises donde no hay porcentaje). En [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235) | `src/main/providers/claude.js` · `src/main/credentials.js` · `src/main/main.js` · `src/renderer/card.js` · `src/renderer/card.css` · `src/renderer/settings.js` · `scripts/get-claude-usage.ps1` · `scripts/test-parsers.js` · `FINDINGS.md` · `STATUS.md` |
 
 > ✅ **Conflicto resuelto a las 01:55**: `session-dab004c1` y
@@ -95,8 +101,8 @@ lugar de pisar.
 
 | Qué | Valor | Nota |
 |---|---|---|
-| Última release publicada | **v1.0.0-beta.0010** (2026-11-16 11:41 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. En GitHub hay exactamente `0001…0010`, en orden, un solo formato |
-| Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta`, **que solo hace el usuario** |
+| Última release publicada | **v1.0.1-beta.0002** (2026-11-16 13:40 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. En GitHub hay 13 publicadas, en orden |
+| Última release estable | **v1.0.0** (2026-11-16 12:43 local) | La primera. Salió por el pipeline al empujar `main`; desde entonces las betas numeran `1.0.1-beta.NNNN` |
 | Rama de trabajo `beta` | `50da803` | Igual que `origin/beta`. Último commit: `ci:` con el nuevo pipeline (no publica) |
 | Rama `main` | `07e0354` | Ancestro de `beta`: el `--ff-only` no da conflicto |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
@@ -122,6 +128,64 @@ lugar de pisar.
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
 
 Releases: <https://github.com/carcheky/usagia/releases>
+
+## Lo último: las actualizaciones (2026-11-16 13:50)
+
+**Encargo:** "actualizaciones. debe poder verse si hay nuevas actualizaciones,
+sean beta o estables (configurable canal de actualización)".
+
+**Lo hecho**, en cuatro sitios que dicen lo mismo sin repetirse:
+
+| Dónde | Qué |
+|---|---|
+| **Tarjeta** | Franja arriba con `v<instalada> → v<nueva> disponible` y botón **Descargar** (abre la release) |
+| **Menú del icono** | *Buscar actualizaciones*; al pie, `Versión <actual>` o `Versión <actual> → <nueva> disponible` (clic = descargar) |
+| **Configuración** | Sección **Actualizaciones**: interruptor de búsqueda automática, *Buscar ahora*, canal y versión instalada |
+| **Aviso del sistema** | Notificación nativa **una sola vez por versión** y **solo en la app empaquetada** (en desarrollo la versión es `0.0.0` y saltaría en cada arranque) |
+
+**El canal** (`updateChannel`):
+
+| Valor | Qué enseña |
+|---|---|
+| `auto` (**defecto**) | Sigue a la versión instalada: una beta avisa de betas nuevas (y de la estable, que va por delante); una estable solo de estables |
+| `stable` | Solo estables |
+| `beta` | Estables y betas |
+
+`auto` es el defecto **a propósito**: la app llevaba solo pre-releases, así que
+con `stable` fijo la comprobación no habría enseñado nunca nada.
+
+**Cómo compara** (`src/main/updates.js`): semver, con las betas de la misma
+base por debajo de su estable (`1.0.0-beta.0010 < 1.0.0`) y ordenadas por
+número (`beta.9 < beta.10`, aunque lleguen con cuatro dígitos). Los borradores
+no cuentan. La consulta va por el mismo `fetch` que los proveedores
+(`http.fetchJson`), así que la suite la simula sin red; se comprueba al
+arrancar (5 s después, para no bloquear) y cada 6 h. **No gasta cuota de
+ningún proveedor**: es la API pública de GitHub.
+
+**Medido de verdad contra GitHub** (13:48): con `1.0.0-beta.0010` instalada y
+canal `auto` → `1.0.1-beta.0002`; con `0.0.0` (desarrollo) y `stable` →
+`1.0.0`. O sea que en el repositorio **ya hay una estable publicada**
+(`v1.0.0`), aunque la sección [Versiones](#versiones) de este fichero diga
+"ninguna": la que faltaba la publicó el usuario.
+
+**Verificación:**
+
+- `npm test` → **9 suites, 189 pruebas** en verde (la nueva:
+  `scripts/test-updates.js`, 23 pruebas: parseo, comparación, canales, qué es
+  "más nueva" y búsqueda con `fetch` simulado). El banner de la tarjeta y su
+  botón se prueban en `scripts/test-renderer.js`, y el canal en
+  `scripts/test-local.js`.
+- **App real**: captura de la ventana de configuración con la sección nueva
+  (*Actualizaciones*: interruptor, *Buscar ahora*, canal, versión) y captura
+  de la tarjeta con el banner puesto a mano (`v0.0.0 → v1.0.0 disponible`).
+  Las dos se ven bien; la captura de la tarjeta se restauró después
+  (`git checkout -- preview-card.png`) para no dejar en el repo una versión
+  de mentira.
+- **Trampa del entorno** (recordatorio): las vistas previas hay que lanzarlas
+  con `Start-Process … -Wait` y redirección a fichero; con `&` en PowerShell
+  no se espera al proceso y parece que "no ha hecho nada". El guardado de la
+  vista previa de configuración da `EPERM` sobre la carpeta temporal: es el
+  sandbox, no la app.
 
 ## Lo último: la suite de pruebas (2026-11-16 13:20)
 
