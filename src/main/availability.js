@@ -116,7 +116,7 @@ function windowsOf(result) {
  * esta bajo, porque no se repone solo (hay que recargar).
  *
  * @param {object} result
- * @returns {{left: number|null, blocked: boolean, exhaustedTransient: boolean, exhaustedLong: boolean, lowBalance: boolean}}
+ * @returns {{left: number|null, blocked: boolean, exhaustedTransient: boolean, anyLongExhausted: boolean, allLongExhausted: boolean, lowBalance: boolean}}
  */
 function providerState(result) {
   const windows = windowsOf(result);
@@ -124,7 +124,8 @@ function providerState(result) {
     left: null,
     blocked: false,
     exhaustedTransient: false,
-    exhaustedLong: false,
+    anyLongExhausted: false,
+    allLongExhausted: false,
     lowBalance: false,
   };
   if (!windows.length && !hasBalance(result)) return empty;
@@ -138,12 +139,17 @@ function providerState(result) {
   }
 
   const exhausted = windows.filter((w) => w.left <= 0);
+  const longWindows = windows.filter((w) => !w.transient);
+  const exhaustedLong = exhausted.filter((w) => !w.transient);
   const balance = (result?.metrics || []).find((m) => m.kind === 'balance');
   return {
     left: weights > 0 ? sum / weights : null,
     blocked: windows.length > 0 && exhausted.length === windows.length,
     exhaustedTransient: exhausted.some((w) => w.transient),
-    exhaustedLong: exhausted.some((w) => !w.transient),
+    // Alguna ventana larga agotada: aviso (amarillo).
+    anyLongExhausted: exhaustedLong.length > 0,
+    // TODAS las ventanas largas agotadas: problema serio (rojo).
+    allLongExhausted: longWindows.length > 0 && exhaustedLong.length === longWindows.length,
     // Un saldo por debajo del 15 % es poco: hay que recargar.
     lowBalance: Boolean(balance) && balance.tone === 'critical',
   };
@@ -157,8 +163,11 @@ function hasBalance(result) {
 /**
  * Tono de UN proveedor (el punto de su fila en la tarjeta).
  *
- * El mismo criterio que el global, pero aplicado a ese proveedor solo: una
- * ventana larga agotada es roja; una de 5 h, amarilla; lo demas, verde.
+ * El mismo criterio que el global, pero aplicado a ese proveedor solo:
+ * - TODAS las ventanas largas agotadas → rojo
+ * - Alguna ventana larga agotada (pero no todas) → amarillo
+ * - Una de 5 h agotada → amarillo
+ * - Lo demas → verde
  *
  * @param {object} result
  * @returns {string} 'ok' | 'warning' | 'critical' | 'neutral'
@@ -175,8 +184,10 @@ function providerTone(result) {
   if (state.lowBalance) return 'critical';
   if (state.left === null) return 'neutral';
 
-  if (state.exhaustedLong || state.left < THRESHOLDS.critical) return 'critical';
-  if (state.exhaustedTransient || state.left < THRESHOLDS.warning) return 'warning';
+  // Rojo solo si TODAS las ventanas largas agotadas, o si queda muy poco.
+  if (state.allLongExhausted || state.left < THRESHOLDS.critical) return 'critical';
+  // Amarillo si alguna ventana larga agotada (pero no todas), o si queda poco.
+  if (state.anyLongExhausted || state.exhaustedTransient || state.left < THRESHOLDS.warning) return 'warning';
   return 'ok';
 }
 
@@ -218,20 +229,24 @@ function computeAvailability(results) {
 
   const blocked = withQuota.filter((entry) => entry.state.blocked).length;
   const allBlocked = withWindows.length > 0 && blocked === withWindows.length;
-  const anyLongExhausted = withQuota.some((entry) => entry.state.exhaustedLong);
+  // Algun proveedor con TODAS sus ventanas largas agotadas: problema serio.
+  const anyAllLongExhausted = withQuota.some((entry) => entry.state.allLongExhausted);
+  // Algun proveedor con ALGUNA ventana larga agotada (pero no todas): aviso.
+  const anyAnyLongExhausted = withQuota.some((entry) => entry.state.anyLongExhausted);
   const anyTransientExhausted = withQuota.some((entry) => entry.state.exhaustedTransient);
   const anyLowBalance = withQuota.some((entry) => entry.state.lowBalance);
 
   let tone = 'ok';
   if (
     (left !== null && left < THRESHOLDS.critical) ||
-    anyLongExhausted ||
+    anyAllLongExhausted ||
     allBlocked ||
     anyLowBalance
   ) {
     tone = 'critical';
   } else if (
     (left !== null && left < THRESHOLDS.warning) ||
+    anyAnyLongExhausted ||
     anyTransientExhausted ||
     unknown > 0
   ) {

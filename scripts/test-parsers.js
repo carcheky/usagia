@@ -503,7 +503,7 @@ check('una cuota que no se pudo consultar avisa (no se da por buena)', () => {
 });
 
 check('el punto de la fila usa el mismo criterio que el icono', () => {
-  // Una ventana larga agotada: el punto va en rojo.
+  // TODAS las ventanas largas agotadas: el punto va en rojo.
   assert.strictEqual(availability.providerTone(prov([['5h', 0.1], ['weekly', 1]])), 'critical');
   // Una 5 h agotada: el punto va en amarillo, no en rojo.
   assert.strictEqual(availability.providerTone(prov([['5h', 1], ['weekly', 0.4]])), 'warning');
@@ -516,6 +516,22 @@ check('el punto de la fila usa el mismo criterio que el icono', () => {
     availability.providerTone({ status: 'ok', metrics: [{ label: 'saldo', pct: null }] }),
     'neutral'
   );
+});
+
+check('una ventana larga agotada pero otra con cuota es amarillo, no rojo', () => {
+  // Este es el caso de Claude: weekly_scoped (Fable) al 100 %, pero weekly al 56 %.
+  // Es un aviso (amarillo), no un problema serio (rojo).
+  assert.strictEqual(
+    availability.providerTone(prov([['5h', 0.81], ['weekly', 0.56], ['weekly_scoped', 1]])),
+    'warning',
+    'una ventana larga agotada pero otra con cuota -> amarillo'
+  );
+  // El icono global tampoco deberia ser rojo: hay cuota de sobra en las otras.
+  const { tone } = availability.computeAvailability([
+    prov([['5h', 0.81], ['weekly', 0.56], ['weekly_scoped', 1]]),
+    prov([['5h', 0.29], ['weekly', 0.18]]),
+  ]);
+  assert.strictEqual(tone, 'warning', 'icono amarillo, no rojo');
 });
 
 check('las ventanas de 5 h pesan menos que las semanales en la media', () => {
