@@ -29,6 +29,18 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const ID_PATTERN = /["'](\d{6,}-[a-z0-9]+\.apps\.googleusercontent\.com)["']/g;
 const SECRET_PATTERN = /["'](GOCSPX-[A-Za-z0-9_-]{20,})["']/g;
 
+// La busqueda se hace POR TROZOS: el fichero entero no se carga nunca en
+// memoria (app.asar puede pesar mas de 100 MB y aqui solo se buscan dos
+// regex). Se lee de 1 MiB en 1 MiB, con un solape entre trozos para que un
+// par id+secret partido justo en el limite se siga viendo.
+const SCAN_CHUNK = 1024 * 1024;
+const SCAN_OVERLAP = 64 * 1024;
+// Tope de bytes leidos de un app.asar: SOLO se lee el principio, por tamano
+// (el asar puede pesar cientos de MB y el caso real es que los pares estan
+// en resources/app/out/main.js, el primer candidato). Los .js sueltos se
+// leen enteros, pero siempre por trozos: la memoria sigue siendo acotada.
+const MAX_ASAR_BYTES = 16 * 1024 * 1024;
+
 /** Ficheros donde puede estar el cliente OAuth, en orden de probabilidad. */
 function candidateFiles() {
   const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
@@ -74,6 +86,63 @@ function extractPairs(text) {
   return pairs;
 }
 
+/**
+ * Extrae los pares (clientId, clientSecret) de un fichero sin cargarlo
+ * entero en memoria: se lee por trozos de 1 MiB (con solape) y se aplica
+ * `extractPairs` a cada trozo.
+ *
+ * @param {string} file
+ * @returns {{clientId: string, clientSecret: string}[]}
+ */
+function extractPairsFromFile(file) {
+  let fd = null;
+  try {
+    fd = fs.openSync(file, 'r');
+    const size = fs.fstatSync(fd).size;
+    // Un app.asar solo se lee por el principio (ver MAX_ASAR_BYTES); los
+    // .js sueltos se leen enteros, siempre por trozos.
+    const limit = file.toLowerCase().endsWith('.asar')
+      ? Math.min(size, MAX_ASAR_BYTES)
+      : size;
+
+    const pairs = [];
+    const seen = new Set();
+    const buffer = Buffer.allocUnsafe(SCAN_CHUNK);
+    let carry = '';
+    let read = 0;
+
+    while (read < limit) {
+      const want = Math.min(SCAN_CHUNK, limit - read);
+      const n = fs.readSync(fd, buffer, 0, want, read);
+      if (n <= 0) break;
+      read += n;
+
+      const text = carry + buffer.toString('latin1', 0, n);
+      for (const pair of extractPairs(text)) {
+        // El solape hace que un par visto en dos trozos aparezca dos veces.
+        const key = `${pair.clientId}\u0000${pair.clientSecret}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push(pair);
+      }
+      // Cola para el siguiente trozo.
+      carry = text.length > SCAN_OVERLAP ? text.slice(-SCAN_OVERLAP) : text;
+    }
+
+    return pairs;
+  } catch {
+    return [];
+  } finally {
+    if (fd !== null) {
+      try {
+        fs.closeSync(fd);
+      } catch {
+        /* da igual */
+      }
+    }
+  }
+}
+
 let cachedPairs = null;
 
 /** Pares descubiertos en la instalacion local (cacheados en memoria). */
@@ -82,13 +151,7 @@ function discoverPairs() {
 
   const pairs = [];
   for (const file of candidateFiles()) {
-    let text;
-    try {
-      text = fs.readFileSync(file, 'latin1');
-    } catch {
-      continue;
-    }
-    pairs.push(...extractPairs(text));
+    pairs.push(...extractPairsFromFile(file));
     if (pairs.length) break;
   }
 
@@ -165,4 +228,13 @@ function describe() {
   };
 }
 
-module.exports = { refreshAccessToken, discoverPairs, extractPairs, describe, TOKEN_URL };
+module.exports = {
+  refreshAccessToken,
+  discoverPairs,
+  extractPairs,
+  describe,
+  TOKEN_URL,
+  // Auxiliar (interno): la busqueda por trozos, expuesta para poder
+  // probarla sin depender de una instalacion de Antigravity real.
+  extractPairsFromFile,
+};

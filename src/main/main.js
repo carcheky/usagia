@@ -385,10 +385,27 @@ function scheduleRefresh() {
   }
 }
 
+/**
+ * Cambia la disposicion de pantallas -> el icono de bandeja puede haberse
+ * movido y el factor de escala con el que se convierten los pixeles fisicos
+ * a DIP tambien. Se invalida la cache del ancla y se busca el icono otra vez
+ * (la cache dura 60 s, asi que sin esto el ancla quedaria obsoleta).
+ */
+function watchDisplayChanges() {
+  const onChange = () => {
+    hover.invalidate();
+    refreshAnchor();
+  };
+  screen.on('display-metrics-changed', onChange);
+  screen.on('display-added', onChange);
+  screen.on('display-removed', onChange);
+}
+
 function startTimers() {
   scheduleRefresh();
   anchorTimer = setInterval(() => refreshAnchor(), 10000);
   pollTimer = setInterval(handlePointer, 150);
+  watchDisplayChanges();
 }
 
 function singleInstance() {
@@ -451,7 +468,11 @@ function registerAppProtocol() {
     const relative =
       pathname === '/' ? 'card.html' : decodeURIComponent(pathname).replace(/^\/+/, '');
     const target = path.join(root, relative);
-    if (!target.startsWith(root)) {
+    // La comprobacion exige el separador: `target.startsWith(root)` aceptaria
+    // una ruta hermana tipo ".../renderer-otro/x", porque el prefijo de texto
+    // coincide sin ser un directorio hijo. Solo vale root en si o algo
+    // colgando de root + path.sep (y asi un ".." que se escape tampoco pasa).
+    if (target !== root && !target.startsWith(root + path.sep)) {
       return new Response('no permitido', { status: 403 });
     }
 

@@ -14,9 +14,32 @@ const { screen } = require('electron');
 const scriptPath = require('./local/script-path');
 
 const SCRIPT = scriptPath.script('find-tray-icon.ps1');
-const WIN_CACHE_MS = 10000;
 
-let winCache = { at: 0, rect: null, hidden: false };
+// Cada consulta a PowerShell cuesta ~0,5-1,5 s de CPU (arrancar el proceso,
+// cargar UIAutomation y compilar el tipo con Add-Type). El timer de sondeo del
+// ancla corre cada 10 s, asi que con una cache de 10 s el trabajo se repetia
+// SIEMPRE: la cache no llegaba a acertar nunca.
+//
+// Ahora la cache vive bastante mas que el timer:
+//   - icono localizado: 60 s (su posicion no cambia sola)
+//   - "iconos ocultos":  20 s (hay que notar pronto que el usuario lo
+//     arrastra a la zona visible de la bandeja)
+//   - fallo:              5 s (se reintenta pronto, sin martillear)
+//
+// El cache se invalida cuando cambia la disposicion de pantallas (ver
+// `invalidate()`), que es lo unico que puede mover el icono o cambiar el
+// factor de escala con el que se converts pixeles fisicos a DIP.
+const WIN_CACHE_MS = 60000;
+const WIN_CACHE_HIDDEN_MS = 20000;
+const WIN_CACHE_FAIL_MS = 5000;
+
+// Cache vigente: { rect, hidden, expiresAt }.
+let winCache = null;
+// Consulta en marcha: no se lanzan dos PowerShell a la vez.
+let winPending = null;
+// Sube al invalidar: un resultado que llega de una consulta ya invalidada
+// no se guarda en la cache.
+let winGeneration = 0;
 
 if (process.argv.includes('--verbose')) {
   console.log(`[usagia] script de bandeja: ${SCRIPT} (existe: ${fs.existsSync(SCRIPT)})`);
@@ -79,30 +102,48 @@ function physicalToDip(rect) {
 async function getTrayAnchor(tray, marker = 'Usagia') {
   if (process.platform === 'win32') {
     const now = Date.now();
-    if (now - winCache.at < WIN_CACHE_MS && winCache.rect) {
+    if (winCache && winCache.expiresAt > now) {
       return { rect: winCache.rect, hidden: winCache.hidden };
     }
+    // Ya hay una consulta en marcha: se comparte su resultado en vez de
+    // lanzar otro PowerShell en paralelo.
+    if (winPending) return winPending;
 
-    const res = await runPowerShell(['-Marker', marker]);
-    if (res && res.ok) {
-      const rect = physicalToDip({ x: res.x, y: res.y, width: res.w, height: res.h });
-      winCache = { at: now, rect, hidden: false };
-      return { rect, hidden: false };
-    }
-    if (res && res.hidden && res.trayW > 0) {
-      // El icono esta en "iconos ocultos": se usa el area de notificacion
-      // visible como aproximacion.
-      const rect = physicalToDip({
-        x: res.trayX,
-        y: res.trayY,
-        width: res.trayW,
-        height: res.trayH,
-      });
-      winCache = { at: now, rect, hidden: true };
-      return { rect, hidden: true };
-    }
-    winCache = { at: now, rect: null, hidden: false };
-    return { rect: null, hidden: false };
+    const generation = winGeneration;
+    winPending = (async () => {
+      const res = await runPowerShell(['-Marker', marker]);
+      let rect = null;
+      let hidden = false;
+      let ttl = WIN_CACHE_FAIL_MS;
+
+      if (res && res.ok) {
+        rect = physicalToDip({ x: res.x, y: res.y, width: res.w, height: res.h });
+        hidden = false;
+        ttl = WIN_CACHE_MS;
+      } else if (res && res.hidden && res.trayW > 0) {
+        // El icono esta en "iconos ocultos": se usa el area de notificacion
+        // visible como aproximacion.
+        rect = physicalToDip({
+          x: res.trayX,
+          y: res.trayY,
+          width: res.trayW,
+          height: res.trayH,
+        });
+        hidden = true;
+        ttl = WIN_CACHE_HIDDEN_MS;
+      }
+
+      // Si la cache se invalido mientras corria PowerShell, el resultado
+      // puede estar caducado: no se guarda.
+      if (generation === winGeneration) {
+        winCache = { rect, hidden, expiresAt: Date.now() + ttl };
+      }
+      return { rect, hidden };
+    })().finally(() => {
+      winPending = null;
+    });
+
+    return winPending;
   }
 
   // macOS y Linux: Electron conoce el rectangulo del icono.
@@ -115,6 +156,19 @@ async function getTrayAnchor(tray, marker = 'Usagia') {
     /* sin soporte de bandeja: sin zona de hover */
   }
   return { rect: null, hidden: false };
+}
+
+/**
+ * Invalida la cache del icono de bandeja.
+ *
+ * Se llama cuando cambia la disposicion de pantallas (`display-metrics-changed`,
+ * `display-added`, `display-removed`): el icono puede haberse movido y el
+ * factor de escala con el que se convierten los pixeles fisicos a DIP tambien.
+ * La siguiente consulta vuelve a lanzar PowerShell.
+ */
+function invalidate() {
+  winCache = null;
+  winGeneration += 1;
 }
 
 /** ¿El punto (x,y) cae dentro del rectangulo (con margen)? */
@@ -138,4 +192,4 @@ function taskbarFallbackRect() {
   return { x: x + width - 260, y: y + height, width: 260, height: taskbarHeight };
 }
 
-module.exports = { getTrayAnchor, inside, taskbarFallbackRect };
+module.exports = { getTrayAnchor, inside, taskbarFallbackRect, invalidate };
