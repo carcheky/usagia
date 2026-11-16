@@ -88,6 +88,12 @@ del mismo árbol de subagentes. El canal real es el repo.
 - **Un fichero, un dueño.** Antes de tocar `README.md`, `FINDINGS.md`,
   `AGENTS.md` o `STATUS.md`, comprueba que ninguna otra sesión los está
   editando (`git status --porcelain` y el log del repo).
+- **`STATUS.md` se fusiona, no se sobrescribe.** Si al abrirlo la cabecera
+  dice que otra sesión lo está escribiendo, **incorpora su contenido** (lo que
+  sepa y tú no) en vez de replacearlo. Si dos sesiones escriben a la vez, gana
+  la que mergea.
+- **Reserva antes de editar**: anota tu fichero en la tabla *Sesiones activas*
+  de `STATUS.md` antes de tocarlo, para que las demás no lo toquen.
 - **No commitees trabajo ajeno.** Si hay commits sin pushear de otra sesión,
   déjalos tal cual y anótalos en `STATUS.md`.
 - **Actualiza `STATUS.md` al terminar**, con la fecha y lo que cambió.

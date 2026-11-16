@@ -1,6 +1,10 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 00:35 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 01:15 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-e9f5038b`
+> ("lead"). Si al abrirlo la cabecera dice otra sesión, **fusiona su contenido**
+> en vez de sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el
+> mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
 > repo (ver [Cómo mantener este fichero](#cómo-mantener-este-fichero)).
@@ -10,9 +14,35 @@
 ## Resumen en una línea
 
 App de bandeja (Electron) que muestra la cuota de Minimax, Claude, Antigravity
-y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.3`)**, sin versión
-estable todavía. En `beta` hay **9 commits sin pushear** (una revisión a fondo
-del código) y el árbol de trabajo está limpio.
+y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.4`)**, sin versión
+estable todavía. La revisión a fondo del código (9 commits) está **publicada y
+verificada**; `beta` está a la par de `origin/beta` y el árbol está limpio.
+
+## Sesiones activas en este repo (2026-11-16 01:15)
+
+Cuatro sesiones de DSH están abiertas sobre este mismo repo y han recibido el
+mismo encargo. **DSH no permite mensajes entre sesiones raíz distintas**
+(`send_message` solo alcanza al mismo árbol de subagentes), así que la
+coordinación es por el repo: cada una reserva sus ficheros aquí y fusiona en
+lugar de pisar.
+
+| Sesión | Título | Qué está haciendo | Ficheros reservados |
+|---|---|---|---|
+| `session-e9f5038b` (**esta**) | lead | Estado del proyecto, cuadra los documentos con lo publicado y verifica la UI | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
+| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos); está leyendo `STATUS.md` y el historial de releases | (por anunciar) |
+| `session-8a303ef4` | Revisión a fondo del código | Ya dejó los 9 commits publicados en `beta.4`; ahora relee el estado | (por anunciar) |
+| `session-fa207887` | Plan de Android | Plan del pipeline de APK: goal cerrado y documentado en [PLAN-ANDROID.md](PLAN-ANDROID.md) | `PLAN-ANDROID.md` |
+
+**Reglas de coordinación** (valen para todas; también en `AGENTS.md`):
+
+1. `STATUS.md` **se fusiona, no se sobrescribe**: si otra sesión ya lo
+   actualizó, incorpora lo que sabes y tú no.
+2. Antes de editar un fichero, anótalo en la tabla de arriba.
+3. Cada sesión commitea **solo lo suyo** (`git add` de ficheros concretos).
+4. Los descubrimientos de endpoints o cuotas van a `FINDINGS.md`; el estado
+   del proyecto, a `STATUS.md`.
+5. Hay una tarea de coordinación compartida en el tablero de equipos
+   (`task-1`, *Actualizar STATUS.md sin pisar a las otras tres sesiones*).
 
 ## Versiones
 
@@ -20,9 +50,11 @@ del código) y el árbol de trabajo está limpio.
 |---|---|---|
 | Última release publicada | **v1.0.0-beta.4** (2026-11-16 00:46 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
 | Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta` |
-| Rama de trabajo `beta` | `9530765` | **Igual que `origin/beta`**: los 12 commits de la revisión ya están empujados (2026-11-16 00:44-00:51) |
+| Rama de trabajo `beta` | `e2bd967` | **Igual que `origin/beta`**: los 14 commits (revisión + arreglo de la vista previa + docs) están empujados |
 | Rama `main` | `deebebb` | 14 commits por detrás de `beta` |
+| Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone semantic-release |
+| Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
 
 Releases: <https://github.com/carcheky/usagia/releases>
 
@@ -94,14 +126,16 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
    `git switch main && git merge --ff-only beta && git push origin main` →
    `v1.0.0`. Conviene hacerlo después de instalar `beta.4` y comprobar que la
    tarjeta sale en la app instalada (el fallo que arregló `beta.3`).
-2. **Dependabot**: rama `origin/dependabot/npm_and_yarn/electron-42.11.16`
-   abierta (actualización de Electron). Sin revisar. GitHub además avisa de
-   **34 vulnerabilidades en la rama por defecto** (11 altas, 16 moderadas,
-   7 bajas): casi todas de Electron, y `electron-builder` arrastra las suyas.
-   Es lo que más papeletas da en la rama `main`.
-3. **Android**: hay un plan completo en [PLAN-ANDROID.md](PLAN-ANDROID.md)
-   (Capacitor 8 + núcleo JS compartido + jobs `verify-android`/`build-android`).
-   **No se ha empezado**: hoy no hay nada que compilar para Android.
+2. **Decidir lo de Electron**: el PR #1 de Dependabot (38.8.6 → 42.11.16) está
+   **cerrado sin fusionar** y la rama sigue viva. GitHub avisa de **34
+   vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
+   de Electron 38. O se vuelve a abrir el PR y se sube Electron, o se acepta
+   el riesgo y se documenta. Decisión del usuario.
+3. **Android**: el **plan** está escrito y cerrado en
+   [PLAN-ANDROID.md](PLAN-ANDROID.md) (Capacitor 8 + núcleo JS compartido +
+   jobs `verify-android`/`build-android`), pero la **implementación no ha
+   empezado**: hoy no hay nada que compilar para Android. Siguiente paso:
+   ejecutar el plan por commits.
 4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
    binarios de macOS** (solo Windows y Linux).
 
@@ -124,6 +158,10 @@ Detalle en [FINDINGS.md §4](FINDINGS.md).
 - Si `ELECTRON_RUN_AS_NODE=1` está en el entorno, Electron arranca como Node
   y **no abre ventanas** (síntoma: `bad option: --preview`). Limpiar la variable
   antes de `npm start` / `npm run preview`.
+- **Electron 38.8.6** es la versión en uso (instalada y en el lock) y GitHub
+  reporta **34 vulnerabilidades** en `main` (11 altas) de las dependencias de
+  Electron. El salto a 42.11.16 quedó en el PR #1 de Dependabot, **cerrado sin
+  fusionar**. Decisión pendiente del usuario.
 
 ## Límites del sandbox de DSH al medir (no son fallos de la app)
 
@@ -139,16 +177,18 @@ Documentados en detalle en [FINDINGS.md §3](FINDINGS.md):
 
 ## Reparto entre sesiones (acuerdo)
 
+Ver [Sesiones activas en este repo](#sesiones-activas-en-este-repo-2026-11-16-0115),
+que es la tabla viva. En corto:
+
 - **DSH no permite mensajes entre sesiones raíz distintas**: `send_message`
   solo funciona dentro del mismo árbol de subagentes. El canal entre sesiones
   es **el repo**.
-- `STATUS.md` (este fichero): estado del proyecto. Lo escribe la sesión que
-  trabaja en el repo.
+- `STATUS.md` (este fichero): estado del proyecto.
 - `FINDINGS.md`: endpoints, semántica y valores medidos. Fuente única.
 - `README.md` / `AGENTS.md`: cómo se usa y cómo se trabaja en el repo.
-- **Regla adoptada** (ya escrita en `AGENTS.md`): al empezar, leer
-  `STATUS.md`; un fichero, un dueño; no commitear trabajo ajeno; y al
-  terminar, actualizar `STATUS.md`.
+- Regla adoptada (escrita en `AGENTS.md`): al empezar, leer `STATUS.md`; un
+  fichero, un dueño; **fusionar en vez de sobrescribir**; no commitear trabajo
+  ajeno; y al terminar, actualizar `STATUS.md`.
 
 ## Historial de releases
 
