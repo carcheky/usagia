@@ -148,9 +148,19 @@ function writeInstallScript(content, name = 'usagia-update.cmd') {
 /**
  * Lanza un `.cmd` suelto (sin esperar ni capturar salida) para que siga
  * viviendo después de que la app se cierre.
+ *
+ * Se usa `wscript` con un VBScript mínimo para ejecutar el CMD **sin
+ * ventana visible**: `windowsHide: true` de Node no oculta la ventana
+ * de un proceso CMD que a su vez hace `ping` (el ping abre su propia
+ * consola). El VBScript con `vbHide` la oculta de verdad.
  */
 function runDetached(file, args = [], spawnImpl = spawn) {
-  const child = spawnImpl(process.env.ComSpec || 'cmd.exe', ['/c', file, ...args], {
+  // VBScript que lanza el CMD oculto.
+  const vbs = path.join(os.tmpdir(), 'usagia-update-hidden.vbs');
+  const cmdLine = `"${process.env.ComSpec || 'cmd.exe'}" /c "${file}"`;
+  fs.writeFileSync(vbs, `CreateObject("WScript.Shell").Run ${JSON.stringify(cmdLine)}, 0, False\n`, 'utf8');
+
+  const child = spawnImpl('wscript.exe', [vbs], {
     detached: true,
     stdio: 'ignore',
     windowsHide: true,
