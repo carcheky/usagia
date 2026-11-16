@@ -90,12 +90,30 @@ lugar de pisar.
 
 | Qué | Valor | Nota |
 |---|---|---|
-| Última release publicada | **v1.0.0-beta.6** (2026-11-16 01:25 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
-| Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta` |
-| Rama de trabajo `beta` | `34dfc8a` | **Igual que `origin/beta`**: 47 commits desde `deebebb`, todos empujados (la cola de la revisión, el arreglo de la vista previa, los docs y los cuatro commits de ids/`pct100`/nota/GPU) |
-| Rama `main` | `deebebb` | **34 commits por detrás** de `beta` |
+| Última release publicada | **v1.0.0-beta.0010** (2026-11-16 11:41 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. En GitHub hay exactamente `0001…0010`, en orden, un solo formato |
+| Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta`, **que solo hace el usuario** |
+| Rama de trabajo `beta` | `50da803` | Igual que `origin/beta`. Último commit: `ci:` con el nuevo pipeline (no publica) |
+| Rama `main` | `07e0354` | Ancestro de `beta`: el `--ff-only` no da conflicto |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
-| `package.json` | `0.0.0` | Correcto: la versión la pone semantic-release |
+| `package.json` | `0.0.0` | Correcto: la versión la pone `scripts/release.js` |
+
+### Pipeline de releases (2026-11-16 12:40): fuera semantic-release
+
+- **Por qué**: semantic-release no puede publicar `1.0.0-beta.0012` (semver no
+  admite ceros a la izquierda). O publicaba `beta.12`, o si se renombraba
+  después dejaba de ver la release anterior y volvía a empezar en `beta.1`.
+  Además `GITHUB_TOKEN` no puede crear tags por `git push` ni por
+  `POST /git/refs` (403), así que no hay forma de dejarle un tag "de
+  referencia". Medido en las corridas #45–#49.
+- **Ahora**: `scripts/release.js` (Node puro) numera desde las releases
+  publicadas (`max + 1`, cuatro dígitos), redacta el changelog **solo** con
+  `feat`/`fix`/`perf` y crea la release por la API (que crea el tag). Sin
+  cambios de la app desde la release anterior, no publica (corrida #50).
+  `npm run release:dry` lo simula en local.
+- **Regla nueva**: los cambios del pipeline van como `ci:`, nunca `fix:`; de
+  lo contrario aparecen en el changelog de la app.
+- **Pendiente de ver pasar**: la primera release real por el script
+  (`v1.0.0-beta.0011`) la generará el próximo `fix:`/`feat:` de la app.
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
 
 Releases: <https://github.com/carcheky/usagia/releases>
