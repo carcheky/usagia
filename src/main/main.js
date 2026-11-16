@@ -12,6 +12,9 @@ const settings = require('./settings');
 const availability = require('./availability');
 const tooltip = require('./tooltip');
 const updates = require('./updates');
+// Instalacion de la actualizacion (descarga, instalador y relanzado): la
+// parte con efectos, aparte de la decision de `updates.js`.
+const install = require('./update-install');
 // La cabecera de la fila y la linea del menu: funciones puras, probadas en
 // scripts/test-local.js.
 const { shortSummary, primarySummary } = require('./summary');
@@ -151,36 +154,195 @@ function currentVersion() {
   }
 }
 
+/**
+ * Estado de la instalación de la actualización:
+ *
+ *   idle        -> no hay nada que instalar
+ *   available   -> hay versión nueva (aún sin bajar)
+ *   downloading -> bajando; `percent` avanza
+ *   ready       -> bajada y lista: se instala al pulsar o al salir
+ *   installing  -> lanzado el instalador; la app se va
+ *   error       -> algo falló; queda el enlace a la release
+ */
+let updateState = { phase: 'idle', version: '', percent: 0, error: '' };
+let downloadInFlight = null;
+let installStarted = false;
+let lastProgressBroadcast = 0;
+
+/** ¿Se puede instalar sola? (NSIS en Windows, AppImage en Linux) */
+function autoUpdateSupport() {
+  return updates.canAutoUpdate({ platform: process.platform, packaged: app.isPackaged, env: process.env });
+}
+
 /** Última versión de la que ya se avisó, para no repetir el aviso cada 6 h. */
 let notifiedVersion = null;
 
 /**
  * Comprueba si hay una versión nueva y actualiza el estado.
+ * Si hay una y se puede instalar sola, empieza la descarga.
  */
 async function checkForUpdates() {
   const cfg = config.load();
   if (!cfg.updateCheck) {
     state.updateInfo = null;
+    updateState = { phase: 'idle', version: '', percent: 0, error: '' };
     broadcast();
     return;
+  }
+
+  // Un re-chequeo (cambio de canal, guardar ajustes) no puede pisar lo que ya
+  // está en marcha: si se está bajando o ya está lista, se respeta la fase.
+  const busy = ['downloading', 'ready', 'installing'].includes(updateState.phase);
+  if (updateState.phase === 'idle') {
+    updateState = { phase: 'available', version: '', percent: 0, error: '' };
   }
 
   try {
     const result = await updates.checkForUpdates(currentVersion(), cfg.updateChannel);
     if (result.available && result.latest) {
       state.updateInfo = result.latest;
+      if (!busy) updateState = { phase: 'available', version: result.latest.version, percent: 0, error: '' };
       console.log(`[usagia] nueva versión disponible: ${result.latest.version}`);
       notifyUpdate(result.latest);
-    } else {
-      // Al cambiar de canal o tras actualizar, el aviso viejo ya no vale.
-      state.updateInfo = null;
-      if (result.error) console.log(`[usagia] error al buscar actualizaciones: ${result.error}`);
+      broadcast();
+      // Desatendido: si se puede instalar sola, se baja ya y queda lista
+      // para instalarse al salir (o al pulsar el aviso).
+      if (cfg.updateAutoDownload && autoUpdateSupport().ok) startDownload();
+      return;
     }
+    // Al cambiar de canal o tras actualizar, el aviso viejo ya no vale.
+    state.updateInfo = null;
+    updateState = { phase: 'idle', version: '', percent: 0, error: '' };
+    if (result.error) console.log(`[usagia] error al buscar actualizaciones: ${result.error}`);
   } catch (err) {
     state.updateInfo = null;
+    updateState = { phase: 'idle', version: '', percent: 0, error: '' };
     console.log(`[usagia] error al buscar actualizaciones: ${err.message}`);
   }
   broadcast();
+}
+
+/**
+ * Baja el binario de la versión nueva a la carpeta del actualizador.
+ *
+ * Si el fichero ya está descargado y coincide el tamaño, no se vuelve a
+ * bajar: se marca listo. Así un reinicio a mitad de la instalación no
+ * gasta 100 MB de más.
+ */
+function startDownload() {
+  if (downloadInFlight) return downloadInFlight;
+  const support = autoUpdateSupport();
+  if (!support.ok || !state.updateInfo) return Promise.resolve(null);
+
+  const asset = updates.assetFor(state.updateInfo, { platform: process.platform });
+  if (!asset || !asset.url) {
+    updateState = {
+      phase: 'error',
+      version: state.updateInfo.version,
+      percent: 0,
+      error: 'la release no trae el instalador para este sistema',
+    };
+    broadcast();
+    return Promise.resolve(null);
+  }
+
+  const dest = install.downloadPath(app.getPath('userData'), asset.name);
+
+  // Ya bajado en un intento anterior: nada que hacer.
+  try {
+    const info = fs.statSync(dest);
+    if (asset.size > 0 && info.size === asset.size) {
+      updateState = { phase: 'ready', version: state.updateInfo.version, percent: 100, error: '' };
+      broadcast();
+      return Promise.resolve({ file: dest, bytes: info.size });
+    }
+  } catch {
+    /* no estaba: se baja */
+  }
+
+  updateState = { phase: 'downloading', version: state.updateInfo.version, percent: 0, error: '' };
+  broadcast();
+  console.log(`[usagia] bajando ${asset.name} (${Math.round(asset.size / 1048576)} MB)`);
+
+  downloadInFlight = install
+    .download(asset.url, dest, {
+      expectedSize: asset.size,
+      onProgress: ({ percent }) => {
+        updateState.percent = percent;
+        // Sin esto son cientos de mensajes IPC por segundo.
+        const now = Date.now();
+        if (now - lastProgressBroadcast > 400 || percent >= 100) {
+          lastProgressBroadcast = now;
+          broadcast();
+        }
+      },
+    })
+    .then((result) => {
+      updateState = { phase: 'ready', version: state.updateInfo.version, percent: 100, error: '' };
+      console.log(`[usagia] actualización descargada: ${result.file}`);
+      broadcast();
+      return result;
+    })
+    .catch((err) => {
+      console.log(`[usagia] no se pudo descargar la actualización: ${err.message}`);
+      updateState = {
+        phase: 'error',
+        version: state.updateInfo?.version || '',
+        percent: 0,
+        error: err.message,
+      };
+      broadcast();
+      return null;
+    })
+    .finally(() => {
+      downloadInFlight = null;
+    });
+
+  return downloadInFlight;
+}
+
+/**
+ * Instala la actualización descargada y sale de la app.
+ *
+ * `relaunch` = true cuando la pide el usuario (el instalador vuelve a abrir
+ * la app); en la instalación al salir no se relanza, que para eso se cierra.
+ */
+function installUpdate({ relaunch: relaunchAfter = true } = {}) {
+  if (installStarted) return false;
+  if (updateState.phase !== 'ready' || !state.updateInfo) return false;
+
+  const asset = updates.assetFor(state.updateInfo, { platform: process.platform });
+  if (!asset) return false;
+  const file = install.downloadPath(app.getPath('userData'), asset.name);
+  const log = path.join(app.getPath('userData'), 'updater', 'update.log');
+
+  installStarted = true;
+  updateState = { ...updateState, phase: 'installing' };
+  broadcast();
+  console.log(`[usagia] instalando ${asset.name} (relanzar=${relaunchAfter})`);
+
+  try {
+    if (process.platform === 'win32') {
+      install.installWindows({ installer: file, exe: process.execPath, relaunch: relaunchAfter, log });
+    } else if (process.platform === 'linux') {
+      const image = process.env.APPIMAGE || process.execPath;
+      install.installAppImage({ downloaded: file, current: image });
+      if (relaunchAfter) install.relaunch(image);
+    } else {
+      installStarted = false;
+      return false;
+    }
+  } catch (err) {
+    installStarted = false;
+    updateState = { ...updateState, phase: 'error', error: err.message };
+    broadcast();
+    console.log(`[usagia] no se pudo instalar la actualización: ${err.message}`);
+    return false;
+  }
+
+  // El instalador ya está lanzado y espera a que muramos: se cierra ya.
+  setTimeout(() => app.quit(), 250);
+  return true;
 }
 
 /**
@@ -198,12 +360,16 @@ function notifyUpdate(info) {
     const { Notification } = require('electron');
     if (!Notification.isSupported()) return;
     notifiedVersion = info.version;
+    const auto = autoUpdateSupport().ok;
     const notification = new Notification({
       title: 'Nueva versión de Usagia',
-      body: `La versión ${info.version} está disponible. Haz clic para descargarla.`,
+      body: auto
+        ? `La versión ${info.version} se está descargando; se instalará al salir (o desde el aviso de la tarjeta).`
+        : `La versión ${info.version} está disponible. Haz clic para descargarla.`,
       silent: true,
     });
     notification.on('click', () => {
+      if (auto) return;
       if (info.url) shell.openExternal(info.url);
     });
     notification.show();
@@ -307,20 +473,30 @@ function buildMenu() {
     click: () => shell.openPath(config.configPath()),
   });
 
-  // Mostrar la versión actual y, si hay actualización, enlace para descargar.
+  // Mostrar la versión actual y, si hay actualización, lo que toca hacer:
+  // instalarla (ya descargada), descargarla, o abrir la release si este
+  // binario no se puede actualizar solo (portable, .deb…).
   items.push({ type: 'separator' });
   const version = currentVersion();
-  if (state.updateInfo) {
+  if (updateState.phase === 'ready') {
     items.push({
-      label: `Versión ${version} → ${state.updateInfo.version} disponible`,
-      click: () => shell.openExternal(state.updateInfo.url),
+      label: `Reiniciar e instalar ${updateState.version}`,
+      click: () => installUpdate({ relaunch: true }),
     });
-  } else {
+  } else if (updateState.phase === 'downloading') {
+    items.push({ label: `Descargando ${updateState.version}… ${updateState.percent} %`, enabled: false });
+  } else if (updateState.phase === 'installing') {
+    items.push({ label: `Instalando ${updateState.version}…`, enabled: false });
+  } else if (state.updateInfo) {
+    const auto = autoUpdateSupport().ok;
     items.push({
-      label: `Versión ${version}`,
-      enabled: false,
+      label: auto
+        ? `Actualizar a ${state.updateInfo.version}`
+        : `Descargar ${state.updateInfo.version} (este binario no se actualiza solo)`,
+      click: () => (auto ? installUpdate({ relaunch: true }) : shell.openExternal(state.updateInfo.url)),
     });
   }
+  items.push({ label: `Versión ${version}`, enabled: false });
 
   items.push({ type: 'separator' });
   items.push({ label: 'Salir', click: () => app.quit() });
@@ -481,8 +657,10 @@ function broadcast() {
     // que la tarjeta CREZCA sola hasta ese limite (y solo entonces
     // aparezca el scroll).
     maxHeight: cardMaxHeight(),
-    // Información de actualización disponible.
+    // Información de actualización disponible y en qué punto está.
     updateInfo: state.updateInfo,
+    updateState,
+    autoUpdate: autoUpdateSupport(),
     currentVersion: currentVersion(),
     providers: orderedResults().map(({ instance, provider, result }) => ({
       id: instance.id,
@@ -706,6 +884,15 @@ app.whenReady().then(async () => {
   });
   ipcMain.on('card:settings', () => settings.open());
   ipcMain.on('card:ready', () => broadcast());
+  // Boton del aviso de la tarjeta: si ya esta bajada, instala; si no, baja.
+  ipcMain.on('card:update', () => {
+    if (updateState.phase === 'ready') {
+      installUpdate({ relaunch: true });
+      return;
+    }
+    if (updateState.phase === 'downloading' || updateState.phase === 'installing') return;
+    startDownload();
+  });
 
   // La ventana de configuracion avisa cuando guarda: los datos se vuelven a
   // pedir y la tarjeta se repinta.
@@ -718,6 +905,12 @@ app.whenReady().then(async () => {
         scheduleUpdateCheck();
       }
       refresh();
+    },
+    // "Instalar ahora" de la ventana de configuración.
+    applyUpdate: () => {
+      if (updateState.phase === 'ready') return installUpdate({ relaunch: true });
+      startDownload();
+      return true;
     },
   });
 
@@ -835,6 +1028,19 @@ app.on('activate', () => {
     card.show();
     broadcast();
   }
+});
+
+/**
+ * Instalación al salir: si la actualización está descargada y el usuario no
+ * ha pulsado nada, se instala sola al cerrar la app (sin volver a abrirla,
+ * que para eso la está cerrando). Es la parte que hace que no haya que
+ * acordarse de nada.
+ */
+app.on('before-quit', () => {
+  if (installStarted) return;
+  if (!config.load().updateInstallOnQuit) return;
+  if (updateState.phase !== 'ready') return;
+  installUpdate({ relaunch: false });
 });
 
 app.on('will-quit', () => {

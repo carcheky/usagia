@@ -10,8 +10,11 @@ const refreshEl = document.getElementById('refresh');
 const hoverDelayEl = document.getElementById('hoverDelay');
 const showOnHoverEl = document.getElementById('showOnHover');
 const updateCheckEl = document.getElementById('updateCheck');
+const updateAutoDownloadEl = document.getElementById('updateAutoDownload');
+const updateInstallOnQuitEl = document.getElementById('updateInstallOnQuit');
 const updateChannelEl = document.getElementById('updateChannel');
 const checkNowEl = document.getElementById('checkNow');
+const applyUpdateEl = document.getElementById('applyUpdate');
 const versionInfoEl = document.getElementById('versionInfo');
 
 const state = {
@@ -265,6 +268,8 @@ document.getElementById('save').addEventListener('click', async () => {
         hoverCloseDelayMs: Number(hoverDelayEl.value),
         showOnHover: showOnHoverEl.checked,
         updateCheck: updateCheckEl.checked,
+        updateAutoDownload: updateAutoDownloadEl.checked,
+        updateInstallOnQuit: updateInstallOnQuitEl.checked,
         updateChannel: updateChannelEl.value,
       },
     });
@@ -313,6 +318,24 @@ checkNowEl?.addEventListener('click', async () => {
   }
 });
 
+applyUpdateEl?.addEventListener('click', async () => {
+  applyUpdateEl.disabled = true;
+  applyUpdateEl.textContent = 'Instalando…';
+  try {
+    const result = await window.usagiaSettings.applyUpdate();
+    if (!result.ok) {
+      setStatus('No hay ninguna actualización lista: pulsa "Buscar ahora"', 'error');
+      applyUpdateEl.disabled = false;
+      applyUpdateEl.textContent = 'Instalar ahora y reiniciar';
+    }
+    // Si sale bien, la app se cierra sola y el instalador la vuelve a abrir.
+  } catch (err) {
+    setStatus(err?.message || String(err), 'error');
+    applyUpdateEl.disabled = false;
+    applyUpdateEl.textContent = 'Instalar ahora y reiniciar';
+  }
+});
+
 async function init() {
   try {
     const data = await window.usagiaSettings.get();
@@ -326,9 +349,21 @@ async function init() {
     hoverDelayEl.value = general.hoverCloseDelayMs ?? 400;
     showOnHoverEl.checked = general.showOnHover !== false;
     updateCheckEl.checked = general.updateCheck !== false;
+    updateAutoDownloadEl.checked = general.updateAutoDownload !== false;
+    updateInstallOnQuitEl.checked = general.updateInstallOnQuit !== false;
     updateChannelEl.value = general.updateChannel || 'auto';
     if (versionInfoEl) {
-      versionInfoEl.textContent = `Versión actual: ${data.currentVersion || '—'}`;
+      const auto = data.autoUpdate;
+      const motivo = auto && !auto.ok ? ` · ${auto.reason}` : '';
+      const version = data.currentVersion || '—';
+      versionInfoEl.textContent = auto && auto.ok
+        ? `Versión actual: ${version} · se actualiza sola`
+        : `Versión actual: ${version} · este binario no se actualiza solo${motivo}`;
+    }
+    // Sin auto-actualización, el botón de instalar no tiene nada que hacer.
+    if (applyUpdateEl && !(data.autoUpdate && data.autoUpdate.ok)) {
+      applyUpdateEl.disabled = true;
+      applyUpdateEl.title = 'Este binario no se puede actualizar solo (portable, .deb o desarrollo)';
     }
     render();
   } catch (err) {

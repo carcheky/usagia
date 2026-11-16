@@ -281,6 +281,17 @@ body {
   display: none;
 }
 
+/* Cuando la actualización falla, el texto va en rojo y el botón queda como
+   salida a la release (descarga manual). */
+.update-banner.error {
+  background: linear-gradient(135deg, rgba(239, 83, 80, 0.16), rgba(239, 83, 80, 0.06));
+  border-bottom-color: rgba(239, 83, 80, 0.35);
+}
+
+.update-banner.error #updateText {
+  color: var(--critical);
+}
+
 .update-link {
   background: rgba(91, 141, 239, 0.2);
   border: 1px solid rgba(91, 141, 239, 0.4);

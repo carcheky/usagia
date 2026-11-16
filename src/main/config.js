@@ -20,6 +20,10 @@ const DEFAULTS = {
   // todavía no ha publicado ninguna estable, y con 'stable' fijo la
   // comprobación no encontraría nunca nada.
   updateChannel: 'auto',
+  // Bajar la actualización en cuanto se sepa que hay una (sin preguntar).
+  updateAutoDownload: true,
+  // Instalarla sola al cerrar la app, sin que el usuario haga nada.
+  updateInstallOnQuit: true,
   // Cuentas configuradas por el usuario. Cada cuenta es una instancia de un
   // proveedor y puede haber VARIAS del mismo proveedor (una por cuenta).
   // Lista vacía = autodetección: una cuenta por proveedor.
@@ -92,6 +96,12 @@ function normalize(file) {
     : [];
   // Normalizar los ajustes de actualizaciones.
   if (typeof base.updateCheck !== 'boolean') base.updateCheck = DEFAULTS.updateCheck;
+  if (typeof base.updateAutoDownload !== 'boolean') {
+    base.updateAutoDownload = DEFAULTS.updateAutoDownload;
+  }
+  if (typeof base.updateInstallOnQuit !== 'boolean') {
+    base.updateInstallOnQuit = DEFAULTS.updateInstallOnQuit;
+  }
   const UPDATE_CHANNELS = ['auto', 'stable', 'beta'];
   if (!UPDATE_CHANNELS.includes(base.updateChannel)) base.updateChannel = DEFAULTS.updateChannel;
   return base;

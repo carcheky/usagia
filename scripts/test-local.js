@@ -186,6 +186,9 @@ t.check('los valores por defecto y la ruta del fichero', () => {
   // De fabrica: buscar actualizaciones, en el canal automático.
   assert.strictEqual(cfg.updateCheck, true);
   assert.strictEqual(cfg.updateChannel, 'auto');
+  // Desatendido de fabrica: se baja sola y se instala al cerrar.
+  assert.strictEqual(cfg.updateAutoDownload, true);
+  assert.strictEqual(cfg.updateInstallOnQuit, true);
   assert.deepStrictEqual(cfg.accounts, []);
   assert.ok(config.configPath().startsWith(home), config.configPath());
   assert.ok(config.configPath().endsWith(path.join('Usagia', 'config.json')));

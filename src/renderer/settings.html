@@ -55,7 +55,18 @@
           </label>
           <button class="btn tiny" id="checkNow" type="button">Buscar ahora</button>
         </div>
-        <label class="field" style="margin-top: 10px;">
+        <label class="check" style="margin-top: 8px;">
+          <input type="checkbox" id="updateAutoDownload" />
+          <span>Bajarla en cuanto haya una (sin preguntar)</span>
+        </label>
+        <label class="check" style="margin-top: 8px;">
+          <input type="checkbox" id="updateInstallOnQuit" />
+          <span>Instalarla sola al cerrar la app</span>
+        </label>
+        <div class="update-row" style="margin-top: 12px;">
+          <button class="btn primary tiny" id="applyUpdate" type="button">Instalar ahora y reiniciar</button>
+        </div>
+        <label class="field" style="margin-top: 12px;">
           <span>Canal de actualización</span>
           <select id="updateChannel">
             <option value="auto">Automático (según la versión instalada)</option>

@@ -271,6 +271,129 @@ t.check('en automático, una estable instalada NO ve las betas', async () => {
   assert.strictEqual(result.available, false);
 });
 
+/* ------------------------------------------------------- canAutoUpdate */
+
+t.section('canAutoUpdate (¿puede instalarse sola?):');
+
+t.check('en desarrollo no, y la portable tampoco', () => {
+  assert.strictEqual(updates.canAutoUpdate({ platform: 'win32', packaged: false }).ok, false);
+  // PORTABLE_EXECUTABLE_DIR la pone el target portable: el .exe se descomprime
+  // en una carpeta distinta en cada arranque y no hay nada que reemplazar.
+  const portable = updates.canAutoUpdate({
+    platform: 'win32',
+    packaged: true,
+    env: { PORTABLE_EXECUTABLE_DIR: 'C:\\Temp\\abc' },
+  });
+  assert.strictEqual(portable.ok, false);
+  assert.ok(portable.reason.includes('portable'));
+});
+
+t.check('Windows con el instalador NSIS: sí', () => {
+  const r = updates.canAutoUpdate({ platform: 'win32', packaged: true, env: {} });
+  assert.deepStrictEqual(r, { ok: true, reason: 'nsis' });
+});
+
+t.check('Linux solo si corre como AppImage; macOS nunca', () => {
+  assert.strictEqual(updates.canAutoUpdate({ platform: 'linux', packaged: true, env: {} }).ok, false);
+  // Un .deb no se puede reemplazar en caliente: sin APPIMAGE, no.
+  assert.strictEqual(
+    updates.canAutoUpdate({ platform: 'linux', packaged: true, env: { APPIMAGE: '/home/x/Usagia.AppImage' } }).ok,
+    true
+  );
+  assert.strictEqual(updates.canAutoUpdate({ platform: 'darwin', packaged: true, env: {} }).ok, false);
+});
+
+/* ------------------------------------------------------------ assetFor */
+
+t.section('assetFor (qué fichero se baja):');
+
+const assets = [
+  { name: 'Usagia-portable-1.1.0-beta.0003-win-x64.exe', size: 90, browser_download_url: 'https://x/portable' },
+  { name: 'Usagia-Setup-1.1.0-beta.0003-win-x64.exe', size: 100, browser_download_url: 'https://x/setup' },
+  { name: 'Usagia-Setup-1.1.0-beta.0003-win-x64.exe.blockmap', size: 1, browser_download_url: 'https://x/blockmap' },
+  { name: 'Usagia-1.1.0-beta.0003-linux-x86_64.AppImage', size: 110, browser_download_url: 'https://x/AppImage' },
+  { name: 'usagia_1.1.0-beta.0003_amd64.deb', size: 120, browser_download_url: 'https://x/deb' },
+];
+
+t.check('en Windows baja el instalador NSIS, nunca el portable ni el blockmap', () => {
+  const asset = updates.assetFor({ assets }, { platform: 'win32' });
+  assert.strictEqual(asset.name, 'Usagia-Setup-1.1.0-beta.0003-win-x64.exe');
+  assert.strictEqual(asset.url, 'https://x/setup');
+  assert.strictEqual(asset.size, 100);
+});
+
+t.check('en Linux baja el AppImage (no el .deb)', () => {
+  const asset = updates.assetFor({ assets }, { platform: 'linux' });
+  assert.strictEqual(asset.name, 'Usagia-1.1.0-beta.0003-linux-x86_64.AppImage');
+});
+
+t.check('sin binario para esa plataforma devuelve null (queda descarga manual)', () => {
+  assert.strictEqual(updates.assetFor({ assets }, { platform: 'darwin' }), null);
+  assert.strictEqual(updates.assetFor({ assets: [] }, { platform: 'win32' }), null);
+  assert.strictEqual(updates.assetFor({}, { platform: 'win32' }), null);
+});
+
+/* ------------------------------------------------------ downloadPercent */
+
+t.section('downloadPercent:');
+
+t.check('porcentaje entero y acotado', () => {
+  assert.strictEqual(updates.downloadPercent(0, 100), 0);
+  assert.strictEqual(updates.downloadPercent(50, 100), 50);
+  assert.strictEqual(updates.downloadPercent(100, 100), 100);
+  assert.strictEqual(updates.downloadPercent(120, 100), 100, 'no pasa de 100');
+  assert.strictEqual(updates.downloadPercent(10, 0), 0, 'sin total no hay porcentaje');
+  assert.strictEqual(updates.downloadPercent(NaN, 100), 0);
+});
+
+/* ------------------------------------------------------ installScript */
+
+t.section('installScript (instalador silencioso de Windows):');
+
+const updateInstall = require(path.join(__dirname, '..', 'src', 'main', 'update-install'));
+
+t.check('el .cmd espera a que muera la app, instala en silencio y la vuelve a abrir', () => {
+  const script = updateInstall.installScript({
+    installer: 'C:\\Temp\\Usagia-Setup-1.1.0-beta.0003-win-x64.exe',
+    exe: 'C:\\Users\\x\\AppData\\Local\\Programs\\Usagia\\Usagia.exe',
+    relaunch: true,
+    log: 'C:\\Temp\\update.log',
+  });
+  const lines = script.split('\r\n').filter(Boolean);
+  assert.strictEqual(lines[0], '@echo off');
+  assert.ok(
+    lines.some((l) => l.startsWith('ping -n') && l.includes('127.0.0.1')),
+    'primero una espera: la app aun se esta cerrando'
+  );
+  const install = lines.find((l) => l.includes('start /wait'));
+  assert.ok(install.includes('Usagia-Setup-1.1.0-beta.0003-win-x64.exe'), install);
+  assert.ok(install.includes('/S'), 'instalacion silenciosa');
+  assert.ok(!install.includes('timeout'), 'timeout falla sin consola de entrada');
+  const relaunch = lines.find((l) => l.includes('Programs\\Usagia\\Usagia.exe'));
+  assert.ok(relaunch.startsWith('start ""'), 'vuelve a abrir la app');
+  assert.ok(script.includes('update.log'), 'deja rastro para poder depurar');
+});
+
+t.check('al instalar al salir no se relanza (el usuario esta cerrando la app)', () => {
+  const script = updateInstall.installScript({
+    installer: 'C:\\Temp\\Usagia-Setup.exe',
+    exe: 'C:\\Programs\\Usagia\\Usagia.exe',
+    relaunch: false,
+  });
+  assert.ok(!script.includes('C:\\Programs\\Usagia\\Usagia.exe'));
+  assert.ok(script.includes('start /wait'));
+});
+
+t.check('las rutas de descarga no se pueden escapar de la carpeta del actualizador', () => {
+  const dir = updateInstall.updaterDir('C:\\datos');
+  assert.strictEqual(dir, path.join('C:\\datos', 'updater'));
+  assert.strictEqual(
+    updateInstall.downloadPath('C:\\datos', '..\\..\\evil.exe'),
+    path.join(dir, 'evil.exe'),
+    'solo el nombre del fichero'
+  );
+});
+
 t.finish('OK: las actualizaciones pasan', () => {
   t.restoreFetch();
   t.removeDir(home);

@@ -62,16 +62,25 @@ function get() {
   return win;
 }
 
+/**
+ * El `app` de Electron, o null cuando el módulo se carga en Node puro (las
+ * pruebas: `require('electron')` devuelve la ruta del binario, no el módulo).
+ */
+function electronApp() {
+  try {
+    const electron = require('electron');
+    const candidate = electron && electron.app;
+    return candidate && typeof candidate.getVersion === 'function' ? candidate : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Datos que necesita el renderer para pintar el formulario. */
 function snapshot() {
   const cfg = config.load();
-  let currentVersion = '0.0.0';
-  try {
-    const { app } = require('electron');
-    currentVersion = app.getVersion() || '0.0.0';
-  } catch {
-    /* fuera de Electron */
-  }
+  const appRef = electronApp();
+  const currentVersion = (appRef && appRef.getVersion()) || '0.0.0';
   return {
     catalog: instances.catalog(),
     accounts: instances.list(),
@@ -81,8 +90,16 @@ function snapshot() {
       hoverCloseDelayMs: cfg.hoverCloseDelayMs,
       updateCheck: cfg.updateCheck,
       updateChannel: cfg.updateChannel,
+      updateAutoDownload: cfg.updateAutoDownload,
+      updateInstallOnQuit: cfg.updateInstallOnQuit,
     },
     currentVersion,
+    // La ventana necesita saber si este binario se puede actualizar solo.
+    autoUpdate: updates.canAutoUpdate({
+      platform: process.platform,
+      packaged: Boolean(appRef && appRef.isPackaged),
+      env: process.env,
+    }),
     configPath: config.configPath(),
   };
 }
@@ -131,9 +148,14 @@ async function test(payload) {
   }
 }
 
-/** Registra los handlers IPC. Se llama una vez al arrancar la app. */
+/**
+ * Registra los handlers IPC. Se llama una vez al arrancar la app.
+ * `hooks` puede traer `onSaved` (configuración guardada) y `applyUpdate`
+ * (instalar la actualización ahora, con su relanzado).
+ */
 function register(hooks = {}) {
   onSaved = typeof hooks.onSaved === 'function' ? hooks.onSaved : () => {};
+  const applyUpdate = typeof hooks.applyUpdate === 'function' ? hooks.applyUpdate : () => false;
 
   ipcMain.handle('settings:get', () => snapshot());
 
@@ -155,6 +177,12 @@ function register(hooks = {}) {
     }
     if (['auto', 'stable', 'beta'].includes(general.updateChannel)) {
       patch.updateChannel = general.updateChannel;
+    }
+    if (typeof general.updateAutoDownload === 'boolean') {
+      patch.updateAutoDownload = general.updateAutoDownload;
+    }
+    if (typeof general.updateInstallOnQuit === 'boolean') {
+      patch.updateInstallOnQuit = general.updateInstallOnQuit;
     }
     try {
       config.save(patch);
@@ -180,15 +208,13 @@ function register(hooks = {}) {
 
   ipcMain.handle('settings:checkUpdates', async () => {
     const cfg = config.load();
-    let currentVersion = '0.0.0';
-    try {
-      const { app } = require('electron');
-      currentVersion = app.getVersion() || '0.0.0';
-    } catch {
-      /* fuera de Electron */
-    }
+    const appRef = electronApp();
+    const currentVersion = (appRef && appRef.getVersion()) || '0.0.0';
     return updates.checkForUpdates(currentVersion, cfg.updateChannel);
   });
+
+  // Instalar la actualización ya, desde la ventana de configuración.
+  ipcMain.handle('settings:applyUpdate', () => ({ ok: Boolean(applyUpdate()) }));
 }
 
 module.exports = { open, get, register, snapshot, test, sanitizeAccounts };

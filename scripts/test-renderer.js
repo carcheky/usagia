@@ -35,7 +35,19 @@ class FakeElement {
     this.listeners = {};
     this.classList = {
       add: (c) => {
-        this.className = `${this.className} ${c}`.trim();
+        if (!this.classList.contains(c)) this.className = `${this.className} ${c}`.trim();
+      },
+      remove: (c) => {
+        this.className = this.className
+          .split(/\s+/)
+          .filter((x) => x && x !== c)
+          .join(' ');
+      },
+      toggle: (c, force) => {
+        const on = force === undefined ? !this.classList.contains(c) : Boolean(force);
+        if (on) this.classList.add(c);
+        else this.classList.remove(c);
+        return on;
       },
       contains: (c) => this.className.split(/\s+/).includes(c),
     };
@@ -103,7 +115,7 @@ function loadCard() {
     createElement: (tag) => new FakeElement(tag),
     querySelector: (selector) => body.querySelector(selector),
   };
-  const bridge = { stateHandler: null, sizes: [], ready: 0, settingsOpened: 0, opened: [] };
+  const bridge = { stateHandler: null, sizes: [], ready: 0, settingsOpened: 0, opened: [], updates: 0 };
   const window = {
     usagia: {
       onState: (fn) => {
@@ -117,6 +129,9 @@ function loadCard() {
         bridge.settingsOpened += 1;
       },
       open: (url) => bridge.opened.push(url),
+      applyUpdate: () => {
+        bridge.updates += 1;
+      },
     },
     addEventListener: () => {},
   };
@@ -295,33 +310,92 @@ t.check('el tope de altura del proceso principal se aplica como max-height, y la
   assert.strictEqual(world.bridge.sizes.length, before);
 });
 
-t.check('la version nueva sale en el banner, y su boton abre la pagina de descarga', () => {
+t.check('la version nueva sale en el banner y el boton pide actualizar (o abre la release)', () => {
   const world = loadCard();
   // Sin actualizacion no hay banner.
   world.render(basePayload([]));
   assert.strictEqual(world.byId.updateBanner.hidden, true);
   assert.strictEqual(world.byId.updateText.textContent, '');
 
+  const info = {
+    version: '1.1.0-beta.0003',
+    tag: 'v1.1.0-beta.0003',
+    url: 'https://github.com/carcheky/usagia/releases/tag/v1.1.0-beta.0003',
+  };
+
+  // Binario que se actualiza solo: boton "Actualizar".
   world.render(
     basePayload([], {
-      currentVersion: '1.0.0-beta.0010',
-      updateInfo: { version: '1.0.1', tag: 'v1.0.1', url: 'https://github.com/carcheky/usagia/releases/tag/v1.0.1' },
+      currentVersion: '1.1.0-beta.0002',
+      updateInfo: info,
+      updateState: { phase: 'available', version: info.version, percent: 0, error: '' },
+      autoUpdate: { ok: true, reason: 'nsis' },
     })
   );
   assert.strictEqual(world.byId.updateBanner.hidden, false);
-  assert.strictEqual(world.byId.updateText.textContent, 'v1.0.0-beta.0010 → v1.0.1 disponible', 'la version instalada y la nueva, en el banner');
+  assert.strictEqual(world.byId.updateText.textContent, 'v1.1.0-beta.0002 → v1.1.0-beta.0003 disponible');
+  assert.strictEqual(world.byId.updateLink.textContent, 'Actualizar');
+  world.byId.updateLink.listeners.click({ stopPropagation: () => {} });
+  assert.strictEqual(world.bridge.updates, 1, 'el boton pide la actualizacion a la app');
 
-  // El boton abre la release y no deja pasar el clic.
-  let stopped = false;
-  world.byId.updateLink.listeners.click({ stopPropagation: () => (stopped = true) });
-  assert.deepStrictEqual(world.bridge.opened, ['https://github.com/carcheky/usagia/releases/tag/v1.0.1']);
-  assert.ok(stopped);
+  // Bajando: porcentaje y sin boton.
+  world.render(
+    basePayload([], {
+      currentVersion: '1.1.0-beta.0002',
+      updateInfo: info,
+      updateState: { phase: 'downloading', version: info.version, percent: 42, error: '' },
+      autoUpdate: { ok: true, reason: 'nsis' },
+    })
+  );
+  assert.strictEqual(world.byId.updateText.textContent, 'Descargando v1.1.0-beta.0003… 42 %');
+  assert.strictEqual(world.byId.updateLink.hidden, true);
+
+  // Lista: "Reiniciar e instalar".
+  world.render(
+    basePayload([], {
+      currentVersion: '1.1.0-beta.0002',
+      updateInfo: info,
+      updateState: { phase: 'ready', version: info.version, percent: 100, error: '' },
+      autoUpdate: { ok: true, reason: 'nsis' },
+    })
+  );
+  assert.strictEqual(world.byId.updateText.textContent, 'v1.1.0-beta.0003 lista para instalar');
+  assert.strictEqual(world.byId.updateLink.textContent, 'Reiniciar e instalar');
+  world.byId.updateLink.listeners.click({ stopPropagation: () => {} });
+  assert.strictEqual(world.bridge.updates, 2);
+
+  // Binario que NO se actualiza solo (portable): "Descargar" abre la release.
+  world.render(
+    basePayload([], {
+      currentVersion: '1.1.0-beta.0002',
+      updateInfo: info,
+      updateState: { phase: 'available', version: info.version, percent: 0, error: '' },
+      autoUpdate: { ok: false, reason: 'es la versión portable' },
+    })
+  );
+  assert.strictEqual(world.byId.updateLink.textContent, 'Descargar');
+  world.byId.updateLink.listeners.click({ stopPropagation: () => {} });
+  assert.deepStrictEqual(world.bridge.opened, [info.url]);
+  assert.strictEqual(world.bridge.updates, 2, 'sin auto-actualizacion no se pide instalar');
+
+  // Error: se dice el motivo, en rojo, y queda el enlace de descarga.
+  world.render(
+    basePayload([], {
+      currentVersion: '1.1.0-beta.0002',
+      updateInfo: info,
+      updateState: { phase: 'error', version: info.version, percent: 0, error: 'sin red' },
+      autoUpdate: { ok: true, reason: 'nsis' },
+    })
+  );
+  assert.strictEqual(world.byId.updateText.textContent, 'No se pudo actualizar: sin red');
+  assert.ok(world.byId.updateBanner.classList.contains('error'));
+  assert.strictEqual(world.byId.updateLink.textContent, 'Descargar');
 
   // Si la actualizacion desaparece, el banner se esconde.
   world.render(basePayload([]));
   assert.strictEqual(world.byId.updateBanner.hidden, true);
   world.byId.updateLink.listeners.click({ stopPropagation: () => {} });
-  assert.deepStrictEqual(world.bridge.opened, ['https://github.com/carcheky/usagia/releases/tag/v1.0.1'], 'sin URL no se abre nada');
+  assert.deepStrictEqual(world.bridge.opened, [info.url], 'sin actualizacion no se abre nada nuevo');
 });
 
 t.check('el pie: "actualizando…" mientras refresca, "hace N s" despues, y la pista cambia al fijar', () => {

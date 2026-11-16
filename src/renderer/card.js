@@ -10,6 +10,7 @@ const updateLinkEl = document.getElementById('updateLink');
 let lastState = null;
 let lastHeight = 0;
 let lastGear = null;
+let lastUpdateAction = null;
 let lastUpdateUrl = null;
 const MAX_METRICS = 4;
 
@@ -22,9 +23,14 @@ gearEl?.addEventListener('click', (event) => {
   window.usagia?.settings();
 });
 
-// Boton de descarga de la actualizacion.
+// Boton de descarga de la actualizacion. Si el binario se actualiza solo,
+// pide bajarla/instalarla; si no (portable, .deb), abre la release.
 updateLinkEl?.addEventListener('click', (event) => {
   event.stopPropagation();
+  if (lastUpdateAction === 'apply') {
+    window.usagia?.applyUpdate();
+    return;
+  }
   if (lastUpdateUrl) {
     window.usagia?.open(lastUpdateUrl);
   }
@@ -67,6 +73,65 @@ function el(tag, className, text) {
   return node;
 }
 
+/**
+ * Franja de la actualización. Texto y botón según la fase que manda el
+ * proceso principal (`updateState.phase`):
+ *
+ *   available   -> "v1.0.0 → v1.1.0 disponible" + [Actualizar] (o [Descargar])
+ *   downloading -> "Descargando v1.1.0… 42 %" (sin botón)
+ *   ready       -> "v1.1.0 lista" + [Reiniciar e instalar]
+ *   installing  -> "Instalando v1.1.0…" (sin botón)
+ *   error       -> el motivo + [Descargar] (la release, a mano)
+ */
+function renderUpdateBanner(payload) {
+  if (!updateBannerEl || !updateTextEl) return;
+  const info = payload.updateInfo;
+  const phase = (payload.updateState && payload.updateState.phase) || 'idle';
+  const canAuto = Boolean(payload.autoUpdate && payload.autoUpdate.ok);
+
+  if (!info) {
+    updateBannerEl.hidden = true;
+    updateBannerEl.classList.remove('error');
+    lastUpdateAction = null;
+    lastUpdateUrl = null;
+    return;
+  }
+
+  const current = payload.currentVersion || '—';
+  const next = info.version || '—';
+  lastUpdateUrl = info.url || null;
+  let text = `v${current} → v${next} disponible`;
+  let label = canAuto ? 'Actualizar' : 'Descargar';
+  let action = canAuto ? 'apply' : 'open';
+  let hideButton = false;
+
+  if (phase === 'downloading') {
+    text = `Descargando v${next}… ${(payload.updateState && payload.updateState.percent) || 0} %`;
+    hideButton = true;
+  } else if (phase === 'ready') {
+    text = `v${next} lista para instalar`;
+    label = 'Reiniciar e instalar';
+    action = 'apply';
+  } else if (phase === 'installing') {
+    text = `Instalando v${next}…`;
+    hideButton = true;
+  } else if (phase === 'error') {
+    const motivo = (payload.updateState && payload.updateState.error) || 'no se pudo bajar';
+    text = `No se pudo actualizar: ${motivo}`;
+    action = 'open';
+    label = 'Descargar';
+  }
+
+  updateBannerEl.hidden = false;
+  updateBannerEl.classList.toggle('error', phase === 'error');
+  updateTextEl.textContent = text;
+  lastUpdateAction = action;
+  if (updateLinkEl) {
+    updateLinkEl.hidden = hideButton;
+    updateLinkEl.textContent = label;
+  }
+}
+
 function render(payload) {
   rowsEl.textContent = '';
 
@@ -80,17 +145,8 @@ function render(payload) {
     if (cardEl.style.maxHeight !== max) cardEl.style.maxHeight = max;
   }
 
-  // Banner de actualizacion disponible.
-  if (payload.updateInfo && updateBannerEl && updateTextEl) {
-    updateBannerEl.hidden = false;
-    const current = payload.currentVersion || '—';
-    const next = payload.updateInfo.version || '—';
-    updateTextEl.textContent = `v${current} → v${next} disponible`;
-    lastUpdateUrl = payload.updateInfo.url || null;
-  } else if (updateBannerEl) {
-    updateBannerEl.hidden = true;
-    lastUpdateUrl = null;
-  }
+  // Banner de actualizacion: cambia con el punto en que esta la instalacion.
+  renderUpdateBanner(payload);
 
   for (const provider of payload.providers || []) {
     const row = el('div', `row ${provider.status}`);

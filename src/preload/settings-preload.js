@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('usagiaSettings', {
   test: (payload) => ipcRenderer.invoke('settings:test', payload),
   reveal: () => ipcRenderer.invoke('settings:reveal'),
   checkUpdates: () => ipcRenderer.invoke('settings:checkUpdates'),
+  applyUpdate: () => ipcRenderer.invoke('settings:applyUpdate'),
   close: () => ipcRenderer.send('settings:close'),
 });

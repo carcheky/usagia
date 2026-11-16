@@ -170,6 +170,77 @@ async function fetchReleases() {
 }
 
 /**
+ * ¿Se puede actualizar la app sola desde dentro?
+ *
+ * Solo cuando hay un binario instalado que se pueda reemplazar:
+ *   - **Windows/NSIS**: sí (el instalador silencioso reemplaza en su sitio).
+ *   - **Linux/AppImage**: sí, si estamos corriendo desde un AppImage
+ *     (`APPIMAGE`); se baja el nuevo al lado y se relanza.
+ *   - **Portable, `.deb`, macOS o el repo en desarrollo**: no. En esos casos
+ *     queda el enlace a la release (descarga manual).
+ *
+ * `PORTABLE_EXECUTABLE_DIR` la pone el target portable de electron-builder:
+ * si está, la app se está ejecutando como portable.
+ *
+ * @param {{platform?: string, packaged?: boolean, env?: object}} ctx
+ * @returns {{ok: boolean, reason: string}}
+ */
+function canAutoUpdate(ctx = {}) {
+  const platform = ctx.platform || process.platform;
+  const env = ctx.env || process.env;
+  if (!ctx.packaged) return { ok: false, reason: 'en desarrollo' };
+  if (env.PORTABLE_EXECUTABLE_DIR) return { ok: false, reason: 'es la versión portable' };
+  if (platform === 'win32') return { ok: true, reason: 'nsis' };
+  if (platform === 'linux') {
+    return env.APPIMAGE ? { ok: true, reason: 'appimage' } : { ok: false, reason: 'no es un AppImage' };
+  }
+  if (platform === 'darwin') return { ok: false, reason: 'macOS no tiene binario publicado' };
+  return { ok: false, reason: `plataforma ${platform} sin binario` };
+}
+
+/**
+ * El fichero que hay que bajarse para actualizar de verdad (no para mirar).
+ *
+ * Los nombres los pone electron-builder en `package.json` (`artifactName`):
+ *   - Windows: `Usagia-Setup-<v>-win-x64.exe` (el portable NO se puede
+ *     actualizar en su sitio).
+ *   - Linux: `Usagia-<v>-linux-x86_64.AppImage`.
+ *
+ * @param {object} release - release de GitHub (con `assets`)
+ * @param {{platform?: string}} ctx
+ * @returns {{name: string, url: string, size: number}|null}
+ */
+function assetFor(release, ctx = {}) {
+  const platform = ctx.platform || process.platform;
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
+  const pick = (test) => {
+    const found = assets.find((asset) => test(String(asset.name || '')));
+    return found
+      ? { name: found.name, url: found.browser_download_url || found.url || '', size: Number(found.size) || 0 }
+      : null;
+  };
+  if (platform === 'win32') {
+    return pick((name) => /^Usagia-Setup-.*-win-x64\.exe$/i.test(name));
+  }
+  if (platform === 'linux') {
+    return pick((name) => /\.AppImage$/i.test(name));
+  }
+  return null;
+}
+
+/**
+ * Porcentaje de descarga, acotado a 0-100 y entero.
+ * @param {number} received - bytes descargados
+ * @param {number} total - bytes totales (0 si no se sabe)
+ * @returns {number}
+ */
+function downloadPercent(received, total) {
+  if (!Number.isFinite(received) || received <= 0) return 0;
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.floor((received / total) * 100)));
+}
+
+/**
  * Comprueba si hay una versión nueva disponible.
  * @param {string} currentVersion - versión instalada (sin "v")
  * @param {'auto'|'stable'|'beta'} channel - canal de actualización
@@ -205,6 +276,13 @@ async function checkForUpdates(currentVersion, channel = 'auto') {
             publishedAt: latestRelease.published_at,
             prerelease: latestRelease.prerelease,
             body: latestRelease.body || '',
+            // Los ficheros de la release: con ellos se puede bajar e instalar
+            // sin pasar por el navegador.
+            assets: (latestRelease.assets || []).map((asset) => ({
+              name: asset.name,
+              size: asset.size,
+              url: asset.browser_download_url,
+            })),
           }
         : null,
       current,
@@ -235,6 +313,9 @@ module.exports = {
   compareVersions,
   isNewer,
   effectiveChannel,
+  canAutoUpdate,
+  assetFor,
+  downloadPercent,
   filterByChannel,
   findLatest,
   fetchReleases,

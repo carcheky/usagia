@@ -8,5 +8,7 @@ contextBridge.exposeInMainWorld('usagia', {
   refresh: () => ipcRenderer.send('card:refresh'),
   open: (url) => ipcRenderer.send('card:open', url),
   settings: () => ipcRenderer.send('card:settings'),
+  // Bajar/instalar la actualización (o abrir la release si no se puede sola).
+  applyUpdate: () => ipcRenderer.send('card:update'),
   ready: () => ipcRenderer.send('card:ready'),
 });
