@@ -1,16 +1,18 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 01:55 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 02:00 (Europe/Madrid).
 > **Quién escribe este fichero ahora mismo:** la sesión `session-fa207887`
-> ("Plan de Android"). Esta versión **fusiona** lo que escribieron las sesiones
-> `session-e9f5038b` (lead: verificación de la UI y de la app instalada de
-> `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los items 11-18) y
-> `session-dab004c1` (fallback sin GPU), y **cierra el conflicto abierto** entre
-> las dos últimas: sus cambios ya están **commiteados y empujados** por
-> separado (ver *Trabajo commiteado y pusheado*), así que el árbol queda
-> limpio. Si al abrirlo la cabecera dice otra sesión, **fusiona su contenido**
-> en vez de sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el
-> mismo repo*).
+> ("Plan de Android"). **Pausa del día**: se añade
+> [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión)
+> con lo que le queda a cada sesión para seguir mañana. Esta versión **fusiona**
+> lo que escribieron las sesiones `session-e9f5038b` (lead: verificación de la
+> UI y de la app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo:
+> cola de los items 11-18) y `session-dab004c1` (fallback sin GPU), y
+> **cierra el conflicto abierto** entre las dos últimas: sus cambios ya están
+> **commiteados y empujados** por separado (ver *Trabajo commiteado y
+> pusheado*), así que el árbol queda limpio. Si al abrirlo la cabecera dice
+> otra sesión, **fusiona su contenido** en vez de sobrescribirlo (ver
+> [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
 > repo (ver [Cómo mantener este fichero](#cómo-mantener-este-fichero)).
@@ -26,7 +28,7 @@ verificada**; además se han cerrado la cola de esa revisión y el conflicto
 entre sesiones. `beta` está a la par de `origin/beta` y **el árbol está
 limpio**: no queda nada sin commitear.
 
-## Sesiones activas en este repo (2026-11-16 01:55)
+## Sesiones activas en este repo (2026-11-16 02:00)
 
 Cuatro sesiones de DSH están abiertas sobre este mismo repo y han recibido el
 mismo encargo. **DSH no permite mensajes entre sesiones raíz distintas**
@@ -36,7 +38,7 @@ lugar de pisar.
 
 | Sesión | Título | Qué está haciendo | Ficheros reservados |
 |---|---|---|---|
-| `session-fa207887` (**esta**) | Plan de Android | Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4`, commiteado en `59692d2`. Ha **commiteado y pusheado el trabajo que las otras sesiones dejaron a medias** (ids de cuenta, `pct100` con espacios, nota de la cuenta, fallback sin GPU) para dejar el árbol limpio. La **implementación de Android no ha empezado** | `PLAN-ANDROID.md` (liberado) · `STATUS.md` (fusionado) |
+| `session-fa207887` (**esta**) | Plan de Android | **Pausa del día**. Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4`, commiteado en `59692d2`. Ha **commiteado y pusheado el trabajo que las otras sesiones dejaron a medias** (ids de cuenta, `pct100` con espacios, nota de la cuenta, fallback sin GPU) para dejar el árbol limpio. La **implementación de Android no ha empezado**: lo siguiente es **F0** (keystore + secrets), que no depende de nadie. Ver [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión) | `PLAN-ANDROID.md` (liberado) · `STATUS.md` (fusionado) |
 | `session-e9f5038b` | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
 | `session-8a303ef4` | Revisión a fondo del código | Los 9 commits de la revisión están publicados en `beta.4`. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca` | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
 | `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Verifica la app **instalada** de `beta.4` (script propio en `%TEMP%`). Su fallback sin GPU ya está commiteado en `814b6f5` | (repositorio: sus cambios ya están dentro) |
@@ -308,6 +310,65 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
 6. **Linter**: no hay ESLint ni formateador, y el bug de `!enabled` (arreglado
    en `031c693`) lo habría cazado. Añadirlo toca el pipeline, así que es
    decisión del usuario antes de meter un job de CI nuevo.
+
+## Pausa del día (2026-11-16 02:00): qué le queda a cada sesión
+
+Punto de parada del 2026-11-16: el árbol está **limpio y empujado**
+(`beta` = `origin/beta` = `452220f`), así que cualquier sesión puede seguir
+sin pelearse con cambios a medias.
+
+### De esta sesión (`session-fa207887`, plan de Android)
+
+- [ ] **F0 — keystore y secrets** (no depende de nadie, se puede hacer ya):
+      generar `usagia-release.jks` con `keytool`, guardarlo **fuera del repo**
+      (gestor de contraseñas + copia) y crear los 4 secrets
+      `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+      `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Recordatorio del plan:
+      **una sola clave para `beta` y `main`**, porque Android no actualiza una
+      app si cambia la firma.
+- [ ] **F1 — núcleo compartido** (`src/core/`): mover `http.js` y los
+      proveedores, con la resolución de credenciales inyectada.
+      **Bloqueado** hasta que `session-8a303ef4` libere
+      `src/main/providers/*` (items 12 y 17) — si no, se deshace su trabajo.
+      Ojo: el item 17 (`formatTokens` duplicado, bloque de métrica repetido)
+      lo resuelve el propio núcleo: si se arregla antes, se hereda.
+- [ ] **F2 — app Capacitor + job `verify-android`**, en **un solo push** con
+      el `feat(android):` (los `ci:` solos no publican y el job no se
+      ejercitaría). Saldría como `v1.0.0-beta.5`.
+- [ ] **F3 — instalar el APK en un móvil real**: la única prueba de que
+      **funciona**, no solo de que existe. Sin esto no se pasa a `main`.
+- [ ] **F4** — `fix:` de lo que salga de F3 (comprobar además que **actualiza
+      encima** sin desinstalar).
+- [ ] **F5** — `docs:` de Android en README y AGENTS.
+- [ ] **F6** — `git switch main && git merge --ff-only beta && git push origin
+      main` → `v1.0.0`, la primera estable.
+- [ ] Al cerrar F2 y F6: actualizar `STATUS.md` (fusionando) y
+      `PLAN-ANDROID.md` con lo hecho.
+
+### De las otras sesiones
+
+| Sesión | Qué le queda |
+|---|---|
+| `session-8a303ef4` | Items **12** (`safeStorage` para cifrar las credenciales) y **17** (código muerto y duplicación). Después, **libera `src/main/providers/*`** para que F1 pueda empezar |
+| `session-e9f5038b` | Terminar de cuadrar `README.md`/`FINDINGS.md`/`AGENTS.md` con lo publicado, y la comprobación de la **app instalada** de `beta.4` |
+| `session-dab004c1` | Verificación de la app instalada de `beta.4` (script propio en `%TEMP%`) y capturas del tooltip |
+
+### Decisiones que son del usuario
+
+- **Publicar `v1.0.0`** (la primera estable) o seguir en `beta` un rato más.
+- **Electron 38.8.6 → 42.11.16**: el PR #1 de Dependabot está cerrado sin
+  fusionar y GitHub avisa de **34 vulnerabilidades** en `main`. Subir o
+  documentar el riesgo.
+- **Play Store** (o no): el plan asume **sideload**, sin Google Play.
+- **Linter** (ESLint) y un job de CI nuevo.
+
+### Notas para quien siga
+
+- `preview-card.png` se regenera en cada vista previa: una ejecución
+  interrumpida lo deja a **0 bytes**. **Restaurarlo** con
+  `git checkout -- preview-card.png`, nunca commitearlo roto.
+- Las vistas previas ya se ponen solas `disable-gpu` (`814b6f5`): basta
+  `npm run preview` con `ELECTRON_RUN_AS_NODE` **vacío**.
 
 ## Puntos abiertos y riesgos conocidos
 
