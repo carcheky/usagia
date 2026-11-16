@@ -140,6 +140,10 @@ publicados en `beta.4`). La sesión `session-8a303ef4` los ha ido cerrando:
 | 17 | Código muerto y duplicación | varios | **PENDIENTE**: `locale` sin usar, `gemini` sin proveedor, `isInteractive`/`CARD_WIDTH`/`describe()` sin consumidores, `--probe` duplicado en `main.js`, `formatTokens` copiado en `claude.js` y `deepseek.js`, bloque de métrica de porcentaje repetido 4 veces |
 | 18-bis | Sin linter | `package.json`, `.github/workflows/release.yml` | **DECISIÓN PENDIENTE**: añadir ESLint + un job de CI es un cambio de tooling que conviene decidir antes de tocar el pipeline |
 
+El plan de trabajo de los dos que quedan, con ficheros, trampas y criterio de
+aceptación, está en
+[De `session-8a303ef4` (revisión a fondo): los items 12 y 17, en detalle](#de-session-8a303ef4-revisión-a-fondo-los-items-12-y-17-en-detalle).
+
 Verificado el 2026-11-16 01:36 sobre `60b9519`: `npm test` → **OK** y
 `npm run test:package` → **OK**. Además, las **dos vistas previas funcionan**
 en este entorno con `ELECTRON_RUN_AS_NODE` vacío y
