@@ -114,7 +114,7 @@ ver `scripts/test-lib.js`). Tarda un segundo. Es lo que ejecuta el job
 | `test-release.js` | `scripts/release.js`: clasificación de commits, qué publica, versión base, numeración `beta.NNNN`, changelog | Al tocar el pipeline de releases |
 | `test-updates.js` | `src/main/updates.js`: parseo y comparación de versiones (semver y betas), canales `auto`/`stable`/`beta`, qué es "más nueva", búsqueda con `fetch` simulado y errores de red | Al tocar la búsqueda de actualizaciones o los canales |
 | `test-package.js` | `build.files`/`asarUnpack`: los `.ps1` viajan desempaquetados, el renderer va en el paquete | Al tocar `package.json` → `build` |
-| `test-docs.js` | Documentación: enlaces relativos vivos, todo documento de `docs/` enlazado desde `docs/README.md`, cabecera (`Para quién`/`Responde a`/`Verificado`) y tope de 300 líneas | Al añadir o mover documentos, o al cambiar un título enlazado desde otro sitio |
+| `test-docs.js` | Documentación: enlaces relativos vivos, todo documento de `docs/` enlazado desde `docs/README.md`, cabecera (`Para quién`/`Responde a`/`Verificado`), tope de 300 líneas (el historial exento), índice de secciones al día en `STATUS.md`/`FINDINGS.md` y **cobertura de recetas** (toda tarea del README tiene fila) | Al añadir o mover documentos, al cambiar un título enlazado desde otro sitio, o al añadir una sección al README |
 
 Fuera de `npm test`, porque hace red de verdad: `npm run test:ci-env`
 (simula el runner de CI sin credenciales y sondea los proveedores).
@@ -137,18 +137,24 @@ Lo que se aprende trabajando **no se queda en la conversación**: se documenta e
 cada cosa, cómo se mantiene) está en [docs/METODOLOGIA.md](docs/METODOLOGIA.md).
 
 - **Un dato, un sitio**: endpoint o cuota medida → `FINDINGS.md`; estado del
-  proyecto → `STATUS.md`; regla de trabajo → este fichero; uso de la app →
-  `README.md`; decisión durable → `docs/decisions/`; método → `docs/`. No se copia
-  lo que ya dice otro documento: se enlaza.
+  proyecto → `STATUS.md`; historial ya cerrado → [docs/historial.md](docs/historial.md);
+  regla de trabajo → este fichero; uso de la app → `README.md`; decisión durable →
+  `docs/decisions/`; método → `docs/`. No se copia lo que ya dice otro documento: se
+  enlaza.
 - **Carga selectiva**: antes de abrir nada, la receta de la tarea
   ([§4](docs/METODOLOGIA.md#4-recetas-qué-cargar-según-la-tarea)). Los documentos
-  largos (`STATUS.md`, `FINDINGS.md`) se leen **por secciones**, con `grep '^## '` y
-  `read` con `offset`/`limit`; nunca enteros.
+  largos (`STATUS.md`, `FINDINGS.md`, `docs/historial.md`) se leen **por secciones**:
+  llevan una **tabla de secciones** al principio (H2 → línea) y se regenera con
+  `node scripts/docs-metrics.js --fix <fichero>`. Nunca enteros.
+- **La skill `usagia-docs`** (en `.agents/skills/` y en el perfil DSH) es el disparador:
+  dice qué leer y dónde escribir. Su cuerpo apunta al índice; no repite el método.
 - **Cada documento dice para quién es, a qué responde y cuándo se verificó.** Un
   documento sin fecha no se sabe si miente.
-- **Un documento, un propósito**, y como mucho 300 líneas. Si crece, se parte.
+- **Un documento, un propósito**, y como mucho 300 líneas (el historial está exento:
+  es de archivo). Si crece, se parte.
 - El commit va como `docs:`, y `npm test` lo comprueba con `scripts/test-docs.js`:
-  enlaces vivos, índice completo, cabecera y tamaño.
+  enlaces vivos, índice completo, cabecera, tamaño, índice de secciones al día y
+  **cobertura de recetas** (toda tarea del README tiene su fila).
 
 ## Varias sesiones en el mismo repo
 

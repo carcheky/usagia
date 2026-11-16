@@ -5,6 +5,22 @@ otro agente que trabaje sobre las mismas cuotas. Todo lo de aquí está
 **verificado con llamadas reales** el 2026-11-15 (solo GET de metadatos: no
 consume tokens de IA).
 
+> **Se lee por secciones**: la tabla de abajo dice en qué línea empieza cada una, para
+> poder leer solo el trozo que hace falta (`read` con `offset`/`limit`). El índice se
+> regenera con `node scripts/docs-metrics.js --fix FINDINGS.md`.
+
+<!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
+| Sección | Línea |
+|---|---|
+| 1. Convención de semántica (lo que más confunde) | 24 |
+| 2. Endpoints y credenciales | 61 |
+| 3. Valores verificados (2026-11-15 ~14:35) | 85 |
+| 4. Puntos abiertos (para el otro agente) | 202 |
+| 5. Comportamiento de la app | 249 |
+| 6. El paquete (asar): el fallo que no se veía en desarrollo | 439 |
+| 7. Guiones sueltos que ya funcionan | 481 |
+<!-- fin-índice -->
+
 ## 1. Convención de semántica (lo que más confunde)
 
 **Todas las APIs consultedadas devuelven datos heterogéneos.** La app los

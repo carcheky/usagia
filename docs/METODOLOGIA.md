@@ -63,18 +63,28 @@ Esta es la tabla que evita abrir medio repositorio para un cambio de tres línea
 
 | Tarea | Leer (en orden) | No hace falta |
 |---|---|---|
-| **Retomar el repo tras otra sesión** | [STATUS.md](../STATUS.md): cabecera, *Sesiones activas*, *Pausa del día* y *Pendiente / siguiente* (`grep '^## '` primero) | README entero, FINDINGS, el código |
+| **Retomar el repo tras otra sesión** | [STATUS.md](../STATUS.md): *Sesiones activas*, *Pendiente / siguiente* y *Decisiones del usuario* (el índice de secciones del principio da la línea de cada una) | README entero, FINDINGS, el código, el historial |
 | **Saber qué hay publicado** | [STATUS.md § Versiones](../STATUS.md) o `git tag --sort=-v:refname` | Todo lo demás |
 | **Bug de cuota o de credenciales de un proveedor** | [FINDINGS.md §1–§2](../FINDINGS.md) + `src/main/providers/<id>.js` + `scripts/test-providers.js` | `src/renderer/`, pipeline, Android |
 | **Añadir o cambiar un proveedor** | [README § Añadir un proveedor](../README.md) + [FINDINGS.md §2](../FINDINGS.md) + `src/main/providers/index.js` | `STATUS.md` |
 | **Tocar la tarjeta o la configuración** | [README § Interacción](../README.md) y § Configuración + `src/renderer/` + `scripts/test-renderer.js` | `FINDINGS.md` |
-| **Empaquetado / `asar` / instalador** | [README § Notas y límites](../README.md) + `package.json` → `build` + `scripts/test-package.js` | Todo lo demás |
+| **La bandeja y el hover (icono, tooltip, posición)** | [AGENTS.md § Reglas de la app](../AGENTS.md) + `src/main/hover.js` · `src/main/tooltip.js` · `src/main/card.js` + [FINDINGS.md §5](../FINDINGS.md) (comportamiento de la app) | `src/renderer/`, pipeline |
+| **Empaquetado / `asar` / scripts del paquete** | [README § Notas y límites](../README.md) + `package.json` → `build` + `scripts/test-package.js` + [FINDINGS.md §6](../FINDINGS.md) (el fallo del asar) | Todo lo demás |
+| **Instalar con el instalador NSIS (o el portable)** | [README § Instalación y arranque](../README.md) + [FINDINGS.md §6](../FINDINGS.md) + el historial de la app instalada en [docs/historial.md](historial.md) | `src/`, proveedores |
+| **Un error al arrancar o una actualización que falla** | `updater/update.log` (el log de la actualización, junto a la configuración) + [FINDINGS.md §4](../FINDINGS.md) + [docs/historial.md](historial.md) | `src/renderer/`, proveedores |
+| **La configuración guardada (`config.json`)** | [README § Configuración](../README.md) (el JSON de ejemplo) + `src/main/config.js` + [FINDINGS.md §5](../FINDINGS.md) | `src/renderer/`, pipeline |
+| **Medir las cuotas de verdad (probe)** | [FINDINGS.md §3](../FINDINGS.md) + `npm run probe` + [FINDINGS.md §7](../FINDINGS.md) (los guiones sueltos) | `src/` |
+| **Resolver una credencial que no aparece** | [FINDINGS.md §2](../FINDINGS.md) (cascada) + [README § Cómo se autentican los proveedores](../README.md) + `src/main/credentials.js` + `scripts/test-credentials.js` | `src/renderer/`, pipeline |
 | **Ramas, releases o pipeline** | [README § Releases](../README.md) + [AGENTS.md § Ramas y Releases](../AGENTS.md) + `scripts/release.js` | `STATUS.md` |
 | **Actualizaciones (canal, aviso)** | [README § Actualizaciones](../README.md) + `src/main/updates.js` + `scripts/test-updates.js` | El resto de proveedores |
 | **Android** | [PLAN-ANDROID.md](../PLAN-ANDROID.md) — es la excepción: el plan **se lee entero** | `src/main/hover.js`, `card.js` |
 | **Revisión de código transversal** | [AGENTS.md § Reglas de la app](../AGENTS.md) + [decisions/0001](decisions/0001-documentacion-para-humanos-y-agentes.md) + el código | `STATUS.md` completo |
-| **Medir cuotas de verdad** | [FINDINGS.md §3](../FINDINGS.md) + `npm run probe` | `src/` |
 | **Documentar algo nuevo** | [§5](#5-dónde-va-cada-cosa) y [§6](#6-anatomía-de-un-documento) de este documento + [README.md](README.md) | Todo lo demás |
+| **Saber por qué se hizo una decisión ya cerrada** | [docs/historial.md](historial.md) (por secciones, con su índice) | `STATUS.md`, `FINDINGS.md` |
+
+> **La columna de la derecha importa tanto como la de la izquierda.** "No hace falta"
+> es lo que hace que la carga selectiva funcione: sin ella, la receta solo sería una
+> lista de lectura y el ahorro sería pequeño.
 
 ## 5. Dónde va cada cosa
 
@@ -85,6 +95,7 @@ Un dato, un sitio. Si dudas, esta tabla decide:
 | Cómo se usa la app (humano) | [README.md](../README.md) | Guía + tablas |
 | Regla de trabajo, ramas, releases, coordinación entre sesiones | [AGENTS.md](../AGENTS.md) | Reglas cortas |
 | Estado del proyecto **ahora** (qué está publicado, qué está a medias) | [STATUS.md](../STATUS.md) | Instantánea con fecha |
+| Historial por fases (qué se hizo y por qué, ya cerrado) | [docs/historial.md](historial.md) | Cronología con índice de secciones |
 | Endpoint, credencial, semántica de un proveedor, cifras medidas | [FINDINGS.md](../FINDINGS.md) | Referencia |
 | Decisión durable con alternativa descartada | `docs/decisions/NNNN-*.md` | ADR |
 | Método, convención o procedimiento del repo | `docs/*.md` | Explicación o cómo-se-hace |
@@ -128,8 +139,10 @@ sesión entera:
 2. **Enlázalo** desde [docs/README.md](README.md) si es un documento nuevo, o
    desde el documento que ya lo cubre si es una sección.
 3. **Pasa `npm test`**: `scripts/test-docs.js` falla si hay un enlace roto, si un
-   documento de `docs/` no está en el índice, si falta la cabecera o si un
-   documento se pasa de 300 líneas.
+   documento de `docs/` no está en el índice, si falta la cabecera, si un documento
+   se pasa de 300 líneas (salvo `historial.md`, que es de archivo), si el índice de
+   secciones de un documento largo no cuadra con sus títulos, o si una tarea del
+   README se queda sin receta.
 4. **Commit `docs:`**. No publica release (no es de la app) y deja el
    conocimiento en el historial, que es donde lo encuentran las otras sesiones.
 
@@ -140,17 +153,53 @@ se copia a `docs/`; se decide (ADR) o se documenta el método.
 
 ## 8. Cómo lo usa un agente (DSH)
 
-- **Las skills son divulgación progresiva de serie**: el catálogo solo trae
-  `name` + `description`; el cuerpo se carga cuando la tarea encaja. Por eso una
-  `description` vaga equivale a una skill que nunca se activa.
+- **La skill `usagia-docs` es el disparador**: vive en el perfil (`~/.dsh/skills/usagia-docs/`)
+  y su `description` dice **cuándo** activarla ("qué leer", "documentar esto", "qué ficheros
+  tocar"). El catálogo de skills solo trae `name` + `description`, así que una `description`
+  vaga equivale a una skill que nunca se activa.
+- **La skill no repite el método**: su cuerpo solo apunta al índice y a la receta (§4). El
+  contenido vive aquí, en un solo sitio.
 - **`AGENTS.md` es el puntero de arranque**, no el contenido: dice dónde está el
   índice y las reglas que no se pueden deducir del código.
 - **Un nivel de índice, no dos**: `AGENTS.md` → [docs/README.md](README.md) →
   documento. Añadir un índice de índices empeora la precisión (§2).
 - **`grep` y `read` con `offset`/`limit`** antes que volcar: es el T2 del §3, y es
-  lo que evita gastar la ventana en `STATUS.md` cuando se buscaba una cifra.
+  lo que evita gastar la ventana en `STATUS.md` cuando se buscaba una cifra. Los
+  documentos largos llevan **tabla de secciones** al principio, con la línea de cada
+  una: se regenera con `node scripts/docs-metrics.js --fix <fichero>`.
 
-## 9. Qué **no** es esto
+## 9. Cómo se mide (y por qué hay un script)
+
+El ahorro se **mide**, no se supone:
+
+```bash
+node scripts/docs-metrics.js            # ficheros, ahorro por tarea, media y peor caso
+node scripts/docs-metrics.js --index F  # imprime el índice de secciones de un fichero
+node scripts/docs-metrics.js --fix F    # reescribe ese índice dentro del fichero
+```
+
+El criterio es `chars/3,6` (español técnico). El **porcentaje de ahorro no depende del
+divisor** (se aplica igual a los dos lados): los absolutos son aproximados, el ratio es
+exacto.
+
+**Línea base (2026-11-16 18:50, después de partir `STATUS.md`):**
+
+| | Antes (raíz entera) | Ahora (receta) | Ahorro |
+|---|---|---|---|
+| Media de 12 tareas | 22.338 tok | 2.935 tok | **87 %** |
+| Peor caso (Android, plan entero) | 29.955 tok | 9.637 tok | 68 % |
+| Retomar tras otra sesión | 21.646 tok | 3.051 tok | 86 % |
+
+Antes de partir `STATUS.md` (1.078 líneas), la raíz costaba **34.132 tokens** y el peor
+caso de "retomar" era del 75 %. Partir el fichero en estado + historial, y compactar
+la tabla de sesiones y la cola de la revisión, es lo que sube ese caso.
+
+**Este script no entra en `npm test`**: depende del contenido de `STATUS.md`, que cambia
+con cada sesión. Una prueba que se rompe cada vez que otra sesión actualiza el estado no
+sirve de red de seguridad. Lo que sí entra es `scripts/test-docs.js`, que comprueba la
+**forma** (enlaces, índice, cabeceras, tamaño, índice de secciones y cobertura de recetas).
+
+## 10. Qué **no** es esto
 
 - **No es un RAG ni una wiki**: no hay embeddings ni servidor. Son ficheros
   versionados con un índice que cabe en la ventana.
