@@ -30,14 +30,14 @@
 | Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
 | Qué funciona (verificado) | 337 |
 | Pendiente / siguiente | 356 |
-| Puntos abiertos y riesgos conocidos | 387 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 411 |
-| Reparto entre sesiones (acuerdo) | 430 |
-| Cómo mantener este fichero | 452 |
-| Decisiones que son del usuario | 465 |
-| Notas para quien siga | 472 |
-| Retomar (en 5 minutos) | 479 |
-| Actualización automática desde la app (2026-11-16 18:45) | 494 |
+| Puntos abiertos y riesgos conocidos | 381 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 405 |
+| Reparto entre sesiones (acuerdo) | 424 |
+| Cómo mantener este fichero | 446 |
+| Decisiones que son del usuario | 459 |
+| Notas para quien siga | 466 |
+| Retomar (en 5 minutos) | 473 |
+| Actualización automática desde la app (2026-11-16 18:45) | 488 |
 <!-- fin-índice -->
 
 ## Lo último: items 12 y 17 completados (2026-11-16 20:50)
@@ -363,14 +363,8 @@ Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en ve
    vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
    de Electron 38. O se vuelve a abrir el PR y se sube Electron, o se acepta
    el riesgo y se documenta. Decisión del usuario.
-3. **Android**: el **plan** está escrito y **actualizado** en
-   [PLAN-ANDROID.md](PLAN-ANDROID.md) (Capacitor 8 + núcleo JS compartido +
-   jobs `verify-android`/`build-android`), pero la **implementación no ha
-   empezado**: hoy no hay nada que compilar para Android. Detalle y secuencia
-   en [Android: el plan y su estado](docs/historial.md#android-el-plan-y-su-estado-2026-11-16).
-   Siguiente paso: **F0** (keystore + secrets, no depende de nadie) y luego
-   **F1**, que espera a que la sesión `session-8a303ef4` libere
-   `src/main/providers/*`.
+3. ~~**Android**~~: **DESCARTADO** por coste. El plan está en
+   [PLAN-ANDROID.md](PLAN-ANDROID.md) por si se retoma en el futuro.
 4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
    binarios de macOS** (solo Windows y Linux).
 5. ~~**Cola de la revisión a fondo**~~: **COMPLETADA** (`6f82da5`, `4cdc332`).
