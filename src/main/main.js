@@ -523,6 +523,10 @@ function buildMenu() {
     click: () => checkForUpdates(),
   });
   items.push({
+    label: 'Actualizar datos',
+    click: () => refresh(),
+  });
+  items.push({
     label: 'Configuración…',
     click: () => settings.open(),
   });
