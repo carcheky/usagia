@@ -64,15 +64,41 @@ function weightOf(metric) {
 
 /**
  * Las ventanas con porcentaje de un proveedor, con su "lo que queda".
+ *
+ * Hay dos clases de metricas:
+ *  - Con `pct`: lo CONSUMIDO de una ventana de cuota (Minimax, Claude,
+ *    Antigravity). Lo que queda es 1 - pct.
+ *  - La AUTONOMIA (DeepSeek): los dias que aguanta el saldo al ritmo
+ *    actual. No tiene pct, pero se compara con las ventanas por su
+ *    `window`, que el proveedor le asigna segun cuanta (5 h, diaria,
+ *    semanal, mensual).
+ *
+ * El SALDO en si no es una ventana y no entra en la media: no hay tope
+ * contra el que medirlo.
+ *
  * @param {object} result resultado de un proveedor
  * @returns {Array<object>} ventanas con { left, window, transient }
  */
 function windowsOf(result) {
   const out = [];
   for (const metric of result?.metrics || []) {
-    if (typeof metric?.pct !== 'number') continue;
+    // El saldo no es una ventana: se cuenta con la autonomia.
+    if (metric.kind === 'balance') continue;
+
+    let left;
+    if (typeof metric?.pct === 'number') {
+      left = Math.max(0, Math.min(1, 1 - metric.pct));
+    } else if (metric?.kind === 'runway' && Number.isFinite(metric.runwayDays)) {
+      // La autonomia se mide en DIAS: lo que queda es la fraccion de la
+      // ventana mas larga (30 dias) que aguanta el saldo. Con 12 meses de
+      // autonomia sale 1 (de sobra); con 3 dias, 0,1 (poco).
+      left = Math.max(0, Math.min(1, metric.runwayDays / 30));
+    } else {
+      continue;
+    }
+
     out.push({
-      left: Math.max(0, Math.min(1, 1 - metric.pct)),
+      left,
       window: metric.window,
       transient: TRANSIENT_WINDOWS.has(metric.window),
     });
@@ -86,8 +112,11 @@ function windowsOf(result) {
  * "Bloqueado" = todas sus ventanas de cuota estan agotadas: ese proveedor
  * no se puede usar en absoluto.
  *
+ * El SALDO (DeepSeek) se mira aparte: no es una ventana, pero si avisa si
+ * esta bajo, porque no se repone solo (hay que recargar).
+ *
  * @param {object} result
- * @returns {{left: number|null, blocked: boolean, exhaustedTransient: boolean, exhaustedLong: boolean}}
+ * @returns {{left: number|null, blocked: boolean, exhaustedTransient: boolean, exhaustedLong: boolean, lowBalance: boolean}}
  */
 function providerState(result) {
   const windows = windowsOf(result);
@@ -96,8 +125,9 @@ function providerState(result) {
     blocked: false,
     exhaustedTransient: false,
     exhaustedLong: false,
+    lowBalance: false,
   };
-  if (!windows.length) return empty;
+  if (!windows.length && !hasBalance(result)) return empty;
 
   let sum = 0;
   let weights = 0;
@@ -108,12 +138,20 @@ function providerState(result) {
   }
 
   const exhausted = windows.filter((w) => w.left <= 0);
+  const balance = (result?.metrics || []).find((m) => m.kind === 'balance');
   return {
-    left: weights > 0 ? sum / weights : 0,
-    blocked: exhausted.length === windows.length,
+    left: weights > 0 ? sum / weights : null,
+    blocked: windows.length > 0 && exhausted.length === windows.length,
     exhaustedTransient: exhausted.some((w) => w.transient),
     exhaustedLong: exhausted.some((w) => !w.transient),
+    // Un saldo por debajo del 15 % es poco: hay que recargar.
+    lowBalance: Boolean(balance) && balance.tone === 'critical',
   };
+}
+
+/** ¿Este proveedor lleva saldo (DeepSeek)? */
+function hasBalance(result) {
+  return (result?.metrics || []).some((m) => m.kind === 'balance');
 }
 
 /**
@@ -132,6 +170,9 @@ function providerTone(result) {
   if (result.status === 'warning') return 'warning';
 
   const state = providerState(result);
+  // Un saldo bajo avisa aunque la autonomia sea larga: el saldo no se
+  // repone solo.
+  if (state.lowBalance) return 'critical';
   if (state.left === null) return 'neutral';
 
   if (state.exhaustedLong || state.left < THRESHOLDS.critical) return 'critical';
@@ -150,7 +191,7 @@ function computeAvailability(results) {
   const usable = list.filter((result) => result && result.status === 'ok');
   const withQuota = usable
     .map((result) => ({ result, state: providerState(result) }))
-    .filter((entry) => entry.state.left !== null);
+    .filter((entry) => entry.state.left !== null || entry.state.lowBalance);
 
   // Un proveedor sin cuota consultable (warning) no entra en la media, pero
   // avisa: no se puede dar por hecho que todo va bien. Un error, tambien.
@@ -168,18 +209,32 @@ function computeAvailability(results) {
   }
 
   // Media de lo que queda: cada proveedor pesa lo mismo (sus ventanas ya
-  // pesan por tipo dentro de su propia media).
-  const left = withQuota.reduce((sum, entry) => sum + entry.state.left, 0) / withQuota.length;
+  // pesan por tipo dentro de su propia media). Los que solo tienen saldo
+  // (DeepSeek sin autonomia) no entran en la media, pero avisan.
+  const withWindows = withQuota.filter((entry) => entry.state.left !== null);
+  const left = withWindows.length
+    ? withWindows.reduce((sum, entry) => sum + entry.state.left, 0) / withWindows.length
+    : null;
 
   const blocked = withQuota.filter((entry) => entry.state.blocked).length;
-  const allBlocked = blocked === withQuota.length;
+  const allBlocked = withWindows.length > 0 && blocked === withWindows.length;
   const anyLongExhausted = withQuota.some((entry) => entry.state.exhaustedLong);
   const anyTransientExhausted = withQuota.some((entry) => entry.state.exhaustedTransient);
+  const anyLowBalance = withQuota.some((entry) => entry.state.lowBalance);
 
   let tone = 'ok';
-  if (left < THRESHOLDS.critical || anyLongExhausted || allBlocked) {
+  if (
+    (left !== null && left < THRESHOLDS.critical) ||
+    anyLongExhausted ||
+    allBlocked ||
+    anyLowBalance
+  ) {
     tone = 'critical';
-  } else if (left < THRESHOLDS.warning || anyTransientExhausted || unknown > 0) {
+  } else if (
+    (left !== null && left < THRESHOLDS.warning) ||
+    anyTransientExhausted ||
+    unknown > 0
+  ) {
     tone = 'warning';
   }
 

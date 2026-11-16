@@ -243,6 +243,43 @@ usarlo a ciegas.
 - En Windows el tooltip del sistema está limitado a ~127 caracteres: ahí cabe
   el resumen corto de las cuatro IAs; la tarjeta es la vista completa.
 
+### DeepSeek NO es una cuota por ventanas (es saldo prepaid)
+
+**El API de DeepSeek no tiene ventanas de tiempo.** Lo devuelve su propia
+respuesta (`platform.deepseek.com/api/v0/users/get_user_summary`):
+
+```json
+{ "normal_wallets": [{"currency": "USD", "balance": "33.6439201546"}],
+  "bonus_wallets":  [{"currency": "CNY", "balance": "4.3821165200"}],
+  "total_costs":    [{"currency": "USD", "amount": "178.3196717234"}] }
+```
+
+Ni "5 h", ni "semanal", ni "mensual": **saldo, bonus y gasto**. Por eso no
+tiene sentido pintarle un "% de cuota": no hay denominador contra el que
+medirlo (el 100 % de una cuota es el tope; el 100 % de un saldo es el dinero
+que hay).
+
+**El modelo propio de DeepSeek** (en `src/main/providers/deepseek.js`):
+
+| Métrica | Qué es | Cómo se pinta |
+|---|---|---|
+| **saldo** | el dinero que queda | Barra que se llena con lo que **queda** (al revés que las cuotas, que se llenan con lo usado). El color va por el saldo absoluto: < $5 crítico, < $15 aviso, resto bien (el saldo **no se repone solo**: hay que recargar) |
+| **aguanta** | **autonomía**: días que aguanta el saldo al ritmo actual | Es la equivalente a una "ventana" de los otros proveedores, y se compara con ellas |
+
+**El ritmo de gasto** sale del desglose por días del endpoint de coste
+(`/api/v0/usage/cost` → `days[]`): gasto del mes ÷ días transcurridos (el
+día de hoy cuenta a medias, 0,5). Medido el 2026-11-16: **0,091 USD/día**
+→ el saldo de $33,64 da **12 meses** de autonomía.
+
+> **El gasto acumulado (`total_costs`) es histórico** y no dice nada del
+> estado actual: va al final de la lista y se marca como tal.
+
+En la cuenta global de disponibilidad, el saldo **no es una ventana** y no
+entra en la media: lo que entra es la **autonomía**, con la ventana que le
+corresponde por los días que quedan (≤ 1 día → `5h`, ≤ 2 → `daily`, ≤ 7 →
+`weekly`, más → `monthly`). Un **saldo bajo** avisa igual (crítico), porque
+recargar es cosa del usuario y no hay ventana que lo reponga.
+
 ### El color del icono de la bandeja (la cuenta global)
 
 El icono tiene **una** señal para muchos proveedores. Antes tomaba "la peor

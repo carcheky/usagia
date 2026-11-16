@@ -176,6 +176,33 @@ corta primero**, de más larga a más larga. El orden es estable y respeta los
 **grupos** de Antigravity (sus bloques por familia de modelos no se separan).
 Lo que no sea una ventana de cuota (saldo, tokens) queda al final.
 
+### 4. DeepSeek no es una cuota por ventanas (es saldo prepaid)
+
+El API de DeepSeek (`get_user_summary`) devuelve `normal_wallets`
+(saldo), `bonus_wallets` y `total_costs`: **ni "5 h", ni "semanal"**. Es
+dinero prepaid, y no hay denominador contra el que medir un "% usado", así
+que pintarle una barra de cuota era justo lo poco intuitivo.
+
+**Modelo propio** (`src/main/providers/deepseek.js`):
+
+| Métrica | Qué es | Cómo se pinta |
+|---|---|---|
+| **saldo** | el dinero que queda | Barra que se llena con lo que **queda** (al revés que las cuotas, que se llenan con lo usado). Color por el saldo absoluto: < $5 crítico, < $15 aviso, resto bien (no se repone solo) |
+| **aguanta** | **autonomía**: días que aguanta el saldo al ritmo actual | La equivalente a una "ventana" de los demás, y comparable con ellas |
+
+El ritmo sale del desglose por días (`/api/v0/usage/cost` → `days[]`): gasto
+del mes ÷ días transcurridos (hoy cuenta a medias). Medido: **0,091 USD/día**
+→ el saldo de $33,64 da **12 meses**.
+
+En la cuenta global, el saldo **no entra en la media** (no es ventana): entra
+la **autonomía**, con la ventana que le toca por los días que quedan (≤ 1 día
+→ `5h`, ≤ 2 → `daily`, ≤ 7 → `weekly`, más → `monthly`). Un **saldo bajo**
+avisa igual (crítico), porque recargar es cosa del usuario.
+
+La cabecera de la fila la dice el proveedor (`headline`): **"$33.64 ·
+aguanta 12 meses"**, y las métricas se ordenan por importancia (saldo y
+autonomía primero, que son las 4 que caben).
+
 ### Verificación
 
 - `npm test` → **OK** (pruebas nuevas: token caducado, cuota al 100 % con

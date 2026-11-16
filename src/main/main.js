@@ -144,6 +144,10 @@ function primarySummary(result) {
   if (result.status === 'unconfigured') return 'sin credencial';
   if (result.status === 'error') return 'error';
   if (result.status === 'warning') return 'cuota no disponible';
+  // Un proveedor puede decir lo que quiere en su cabecera (DeepSeek:
+  // "saldo · aguanta 12 meses"), porque su cuenta no es una cuota por
+  // ventanas de tiempo.
+  if (result.headline) return result.headline;
   const all = result.metrics || [];
   const metrics = all.filter((m) => typeof m.pct === 'number');
   if (!metrics.length) {
@@ -371,6 +375,7 @@ function broadcast() {
       color: provider.color,
       status: result?.status || 'pending',
       summary: result?.summary || '',
+      headline: result?.headline || '',
       primary: primarySummary(result),
       // El punto refleja la CUOTA de ese proveedor, no el estado de la
       // consulta: una ventana larga agotada tiene que salir en rojo, y una

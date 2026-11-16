@@ -21,6 +21,7 @@ const claude = require(path.join(root, 'providers', 'claude'));
 const antigravity = require(path.join(root, 'providers', 'antigravity'));
 const client = require(path.join(root, 'local', 'antigravity-client'));
 const availability = require(path.join(root, 'availability'));
+const deepseek = require(path.join(root, 'providers', 'deepseek'));
 
 let failures = 0;
 
@@ -526,6 +527,81 @@ check('las ventanas de 5 h pesan menos que las semanales en la media', () => {
   assert.ok(solo.left > 0.5, `media del proveedor ${solo.left}`);
   // Y aun asi avisa: la 5 h agotada es un contratiempo pasajero.
   assert.strictEqual(availability.providerTone(prov([['5h', 1], ['weekly', 0]])), 'warning');
+});
+
+/* ------------------------------------------------------------ deepseek */
+
+console.log('deepseek:');
+
+check('el saldo NO es una ventana: no entra en la media de cuota', () => {
+  // El saldo es dinero prepaid: no hay tope contra el que medirlo, asi que
+  // no puede compararse con la 5 h ni con la semanal de los demas.
+  const state = deepseek.balanceState(33.64, 178.32);
+  // La barra del saldo se llena con lo que QUEDA (no con lo usado, como las
+  // cuotas): de 212 USD puestos, quedan 33,64.
+  assert.ok(Math.abs(state.pct - 33.64 / 212) < 0.001, `pct ${state.pct}`);
+  // El color va por el saldo absoluto: no se repone solo (hay que recargar).
+  assert.strictEqual(deepseek.balanceTone(33.64), 'ok');
+  assert.strictEqual(deepseek.balanceTone(10), 'warning');
+  assert.strictEqual(deepseek.balanceTone(2), 'critical');
+  assert.strictEqual(deepseek.balanceTone(0), 'critical');
+});
+
+check('la autonomia se mide en dias y es la "ventana" de DeepSeek', () => {
+  // 30 USD gastados en 10 dias que ya han pasado = 3 USD/dia; con 30 USD de
+  // saldo, 10 dias de autonomia.
+  const days = Array.from({ length: 10 }, (_, i) => ({
+    date: `2020-01-${String(i + 1).padStart(2, '0')}`,
+    data: [{ model: 'm', usage: [{ type: 'RESPONSE_TOKEN', amount: '3' }] }],
+  }));
+  const runway = deepseek.runwayFrom(days, 30);
+  assert.ok(runway, 'debe sacar la autonomia');
+  assert.ok(Math.abs(runway.perDay - 3) < 0.01, `ritmo ${runway.perDay}`);
+  assert.strictEqual(runway.days, 10, `autonomia ${runway.days} dias`);
+  // Con 10 dias de autonomia, la ventana que le toca es la mensual (mas de
+  // una semana de sobra).
+  assert.strictEqual(deepseek.runwayWindow(10), 'monthly');
+  assert.strictEqual(deepseek.runwayWindow(2), 'daily');
+  assert.strictEqual(deepseek.runwayWindow(1), '5h');
+  assert.strictEqual(deepseek.runwayWindow(5), 'weekly');
+  assert.strictEqual(deepseek.runwayWindow(400), 'monthly');
+});
+
+check('el dia de hoy cuenta a medias en el ritmo', () => {
+  const hoy = new Date();
+  const key = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(
+    hoy.getDate()
+  ).padStart(2, '0')}`;
+  assert.strictEqual(deepseek.dayIsPast({ date: key }), 0.5, 'hoy va a medias');
+  assert.strictEqual(deepseek.dayIsPast({ date: '2020-01-01' }), 1, 'ayer cuenta entero');
+  assert.strictEqual(deepseek.dayIsPast({ date: '2999-01-01' }), 0, 'un dia futuro no cuenta');
+});
+
+check('la autonomia se cuenta como ventana en la cuenta global', () => {
+  // Con el saldo a la mitad de su historico, pero la autonomia larga, no es
+  // un provider bloqueado.
+  const resultado = {
+    status: 'ok',
+    metrics: [
+      { label: 'saldo', kind: 'balance', pct: 0.5, tone: 'ok' },
+      { label: 'aguanta', kind: 'runway', runwayDays: 400, window: 'monthly' },
+    ],
+  };
+  const { tone, left } = availability.computeAvailability([resultado]);
+  assert.ok(left > 0.5, `media ${left}`);
+  assert.strictEqual(tone, 'ok');
+});
+
+check('un saldo bajo avisa aunque la autonomia sea larga', () => {
+  // El saldo no se repone solo: recargar es cosa del usuario.
+  const resultado = {
+    status: 'ok',
+    metrics: [
+      { label: 'saldo', kind: 'balance', pct: 0.02, tone: 'critical' },
+      { label: 'aguanta', kind: 'runway', runwayDays: 2, window: '5h' },
+    ],
+  };
+  assert.strictEqual(availability.providerTone(resultado), 'critical');
 });
 
 console.log(failures ? `\nFALLO: ${failures} prueba(s) fallida(s)` : '\nOK: todos los parsers pasan');

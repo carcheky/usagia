@@ -104,24 +104,31 @@ function render(payload) {
             : metric.label;
         item.appendChild(label);
 
-        // Una metrica SIN PORCENTAJE (saldo, tokens, peticiones) no lleva
+        // Una metrica SIN PORCENTAJE (tokens, peticiones, bonus) no lleva
         // barra: una barra apagada de ancho completo parece "100 % usado" y
         // no significa nada. Se deja solo el valor, que si es concreto.
         if (hasPct) {
           const bar = el('span', 'bar');
           const fill = el('i', metric.tone || 'neutral');
-          // La barra mide lo CONSUMIDO: llena = cuota agotada.
-          fill.style.width = `${Math.max(2, Math.min(1, metric.pct) * 100)}%`;
-          const parts = [`${Math.round(metric.pct * 100)}% usado`];
-          if (metric.remaining) parts.push(metric.remaining);
-          if (metric.reset) parts.push(`reinicia ${metric.reset}`);
-          bar.title = `${metric.fullLabel || metric.label}: ${parts.join(' · ')}`;
+          if (metric.kind === 'balance') {
+            // El SALDO se mide al reves que las cuotas: la barra se LLENA
+            // con lo que queda de dinero (llena = hay saldo). El "% usado"
+            // de las demas no sirve aqui: no hay tope de cuota, hay saldo.
+            fill.style.width = `${Math.max(2, Math.min(1, metric.pct) * 100)}%`;
+            bar.title = `saldo: ${Math.round(metric.pct * 100)}% del total puesto`;
+          } else {
+            // La barra mide lo CONSUMIDO: llena = cuota agotada.
+            fill.style.width = `${Math.max(2, Math.min(1, metric.pct) * 100)}%`;
+            const parts = [`${Math.round(metric.pct * 100)}% usado`];
+            if (metric.remaining) parts.push(metric.remaining);
+            if (metric.reset) parts.push(`reinicia ${metric.reset}`);
+            bar.title = `${metric.fullLabel || metric.label}: ${parts.join(' · ')}`;
+          }
           bar.appendChild(fill);
           item.appendChild(bar);
         } else {
           item.classList.add('plain');
         }
-
         // La columna de la derecha: el valor y, a continuacion, el reinicio
         // de esa ventana. Va en la MISMA linea (con una fuente menor) para
         // que la tarjeta no crezca una linea por ventana.
