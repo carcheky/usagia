@@ -323,6 +323,17 @@ t.check('en Windows baja el instalador NSIS, nunca el portable ni el blockmap', 
   assert.strictEqual(asset.size, 100);
 });
 
+t.check('en Windows acepta también el formato con prefijo win-', () => {
+  const winAssets = [
+    { name: 'win-Usagia-portable-1.1.0-beta.0013-x64.exe', size: 90, browser_download_url: 'https://x/portable' },
+    { name: 'win-Usagia-Setup-1.1.0-beta.0013-x64.exe', size: 100, browser_download_url: 'https://x/setup' },
+    { name: 'win-Usagia-Setup-1.1.0-beta.0013-x64.exe.blockmap', size: 1, browser_download_url: 'https://x/blockmap' },
+  ];
+  const asset = updates.assetFor({ assets: winAssets }, { platform: 'win32' });
+  assert.strictEqual(asset.name, 'win-Usagia-Setup-1.1.0-beta.0013-x64.exe');
+  assert.strictEqual(asset.url, 'https://x/setup');
+});
+
 t.check('en Linux baja el AppImage (no el .deb)', () => {
   const asset = updates.assetFor({ assets }, { platform: 'linux' });
   assert.strictEqual(asset.name, 'Usagia-1.1.0-beta.0003-linux-x86_64.AppImage');

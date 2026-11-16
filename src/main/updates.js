@@ -220,7 +220,7 @@ function assetFor(release, ctx = {}) {
       : null;
   };
   if (platform === 'win32') {
-    return pick((name) => /^Usagia-Setup-.*-win-x64\.exe$/i.test(name));
+    return pick((name) => /^(?:win-)?Usagia-Setup-.*\.exe$/i.test(name) && !/\.blockmap$/i.test(name));
   }
   if (platform === 'linux') {
     return pick((name) => /\.AppImage$/i.test(name));

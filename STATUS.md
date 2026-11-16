@@ -1,8 +1,8 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 20:22 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** sesión principal (item 7 de pendientes).
-> Ver [Lo último: respaldo de GPU en modos one-shot](#lo-último-respaldo-de-gpu-en-modos-one-shot-2026-11-16-2022).
+> **Última actualización:** 2026-11-16 22:00 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** sesión fix auto-updater (compatibilidad de artefactos).
+> Ver [Lo último: compatibilidad del instalador y auto-actualización](#lo-último-compatibilidad-del-instalador-y-auto-actualización-2026-11-16-2200).
 > **Ojo: hay otra sesión activa** en este repo (la del *onboarding* de cuentas, con su
 > propuesta en `openspec/changes/2026-11-16-onboarding-cuentas/`): **no se ha tocado nada
 > suyo**. Este fichero se ha **fusionado**, no reescrito.
@@ -18,27 +18,42 @@
 <!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
 | Sección | Línea |
 |---|---|
-| Lo último: items 12 y 17 completados (2026-11-16 20:50) | 43 |
-| Lo último: respaldo de GPU en modos one-shot (2026-11-16 20:22) | 71 |
-| Lo último: el sandbox ya no manda (2026-11-16 19:30) | 91 |
-| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 132 |
-| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 171 |
-| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 204 |
-| Resumen en una línea | 226 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 237 |
-| Versiones | 285 |
-| Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
-| Qué funciona (verificado) | 337 |
-| Pendiente / siguiente | 356 |
-| Puntos abiertos y riesgos conocidos | 379 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 403 |
-| Reparto entre sesiones (acuerdo) | 422 |
-| Cómo mantener este fichero | 444 |
-| Decisiones que son del usuario | 457 |
-| Notas para quien siga | 464 |
-| Retomar (en 5 minutos) | 471 |
-| Actualización automática desde la app (2026-11-16 18:45) | 486 |
+| Lo último: compatibilidad del instalador y auto-actualización (2026-11-16 22:00) | 44 |
+| Lo último: items 12 y 17 completados (2026-11-16 20:50) | 58 |
+| Lo último: respaldo de GPU en modos one-shot (2026-11-16 20:22) | 86 |
+| Lo último: el sandbox ya no manda (2026-11-16 19:30) | 106 |
+| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 147 |
+| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 186 |
+| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 219 |
+| Resumen en una línea | 241 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 252 |
+| Versiones | 300 |
+| Cola de la revisión a fondo: completada (2026-11-16 20:50) | 332 |
+| Qué funciona (verificado) | 352 |
+| Pendiente / siguiente | 371 |
+| Puntos abiertos y riesgos conocidos | 394 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 418 |
+| Reparto entre sesiones (acuerdo) | 437 |
+| Cómo mantener este fichero | 459 |
+| Decisiones que son del usuario | 472 |
+| Notas para quien siga | 479 |
+| Retomar (en 5 minutos) | 486 |
+| Actualización automática desde la app (2026-11-16 18:45) | 501 |
 <!-- fin-índice -->
+
+## Lo último: compatibilidad del instalador y auto-actualización (2026-11-16 22:00)
+
+**Encargo:** "no se encuentra la versión ahora mismo la app instalada para actualizar".
+
+**Diagnóstico:**
+- La versión instalada (`1.1.0-beta.0010`) detectaba `v1.1.0-beta.0013`, pero fallaba al descargarla con el error `la release no trae el instalador para este sistema`.
+- Causa: en el commit `c5acf2f` se renombraron los artefactos en `package.json` anteponiendo `${os}-` (`win-Usagia-Setup-*.exe`). La versión instalada (`1.1.0-beta.0010`) tiene fijado el patrón `/^Usagia-Setup-.*-win-x64\.exe$/i`, por lo que `updates.assetFor` devolvía `null` y la actualización automática quedaba bloqueada.
+
+**Solución aplicada:**
+1. **Inmediata para la versión instalada:** se subió `Usagia-Setup-1.1.0-beta.0013-win-x64.exe` a la release `v1.1.0-beta.0013` de GitHub con `gh release upload`. La app instalada ya encuentra el instalador y se puede actualizar sola.
+2. **Corrección en `package.json`:** se restaura `artifactName` del NSIS y portable a `${productName}-Setup-${version}-${os}-${arch}.${ext}` para mantener compatibilidad con cualquier cliente previo.
+3. **Resiliencia en `src/main/updates.js`:** `assetFor` ahora admite tanto el nombre clásico como el prefijado por `win-` (`/^(?:win-)?Usagia-Setup-.*\.exe$/i`).
+4. **Pruebas añadidas:** prueba en `test-updates.js` (ambos formatos de artefactos) y comprobación en `test-package.js` para evitar regresiones de empaquetado.
 
 ## Lo último: items 12 y 17 completados (2026-11-16 20:50)
 
@@ -286,9 +301,9 @@ El detalle de cada sesión (qué hizo, con qué commits) está en
 
 | Qué | Valor | Nota |
 |---|---|---|
-| Última release publicada | **v1.1.0-beta.0007** (2026-11-16 18:52 local) | Pre-release de los **extras** (`f7c04f9`, `fix:`). Pipeline **en verde**: commits, verify (`npm test`, 10 suites), release, builds de Windows y Linux |
+| Última release publicada | **v1.1.0-beta.0013** (2026-11-16 20:58 local) | Pre-release con menú 'Actualizar datos' y assets corregidos |
 | Última release estable | **v1.0.0** (2026-11-16 12:43 local) | La primera. Salió por el pipeline al empujar `main`; desde entonces las betas numeran `1.0.1-beta.NNNN`... y al entrar un `feat:` saltaron a `1.1.0-beta.NNNN` |
-| Rama de trabajo `beta` | `f7c04f9` | Igual que `origin/beta`. Último commit: `fix:` de los extras (tope con ámbito de Claude) |
+| Rama de trabajo `beta` | `d55b0dd` | Igual que `origin/beta`. Último commit: `feat(menu):` Actualizar datos |
 | Rama `main` | `c57d3df` | Publicó `v1.0.0`. `beta` va por delante |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone `scripts/release.js` |

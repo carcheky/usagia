@@ -104,5 +104,14 @@ check('el renderer se incluye en el paquete', () => {
   }
 });
 
+// 5) El nombre del instalador de Windows tiene que ser compatible con el actualizador.
+check('el instalador NSIS tiene un nombre compatible con el actualizador de versiones previas', () => {
+  const nsisName = (build.nsis && build.nsis.artifactName) || '';
+  assert.ok(
+    nsisName.includes('${productName}-Setup') && nsisName.includes('${os}'),
+    `nsis.artifactName debe conservar el formato compatible: ${nsisName}`
+  );
+});
+
 console.log(failures ? `\nFALLO: ${failures} comprobacion(es) fallida(s)` : '\nOK: el paquete esta bien');
 process.exit(failures ? 1 : 0);

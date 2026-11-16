@@ -42,7 +42,7 @@
   "build": {
     "appId": "com.usagia.tray",
     "productName": "Usagia",
-    "artifactName": "${os}-${productName}-${version}-${arch}.${ext}",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "src/**/*",
       "assets/**/*",
@@ -71,17 +71,17 @@
       "syncDesktopName": true
     },
     "nsis": {
-      "artifactName": "${os}-${productName}-Setup-${version}-${arch}.${ext}",
+      "artifactName": "${productName}-Setup-${version}-${os}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
     "portable": {
-      "artifactName": "${os}-${productName}-portable-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-portable-${version}-${os}-${arch}.${ext}"
     },
     "deb": {
-      "artifactName": "linux-${name}_${version}_${arch}.${ext}"
+      "artifactName": "${name}_${version}_${arch}.${ext}"
     }
   }
 }
