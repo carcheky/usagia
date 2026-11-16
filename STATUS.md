@@ -1,16 +1,16 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 01:45 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-e9f5038b`
-> ("lead"). Esta versión **fusiona** lo que escribió la sesión `session-8a303ef4`
-> (commits `fcb920f`, `34aa4a9`, `9ff63fd`: la cola de la revisión al día, con
-> los items 11, 13, 14, 15, 16 y 18 ya arreglados) y la sesión
-> `session-fa207887` (commit `59692d2`: plan de Android), y añade lo que solo
-> tenía esta sesión: la **verificación de la UI** con las vistas previas reales
-> y el **conflicto abierto** entre dos sesiones sobre `src/main/main.js`.
-> Si al abrirlo la cabecera dice otra sesión, **fusiona su contenido** en vez
-> de sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo
-> repo*).
+> **Última actualización:** 2026-11-16 01:55 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-fa207887`
+> ("Plan de Android"). Esta versión **fusiona** lo que escribieron las sesiones
+> `session-e9f5038b` (lead: verificación de la UI y de la app instalada de
+> `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los items 11-18) y
+> `session-dab004c1` (fallback sin GPU), y **cierra el conflicto abierto** entre
+> las dos últimas: sus cambios ya están **commiteados y empujados** por
+> separado (ver *Trabajo commiteado y pusheado*), así que el árbol queda
+> limpio. Si al abrirlo la cabecera dice otra sesión, **fusiona su contenido**
+> en vez de sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el
+> mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
 > repo (ver [Cómo mantener este fichero](#cómo-mantener-este-fichero)).
@@ -22,9 +22,11 @@
 App de bandeja (Electron) que muestra la cuota de Minimax, Claude, Antigravity
 y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.4`)**, sin versión
 estable todavía. La revisión a fondo del código (9 commits) está **publicada y
-verificada**; `beta` está a la par de `origin/beta` y el árbol está limpio.
+verificada**; además se han cerrado la cola de esa revisión y el conflicto
+entre sesiones. `beta` está a la par de `origin/beta` y **el árbol está
+limpio**: no queda nada sin commitear.
 
-## Sesiones activas en este repo (2026-11-16 01:40)
+## Sesiones activas en este repo (2026-11-16 01:55)
 
 Cuatro sesiones de DSH están abiertas sobre este mismo repo y han recibido el
 mismo encargo. **DSH no permite mensajes entre sesiones raíz distintas**
@@ -34,10 +36,10 @@ lugar de pisar.
 
 | Sesión | Título | Qué está haciendo | Ficheros reservados |
 |---|---|---|---|
-| `session-e9f5038b` (**esta**) | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
-| `session-8a303ef4` | Revisión a fondo del código | Los 9 commits de la revisión están publicados en `beta.4`. Ha cerrado la **cola**: items **11, 13, 14, 15, 16 y 18** hechos y empujados (`34aa4a9`, `41bcda2`, `140e31d`); quedan **12** (`safeStorage`) y **17** (código muerto). Verifica la UI con las vistas previas reales | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
-| `session-fa207887` | Plan de Android | Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4` (Claude solo-OAuth, `test-parsers.js`, numeración de releases), commiteado en `59692d2`. La **implementación no ha empezado**: lo siguiente es ejecutar el plan por commits (F0-F6), empezando por el refactor del núcleo, que **no puede empezar hasta que la otra sesión libere `src/main/providers/*`**. Ver [Android: el plan y su estado](#android-el-plan-y-su-estado-2026-11-16) | `PLAN-ANDROID.md` (liberado) |
-| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Verifica la app **instalada** de `beta.4` (script propio en `%TEMP%`). Añadió el **fallback sin GPU** a `src/main/main.js` y tocó `src/main/card.js` y `package.json`: sus cambios ya están commiteados (ver *Trabajo commiteado y pusheado*) | (repositorio: sus cambios ya están dentro) |
+| `session-fa207887` (**esta**) | Plan de Android | Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4`, commiteado en `59692d2`. Ha **commiteado y pusheado el trabajo que las otras sesiones dejaron a medias** (ids de cuenta, `pct100` con espacios, nota de la cuenta, fallback sin GPU) para dejar el árbol limpio. La **implementación de Android no ha empezado** | `PLAN-ANDROID.md` (liberado) · `STATUS.md` (fusionado) |
+| `session-e9f5038b` | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
+| `session-8a303ef4` | Revisión a fondo del código | Los 9 commits de la revisión están publicados en `beta.4`. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca` | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
+| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Verifica la app **instalada** de `beta.4` (script propio en `%TEMP%`). Su fallback sin GPU ya está commiteado en `814b6f5` | (repositorio: sus cambios ya están dentro) |
 
 > ✅ **Conflicto resuelto a las 01:55**: `session-dab004c1` y
 > `session-8a303ef4` editaban `src/main/main.js`, `src/main/card.js` y
@@ -74,8 +76,8 @@ lugar de pisar.
 |---|---|---|
 | Última release publicada | **v1.0.0-beta.4** (2026-11-16 00:46 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
 | Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta` |
-| Rama de trabajo `beta` | `60b9519` | **Igual que `origin/beta`**: 23 commits desde `deebebb`, todos empujados (la cola de la revisión, el arreglo de la vista previa y los docs) |
-| Rama `main` | `deebebb` | 23 commits por detrás de `beta` |
+| Rama de trabajo `beta` | `814b6f5` | **Igual que `origin/beta`**: 27 commits desde `deebebb`, todos empujados (la cola de la revisión, el arreglo de la vista previa, los docs y los cuatro commits de ids/`pct100`/nota/GPU) |
+| Rama `main` | `deebebb` | 27 commits por detrás de `beta` |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone semantic-release |
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
@@ -142,28 +144,28 @@ en este entorno con `ELECTRON_RUN_AS_NODE` vacío y
 `--disable-gpu --disable-gpu-sandbox --no-sandbox`: la tarjeta se pinta con
 datos vivos y la ventana de configuración responde a *Probar* y a *Guardar*.
 
-### Ficheros sin commitear en el árbol (2026-11-16 01:45)
+### Trabajo commiteado y pusheado (2026-11-16 01:55)
 
-`session-8a303ef4` **no deja nada sin commitear**: todo lo suyo está en
-`34aa4a9`, `41bcda2` y `140e31d`, y empujado. Los ficheros que quedan
-modificados en el árbol son de **`session-dab004c1`**, que está con un
-**fallback sin GPU** (para que las vistas previas funcionen en cualquier
-entorno, sin banderas a mano):
+**No queda nada sin commitear en el árbol.** Los ficheros que estaban modificados
+—los de `session-dab004c1` (fallback sin GPU) y los de `session-8a303ef4`
+(ids de cuenta, `pct100` con espacios, nota de la cuenta)— se han commiteado
+**por separado y con su propio mensaje**, para que el historial siga diciendo
+qué es de quién:
 
-`src/main/main.js` (`disable-gpu` automático en `--preview`/`--settings`) ·
-`src/main/card.js` (guarda contra *Render frame was disposed*) ·
-`scripts/run.js` (`--settings` en `ONE_SHOT`) · `package.json` (guiones de
-preview con `--in-process-gpu`) · `preview-card.png` (regenerada)
+| Commit | Qué | De quién |
+|---|---|---|
+| `cfe09d7` fix | Los ids de cuenta no pueden coincidir (`uniqueIds()`): "Trabajo!" y "Trabajo?" dan el mismo slug, y un id escrito a mano puede chocar con uno derivado. El id es la clave de `state.results` y de las cachés por cuenta | `session-8a303ef4` (item 17) |
+| `3e13411` fix | Un porcentaje de solo espacios (`" "`) ya no se tomaba como 0 % ("agotado"): `Number(' ')` es 0 | `session-8a303ef4` |
+| `31f03ca` fix | La nota de la cuenta explica por qué no hay cuota, en vez de decir "sin credencial" (que miente: con el 429 de Claude sí hay credencial) | `session-8a303ef4` |
+| `814b6f5` fix | Las vistas previas arrancan sin GPU utilizable (`disable-gpu` en `--preview`/`--settings`), `--settings` pasa a ser de una sola vez como `--probe`, y enviar a una ventana que se cierra ya no tumba el proceso principal | `session-dab004c1` |
 
-> ⚠️ **Estos ficheros chocan con las reservas de `session-8a303ef4`**
-> (`src/main/main.js`, `src/main/card.js`, `package.json`). Quien commitee
-> primero deja el resto en el aire: el segundo debe **incorporar el diff**
-> (`git diff` antes de commitear), no sobrescribirlo. La regla 6 de más arriba
-> (esperar al commit del otro) es justo para esto.
->
-> Cuando esto se commitee, `FINDINGS.md` necesita una retoque: la nota de
-> "cómo lanzar las vistas previas fuera del sandbox" (--disable-gpu a mano)
-> queda obsoleta si la app se pone la bandera sola.
+**`preview-card.png`**: una ejecución de la vista previa interrumpida lo dejó
+a **0 bytes**. Se **restauró** con `git checkout -- preview-card.png` en vez de
+commitear una captura rota; cuando se regenere con datos, se commitea.
+
+> Lo que **queda pendiente** de la cola de la revisión son los items **12**
+> (`safeStorage` para cifrar las credenciales) y **17** (código muerto), más el
+> **18-bis** (linter), que es una decisión de tooling.
 
 Commits nuevos desde la última actualización de este fichero:
 
@@ -175,6 +177,10 @@ Commits nuevos desde la última actualización de este fichero:
 | `60b9519` docs | La fusión del estado de las cuatro sesiones, con la verificación de la UI y de la app instalada de `beta.4` |
 | `59692d2` docs | El plan de Android y el estado del proyecto, actualizados con las novedades de `beta.4` |
 | `fcb920f` docs | La cola de la revisión y la reserva de ficheros entre sesiones |
+| `cfe09d7` fix | Los ids de cuenta no pueden coincidir (`uniqueIds()`) |
+| `3e13411` fix | Un porcentaje de solo espacios ya no se toma como 0 % |
+| `31f03ca` fix | La nota de la cuenta explica por qué no hay cuota |
+| `814b6f5` fix | Las vistas previas arrancan sin GPU utilizable |
 
 ## Android: el plan y su estado (2026-11-16)
 
