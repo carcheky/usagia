@@ -1,7 +1,11 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 10:30 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-lead-quota`
+> **Última actualización:** 2026-11-16 13:20 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-tests`
+> (suite completa de pruebas: 8 suites, 154 pruebas, runner único,
+> regla "sin prueba no hay fix" en `AGENTS.md`). Ver
+> [Lo último: la suite de pruebas](#lo-último-la-suite-de-pruebas-2026-11-16-1320).
+> Antes de ella escribió `session-lead-quota`
 > ("Claude en gris: cuota real, barras intuitivas y color del icono"). Aporta
 > el **arreglo de la cuota de Claude** (no salía por un token caducado), el
 > **repintado de las barras** (llenas y rojas al 100 %, sin barras grises sin
@@ -49,7 +53,8 @@ lugar de pisar.
 | `session-e9f5038b` | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
 | `session-8a303ef4` (**esta**) | Revisión a fondo del código | **Pausa del día**. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca`. Mañana: **17 antes que 12**, y los dos **antes que F1** (que mueve `src/main/http.js` y `src/main/providers/*`). Plan detallado en [Pausa del día](#de-session-8a303ef4-revisión-a-fondo-los-items-12-y-17-en-detalle) | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
 | `session-dab004c1` (**esta**) | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). **Pausa del día**. **Verificó el binario publicado de `beta.4`** (portable descargado de la release): la tarjeta sale al pasar el ratón y el ⚙ abre la ventana de configuración. Su fallback sin GPU ya está commiteado en `814b6f5`; sus arreglos (ids de cuenta, `pct100` con espacios, nota de la cuenta) los recogieron `cfe09d7`, `3e13411`, `31f03ca` y `814b6f5`. Lo que le queda: el **cuelgue de `preview:settings`** con ese fallback y cuatro apuntes de la revisión de código, en [Pausa del día](#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo) | (repositorio: sus cambios ya están dentro) |
-| `session-lead-quota` (**esta**) | Cuota de Claude y barras | **Hecho y commiteado**: la cuota real de Claude (el token de la CLI estaba caducado) y el repintado de las barras (llenas y rojas al 100 %, sin barras grises donde no hay porcentaje). En [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235) | `src/main/providers/claude.js` · `src/main/credentials.js` · `src/main/main.js` · `src/renderer/card.js` · `src/renderer/card.css` · `src/renderer/settings.js` · `scripts/get-claude-usage.ps1` · `scripts/test-parsers.js` · `FINDINGS.md` · `STATUS.md` |
+| `session-tests` (**esta**) | Suite completa de pruebas | **Hecho y commiteado**: runner `scripts/test.js`, `scripts/test-lib.js` (HOME falso + `fetch` simulado), 5 suites nuevas (proveedores, credenciales, módulos locales, renderer, releases), `primarySummary`/`shortSummary` movidos a `src/main/summary.js`, `release.js` con funciones puras exportadas, regla en `AGENTS.md`. `npm test` → 8 suites, 154 pruebas, ~1 s | `scripts/test*.js` · `scripts/release.js` · `src/main/summary.js` · `src/main/main.js` (solo el `require`) · `src/main/config.js` (`normalize`) · `package.json` (`scripts`) · `.github/workflows/release.yml` (job `verify`) · `AGENTS.md` · `STATUS.md` |
+| `session-lead-quota` | Cuota de Claude y barras | **Hecho y commiteado**: la cuota real de Claude (el token de la CLI estaba caducado) y el repintado de las barras (llenas y rojas al 100 %, sin barras grises donde no hay porcentaje). En [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235) | `src/main/providers/claude.js` · `src/main/credentials.js` · `src/main/main.js` · `src/renderer/card.js` · `src/renderer/card.css` · `src/renderer/settings.js` · `scripts/get-claude-usage.ps1` · `scripts/test-parsers.js` · `FINDINGS.md` · `STATUS.md` |
 
 > ✅ **Conflicto resuelto a las 01:55**: `session-dab004c1` y
 > `session-8a303ef4` editaban `src/main/main.js`, `src/main/card.js` y
@@ -117,6 +122,48 @@ lugar de pisar.
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
 
 Releases: <https://github.com/carcheky/usagia/releases>
+
+## Lo último: la suite de pruebas (2026-11-16 13:20)
+
+**Encargo:** "evaluar y asegurar una suite completa de tests para no perder
+ninguna funcionalidad en el futuro sin tener que gastar tokens".
+
+**Evaluación de partida** (sobre `c57d3df`): 56 pruebas en verde, pero solo
+de funciones puras (parsers, disponibilidad, tooltip, cuentas, paquete).
+**Sin cubrir**, y justo donde han estado los bugs reales: `fetchUsage` de
+los cuatro proveedores (cascada de Claude, Bearer de Antigravity, bucket de
+Minimax, saldo/autonomía de DeepSeek), la cascada de credenciales con
+ficheros, la cabecera de la fila, el renderer de la tarjeta, `release.js`
+(solo se probaba publicando), `jsonl-tokens`, `script-path` (el bug de
+`beta.3`), `sanitizeAccounts`.
+
+**Lo hecho:**
+
+| Qué | Dónde |
+|---|---|
+| Runner único que descubre `scripts/test-*.js` y lanza cada suite en su proceso | `scripts/test.js` (`npm test`; el job `verify` lo usa) |
+| Librería de pruebas: `check` sync/async, HOME falso que vacía las variables de credenciales, `fetch` simulado que registra cabeceras | `scripts/test-lib.js` |
+| 31 pruebas de `fetchUsage` de los 4 proveedores sin red | `scripts/test-providers.js` |
+| 12 pruebas de la cascada de credenciales con ficheros reales | `scripts/test-credentials.js` |
+| 19 pruebas: `summary.js`, `jsonl-tokens`, `script-path`, `hover.inside`, `config`, `settings` | `scripts/test-local.js` |
+| 8 pruebas del renderer con un DOM mínimo (`vm`) | `scripts/test-renderer.js` |
+| 14 pruebas de la lógica de releases | `scripts/test-release.js` |
+| `primarySummary`/`shortSummary` fuera de `main.js` para poder probarlas (sin cambio de comportamiento) | `src/main/summary.js` |
+| `release.js` exporta `clasificar`, `publicable`, `siguienteBase`, `siguienteTag`, `ultimaEstableDe`, `sinBorradores`, `notas`; solo publica con `require.main === module`. **Mejora**: la release "anterior" es el tag REAL de GitHub, no uno reconstruido (una beta vieja `beta.6` rompía el `git rev-parse`) | `scripts/release.js` |
+| **Bug cazado por una prueba**: `config.normalize` hacía `{...'x'}` → `{0:'x'}` si `credentials`/`providers` venían como texto | `src/main/config.js` |
+| Regla "un `fix:`/`feat:` sin prueba no se commitea" + mapa de suites | `AGENTS.md` |
+
+**Resultado:** `npm test` → **8 suites, 154 pruebas, ~1 s**, sin Electron,
+sin red, sin credenciales de la máquina. Fuera de `npm test` queda
+`npm run test:ci-env` (hace red).
+
+**Lo que no se cubre** (hay que mirarlo con la app): `card.position`,
+`hover.getTrayAnchor` (UI Automation), los `.ps1` y el watchdog de
+`scripts/run.js`.
+
+**Trampa del entorno:** desde el sandbox de DSH, `npm test` falla con
+`Access to the path '\\.\pipe\...'` si se **captura la salida** (`| ...`,
+`2>&1`): es el sandbox, no la suite. Lanzar `node scripts/test.js` a secas.
 
 ## Lo último: la cuota, las barras y el icono (2026-11-16 09:55)
 
@@ -288,9 +335,9 @@ dejó 9 commits validados con commitlint (publicados en `v1.0.0-beta.4`):
 | `4a0ad65` fix | `pct100(null)` devolvía `0` ("agotado") cuando el porcentaje venía ausente |
 | `3205e12` test | `scripts/test-parsers.js`: 16 pruebas puras (regresión "1 % vs 100 %", `parseUsage`, `parseSummary`, `parseYamlMappings`…); entra en `npm test` y en el job `verify` |
 
-**Estado de las pruebas** (ejecutadas el 2026-11-16 01:36 sobre `60b9519`):
-`npm test` → **OK** (32 pruebas: cuentas + parsers) · `npm run test:package` →
-**OK**.
+**Estado de las pruebas** (2026-11-16 13:20): `npm test` → **OK** (8
+suites, 154 pruebas; incluye el paquete). Ver
+[Lo último: la suite de pruebas](#lo-último-la-suite-de-pruebas-2026-11-16-1320).
 
 **Cómo lanzar las vistas previas desde una sesión de DSH** (Electron no
 arranca solo, con `GPU process launch failed: error_code=18`, pero **sí** con

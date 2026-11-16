@@ -85,7 +85,47 @@ git switch main && git merge --ff-only beta && git push origin main   # -> Relea
   forma anormal.
 - Lo que se toca en la UI se comprueba **ejecutando la app**, no narrando:
   `npm run preview` (tarjeta), `npm run preview:settings` (configuración) y
-  `npm test` (modelo de cuentas, Node puro).
+  `npm test` (todas las suites, Node puro).
+
+## Pruebas: la red de seguridad (no se gasta contexto en re-verificar)
+
+`npm test` (= `node scripts/test.js`) lanza **todas** las suites
+`scripts/test-*.js`, cada una en su propio proceso de Node, **sin Electron,
+sin red y sin credenciales de la máquina** (HOME falso + `fetch` simulado,
+ver `scripts/test-lib.js`). Tarda un segundo. Es lo que ejecuta el job
+`verify` del pipeline, así que **nada se publica si una suite falla**.
+
+> **Regla dura: un `fix:` o un `feat:` sin su prueba no se commitea.**
+> Antes de arreglar algo, escribe la prueba que lo reproduce (en rojo) y
+> luego arréglalo (en verde). Así el siguiente que toque ese código no tiene
+> que volver a entender el bug: la suite se lo dice. Un cambio que rompe una
+> prueba existente **no se arregla cambiando la prueba** salvo que el
+> comportamiento esperado haya cambiado a propósito, y entonces se dice en
+> el commit.
+
+| Suite | Qué fija | Cuándo tocarla |
+|---|---|---|
+| `test-parsers.js` | Funciones puras: `pct100` (la regresión 1 % vs 100 %), `sortMetrics`, `parseUsage` de Claude, `parseSummary` de Antigravity, helpers de DeepSeek, `availability` (color del icono), `tooltip` (incluido el marcador del hover) | Al cambiar cómo se convierte una respuesta en métricas o el criterio del icono |
+| `test-providers.js` | `fetchUsage` de los **cuatro** proveedores con `fetch` simulado: cascada de candidatos de Claude (401 → siguiente, 429 → parar, caché por cuenta, clave API ignorada, respaldo local en `warning`), Bearer de Antigravity (JSON pegado → `access_token`, refresco y caché), bucket `general` de Minimax, saldo + autonomía + cabecera de DeepSeek, errores de red/API | Al tocar `src/main/providers/*` o `http.js` |
+| `test-credentials.js` | La cascada con **ficheros reales** en un HOME falso: variables de entorno, `~/.dsh/.credentials.yaml`, `~/.claude/.credentials.json` (con `expiresAt`), `~/.antigravity/auth.json` | Al añadir una fuente de credenciales o cambiar un formato |
+| `test-accounts.js` | Varias cuentas por proveedor, ids estables y únicos, credencial por cuenta, guardar/leer, fallo de disco | Al tocar `instances.js` o `config.js` |
+| `test-local.js` | `summary.js` (cabecera de la fila y menú), `jsonl-tokens` (respaldo de Claude), `script-path` (el `app.asar.unpacked` de `beta.3`), `hover.inside`, normalización de `config`, `settings.sanitizeAccounts/snapshot/test` | Al tocar cualquiera de esos módulos |
+| `test-renderer.js` | `src/renderer/card.js` con un DOM mínimo: sin barra sin porcentaje, barra llena con lo consumido (saldo al revés), reinicio junto a su barra, punto con el tono de la cuota, `+N más`, `max-height`, pie | Al tocar la tarjeta |
+| `test-release.js` | `scripts/release.js`: clasificación de commits, qué publica, versión base, numeración `beta.NNNN`, changelog | Al tocar el pipeline de releases |
+| `test-package.js` | `build.files`/`asarUnpack`: los `.ps1` viajan desempaquetados, el renderer va en el paquete | Al tocar `package.json` → `build` |
+
+Fuera de `npm test`, porque hace red de verdad: `npm run test:ci-env`
+(simula el runner de CI sin credenciales y sondea los proveedores).
+
+**Cómo añadir una suite:** crea `scripts/test-<nombre>.js` con
+`scripts/test-lib.js` (`t.fakeHome()` antes de cargar `src/`, `t.check()`,
+`t.mockFetch()`, `t.finish()`). Se descubre sola: no hay que tocar
+`package.json` ni el pipeline.
+
+**Lo que NO cubren las pruebas** (hay que mirarlo con la app en marcha):
+la colocación de la ventana (`card.position`), el sondeo del icono por UI
+Automation (`hover.getTrayAnchor`), los `.ps1` y el watchdog de
+`scripts/run.js`. Si tocas eso, `npm run preview` y una pasada a mano.
 
 ## Varias sesiones en el mismo repo
 
