@@ -96,15 +96,10 @@ function launch() {
     const killedBySignal = code === null;
     const exitCode = killedBySignal ? signalExitCode(signal) : code;
 
-    if (code === 0 || ONE_SHOT) {
-      if (code !== 0) console.error(`[usagia] Electron termino con codigo ${exitCode} (${signal}).`);
-      // `code || 0` convertia una muerte por senal (code=null) en un exit 0,
-      // que parece un cierre limpio. Con senal se propaga 128+N.
-      process.exit(killedBySignal ? exitCode : code || 0);
-    }
-
     // La GPU no es utilizable en este entorno: se relanza sin GPU, una sola
-    // vez. Si tampoco asi, es otro problema y sigue el relanzamiento normal.
+    // vez. Aplica tanto a la app de larga vida como a los modos one-shot
+    // (--preview, --settings, --probe), que antes salian con 0x80000003 sin
+    // reintentar porque llegaban aqui despues del if.
     if (exitCode === GPU_FATAL_CODE && !gpuFallbackUsed) {
       gpuFallbackUsed = true;
       gpuFlags = NO_GPU_FLAGS;
@@ -116,6 +111,16 @@ function launch() {
         launch();
       }, RESTART_DELAY_MS);
       return;
+    }
+
+    // Modos one-shot: salir tras el primer fallo (ya se probo el respaldo de
+    // GPU si tocaba). Antes de este cambio, el if estaba arriba y los modos
+    // one-shot salian sin pasar por el respaldo de GPU.
+    if (code === 0 || ONE_SHOT) {
+      if (code !== 0) console.error(`[usagia] Electron termino con codigo ${exitCode} (${signal}).`);
+      // `code || 0` convertia una muerte por senal (code=null) en un exit 0,
+      // que parece un cierre limpio. Con senal se propaga 128+N.
+      process.exit(killedBySignal ? exitCode : code || 0);
     }
 
     // Una vida larga rompe la racha de caidas seguidas.
