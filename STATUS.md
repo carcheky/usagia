@@ -1,6 +1,6 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 18:40 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 18:55 (Europe/Madrid).
 > **Quién escribe este fichero ahora mismo:** la sesión de **documentación** (la que partió
 > este fichero en *estado* + *historial*). Ver
 > [Lo último: documentación para humanos y agentes](#lo-último-documentación-para-humanos-y-agentes-2026-11-16-1850).
@@ -19,21 +19,22 @@
 <!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
 | Sección | Línea |
 |---|---|
-| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 39 |
-| Resumen en una línea | 71 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 82 |
-| Versiones | 128 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 160 |
-| Qué funciona (verificado) | 183 |
-| Pendiente / siguiente | 202 |
-| Puntos abiertos y riesgos conocidos | 233 |
-| Límites del sandbox de DSH al medir (no son fallos de la app) | 257 |
-| Reparto entre sesiones (acuerdo) | 269 |
-| Cómo mantener este fichero | 291 |
-| Decisiones que son del usuario | 304 |
-| Notas para quien siga | 311 |
-| Retomar (en 5 minutos) | 318 |
-| Actualización automática desde la app (2026-11-16 18:45) | 333 |
+| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 40 |
+| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 72 |
+| Resumen en una línea | 94 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 105 |
+| Versiones | 152 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 184 |
+| Qué funciona (verificado) | 207 |
+| Pendiente / siguiente | 226 |
+| Puntos abiertos y riesgos conocidos | 257 |
+| Límites del sandbox de DSH al medir (no son fallos de la app) | 281 |
+| Reparto entre sesiones (acuerdo) | 293 |
+| Cómo mantener este fichero | 315 |
+| Decisiones que son del usuario | 328 |
+| Notas para quien siga | 335 |
+| Retomar (en 5 minutos) | 342 |
+| Actualización automática desde la app (2026-11-16 18:45) | 357 |
 <!-- fin-índice -->
 
 ## Lo último: documentación para humanos y agentes (2026-11-16 18:50)
@@ -68,6 +69,28 @@ sesión **no lo ha tocado**. `npm test` → **10 suites en verde**.
 sesión había cerrado su trabajo), así que cumplía la regla del repo. Es un `docs:`: **no
 publica release**.
 
+## Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55)
+
+**Pregunta del usuario:** si el único botón clicable de la UI es el de
+configuración, ¿por qué no dejarlo abajo, al lado de la pista que sale al pasar
+el ratón?
+
+**Hecho:** el ⚙ baja de la cabecera al **pie** de la tarjeta, a la derecha de la
+pista (`src/renderer/card.html`, `card.css`, `card.js`). La cabecera se queda
+solo con el título y la hora; el pie es ahora una fila con la pista y el botón.
+Como el botón está al lado, la pista ya no lo nombra ("⚙ para configurar"
+desaparece del texto).
+
+**Por qué:** el ⚙ es el único botón de la tarjeta, y arriba competía con el
+título y la hora; abajo queda pegado a la frase que explica cómo se usa, que
+es justo donde el ojo ya está.
+
+**Fijado con una prueba:** `scripts/test-renderer.js` comprueba que el botón
+está en el `<footer>` y **no** en el `<header>` (que no vuelva a subir).
+
+**Verificado:** `npm test` → 10 suites en verde; vista previa con datos vivos
+(`preview-card.png`): el ⚙ sale en el pie, a la derecha de la pista.
+
 ## Resumen en una línea
 
 App de bandeja (Electron) que muestra la cuota de Minimax, Claude, Antigravity
@@ -93,6 +116,7 @@ ficheros aquí y fusiona en lugar de pisar.
 | `session-dab004c1` | Monitor de IAs. **Pausa**: verificado el binario publicado de `beta.4` y `beta.6` (portable, con el ratón real). Le queda el instalador NSIS, el cuelgue de `preview:settings` y cuatro apuntes de revisión | (repositorio: sus cambios ya están dentro) |
 | `session-onboarding` | **Activa**: propuesta de conectar cuentas en [openspec/changes/2026-11-16-onboarding-cuentas/](openspec/changes/2026-11-16-onboarding-cuentas/proposal.md). Además, instalación de actualizaciones en curso | `src/main/update-install.js` · `src/main/updates.js` · `src/preload/*` · `src/renderer/card.*` · `src/renderer/settings.*` · `scripts/test-updates.js` |
 | `session-docs` (**esta**) | Documentación: `docs/` con índice y carga selectiva, `STATUS.md` partido en estado + historial, skill `usagia-docs`, `scripts/test-docs.js` y `scripts/docs-metrics.js` | `docs/` · `scripts/test-docs.js` · `scripts/docs-metrics.js` · `STATUS.md` · `FINDINGS.md` (solo el índice) · `AGENTS.md` · `.agents/skills/usagia-docs/` |
+| `session-lead` | **Activa**: el ⚙ de la tarjeta baja al pie, al lado de la pista (ver *Lo último*) | `src/renderer/card.html` · `src/renderer/card.css` · `src/renderer/card.js` · `scripts/test-renderer.js` · `README.md` (interacción) |
 
 El detalle de cada sesión (qué hizo, con qué commits) está en
 [docs/historial.md](docs/historial.md#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión).

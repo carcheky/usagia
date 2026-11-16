@@ -419,8 +419,8 @@ Reglas que se aplican:
 
 ### Cuentas (varias del mismo proveedor)
 
-Desde la v1.1 la app tiene una **ventana de configuración** (botón ⚙ de la
-tarjeta o *Configuración…* en el menú del icono) donde se gestionan las
+Desde la v1.1 la app tiene una **ventana de configuración** (botón ⚙ del pie de
+la tarjeta o *Configuración…* en el menú del icono) donde se gestionan las
 **cuentas**:
 
 - Una cuenta = un proveedor + un nombre + su credencial + su interruptor.

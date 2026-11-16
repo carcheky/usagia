@@ -398,6 +398,20 @@ t.check('la version nueva sale en el banner y el boton pide actualizar (o abre l
   assert.deepStrictEqual(world.bridge.opened, [info.url], 'sin actualizacion no se abre nada nuevo');
 });
 
+t.check('el boton de configuracion esta en el PIE de la tarjeta, al lado de la pista', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'card.html'), 'utf8');
+  const footer = html.match(/<footer class="foot">([\s\S]*?)<\/footer>/);
+  assert.ok(footer, 'la tarjeta tiene que seguir con un pie');
+  assert.ok(
+    /id="gear"/.test(footer[1]),
+    'el boton de configuracion va en el pie: es el unico boton clicable y asi queda a la vista'
+  );
+  // Y NO esta en la cabecera: la cabecera solo lleva el titulo y la hora.
+  const head = html.match(/<header class="head">([\s\S]*?)<\/header>/);
+  assert.ok(head, 'la tarjeta tiene que seguir con una cabecera');
+  assert.ok(!/id="gear"/.test(head[1]), 'el boton no vuelve a la cabecera');
+});
+
 t.check('el pie: "actualizando…" mientras refresca, "hace N s" despues, y la pista cambia al fijar', () => {
   const world = loadCard();
   world.render(basePayload([], { refreshing: true }));

@@ -61,6 +61,7 @@ body {
   padding: 3px 5px;
   border-radius: 6px;
   cursor: pointer;
+  flex: none;
 }
 
 .gear:hover {
@@ -256,12 +257,23 @@ body {
   color: var(--warning);
 }
 
+/* El pie lleva la pista y, a su derecha, el boton de configuracion: es el
+   unico boton clicable de la tarjeta, asi que queda a la vista, al lado de la
+   frase que explica como se usa. */
 .foot {
-  padding: 8px 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 10px 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 10px;
   color: var(--fg-dim);
-  text-align: center;
+}
+
+#hint {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Banner de actualización disponible */

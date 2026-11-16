@@ -73,8 +73,8 @@ credencial"* en lugar de desaparecer.
 
 ## Configuración
 
-Hay una **ventana de configuración** dentro de la app: el botón **⚙** de la
-tarjeta (o *Configuración…* en el menú del clic derecho). Ahí se pueden:
+Hay una **ventana de configuración** dentro de la app: el botón **⚙** del pie
+de la tarjeta (o *Configuración…* en el menú del clic derecho). Ahí se pueden:
 
 - **Añadir cuentas**: se admite **varias cuentas del mismo proveedor** (una por
   cuenta de IA). Cada cuenta tiene su nombre, su credencial y su interruptor
@@ -323,7 +323,7 @@ en el binario (`--config.extraMetadata.version=`); en `package.json` queda
 |---|---|
 | **Pasar el ratón** por el icono | Aparece la tarjeta; se oculta al apartar el ratón |
 | **Clic** en el icono | Fija la tarjeta (toggle): se queda abierta hasta otro clic |
-| **⚙** en la tarjeta | Abre la ventana de configuración (cuentas y ajustes) |
+| **⚙** en la tarjeta | Abre la ventana de configuración (cuentas y ajustes). Está en el **pie**, junto a la pista |
 | **Clic derecho** en el icono | Menú con el resumen de cada IA (clic en uno abre su panel), refresco, configuración y salida |
 
 La tarjeta no intercepta el ratón mientras no tengas el puntero encima: puedes

@@ -250,9 +250,11 @@ function render(payload) {
 
   updatedEl.textContent = payload.refreshing ? 'actualizando…' : relativeTime(payload.updatedAt);
   if (hintEl) {
+    // El boton de configuracion va al pie, al lado de esta pista: no hace
+    // falta nombrarlo en el texto.
     hintEl.textContent = payload.pinned
-      ? 'Fijado · pasa el ratón o haz clic en el icono para soltarlo · ⚙ para configurar'
-      : 'Actualización automática · pasa el ratón por el icono · clic para fijar · ⚙ para configurar';
+      ? 'Fijado · pasa el ratón o haz clic en el icono para soltarlo'
+      : 'Actualización automática · pasa el ratón por el icono · clic para fijar';
   }
   reportSize();
 }
