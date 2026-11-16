@@ -44,10 +44,13 @@ La versión **la decide el mensaje de commit**, no nadie a mano:
 
 Todo ocurre en `.github/workflows/release.yml`:
 
-`commits` (commitlint) → `verify` (humo de la app) → `release`
+`commits` (commitlint) → `verify` (lint + humo + tests) → `release`
 (`scripts/release.js`: numera, redacta el changelog y crea la release) →
 `build-windows` + `build-linux` (electron-builder y adjuntar los binarios a
 la release)
+
+El linter (`npm run lint`) se ejecuta **antes** de las pruebas: si hay
+errores de ESLint, el pipeline falla sin llegar a ejecutar los tests.
 
 ```bash
 git push origin beta     # -> Release v1.0.0-beta.NNNN (cuatro digitos), pre-release
@@ -125,6 +128,7 @@ ver `scripts/test-lib.js`). Tarda un segundo. Es lo que ejecuta el job
 | `test-providers.js` | `fetchUsage` de los **cuatro** proveedores con `fetch` simulado: cascada de candidatos de Claude (401 → siguiente, 429 → parar, caché por cuenta, clave API ignorada, respaldo local en `warning`), Bearer de Antigravity (JSON pegado → `access_token`, refresco y caché), bucket `general` de Minimax, saldo + autonomía + cabecera de DeepSeek, errores de red/API | Al tocar `src/main/providers/*` o `http.js` |
 | `test-credentials.js` | La cascada con **ficheros reales** en un HOME falso: variables de entorno, `~/.dsh/.credentials.yaml`, `~/.claude/.credentials.json` (con `expiresAt`), `~/.antigravity/auth.json` | Al añadir una fuente de credenciales o cambiar un formato |
 | `test-accounts.js` | Varias cuentas por proveedor, ids estables y únicos, credencial por cuenta, guardar/leer, fallo de disco | Al tocar `instances.js` o `config.js` |
+| `test-crypto.js` | Cifrado de credenciales con `safeStorage`: disponibilidad en Node puro, formato `enc:v1:`, descifrado de claves cifradas, compatibilidad con claves en claro | Al tocar `crypto.js` o `config.js` (cifrado) |
 | `test-local.js` | `summary.js` (cabecera de la fila y menú), `jsonl-tokens` (respaldo de Claude), `script-path` (el `app.asar.unpacked` de `beta.3`), `hover.inside`, normalización de `config`, `settings.sanitizeAccounts/snapshot/test` | Al tocar cualquiera de esos módulos |
 | `test-renderer.js` | `src/renderer/card.js` con un DOM mínimo: sin barra sin porcentaje, barra llena con lo consumido (saldo al revés), reinicio junto a su barra, punto con el tono de la cuota, `+N más`, `max-height`, pie | Al tocar la tarjeta |
 | `test-release.js` | `scripts/release.js`: clasificación de commits, qué publica, versión base, numeración `beta.NNNN`, changelog | Al tocar el pipeline de releases |

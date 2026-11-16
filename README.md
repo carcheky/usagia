@@ -15,14 +15,14 @@ Proveedores incluidos ahora mismo:
 | **Antigravity** | % restante por grupo de modelos (Gemini, Claude/GPT) y por ventana | `cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary` |
 | **DeepSeek** | saldo, bonus, gasto del mes y tokens consumidos | `platform.deepseek.com/api/v0/...` |
 
-Funciona en **Windows, macOS y Linux** (Electron). El comportamiento del hover
+Funciona en **Windows y Linux** (Electron). El comportamiento del hover
 se adapta a cada sistema:
 
 - **Windows**: tooltip nativo del sistema (multilínea) + tarjeta rica. Para que
   salga la tarjeta, el icono tiene que estar en la **zona visible** de la
   bandeja (en Windows 11 los iconos nuevos empiezan en "iconos ocultos":
   arrástralo a la barra y listo).
-- **macOS / Linux**: la tarjeta aparece sobre el icono de la barra de menús.
+- **Linux**: la tarjeta aparece sobre el icono de la barra de menús.
 
 ## Instalación y arranque
 
@@ -37,9 +37,10 @@ Otros comandos:
 npm run probe            # consulta los proveedores y vuelca el resultado por consola
 npm run preview          # abre la tarjeta sola, con datos reales, y guarda una captura
 npm run preview:settings # abre la ventana de configuración y guarda una captura
-npm test                 # pruebas de las cuentas (Node puro, sin GUI)
+npm run lint             # linter (detecta errores y código muerto)
+npm test                 # pruebas (Node puro, sin GUI)
 npm run test:package     # pruebas del paquete (lo que se publica)
-npm run dist             # empaqueta instaladores (Windows / macOS / Linux)
+npm run dist             # empaqueta instaladores (Windows / Linux)
 ```
 
 > Si `npm install` no descarga el binario de Electron (política de scripts de
@@ -83,8 +84,15 @@ de la tarjeta (o *Configuración…* en el menú del clic derecho). Ahí se pued
   borrarla.
 - Ajustar los valores generales (cada cuánto se refresca, si se muestra al
   pasar el ratón, cuánto tarda en cerrarse).
+- Activar el **modo debug**: guarda las respuestas de los proveedores en
+  `debug.log` (en la carpeta de datos de la app). Útil para diagnosticar
+  problemas: actívalo, espera un refresco y envía el archivo.
 - Elegir el **canal de actualización** (automático, solo estables o con
   betas) y comprobar a mano si hay una versión nueva (_Buscar ahora_).
+
+Las **credenciales se cifran** con el almacén seguro del sistema (DPAPI en
+Windows, Keychain en macOS, keyring en Linux). En el archivo `config.json`
+aparecen como `enc:v1:<base64>`, no en texto plano.
 
 ## Actualizaciones
 
@@ -112,7 +120,7 @@ actualizada. A mano no hay que hacer nada.
 | Instalador NSIS (Windows) | **Sí**: descarga + instalación silenciosa + relanzado |
 | AppImage (Linux) | **Sí**: se reemplaza el AppImage y se relanza |
 | Portable | No (se descomprime en una carpeta nueva en cada arranque) |
-| `.deb`, macOS | No (queda el enlace a la release) |
+| `.deb` | No (queda el enlace a la release) |
 
 El instalador tarda a propósito 3 s en arrancar: la app tiene que haber muerto
 antes, o el NSIS sale con código 2 y no instala nada. El registro de cada
