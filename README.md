@@ -118,6 +118,12 @@ El instalador tarda a propósito 3 s en arrancar: la app tiene que haber muerto
 antes, o el NSIS sale con código 2 y no instala nada. El registro de cada
 intento queda en `%APPDATA%\Usagia\updater\update.log`.
 
+Si el instalador falla, la app **vuelve a abrirse** (cuando la actualización
+la pidió el usuario), anota el fallo en ese registro y **no reintenta esa
+versión sola** en cada arranque: la tarjeta pasa a avisar con el motivo y un
+botón *Descargar* que abre la release. Al llegar una versión distinta, se
+vuelve a intentar solo.
+
 **El canal** (`updateChannel`) decide qué versiones cuentan:
 
 | Valor | Qué enseña |
