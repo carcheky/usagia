@@ -27,6 +27,18 @@ const HEALTHY_LIFETIME_MS = 5 * 60 * 1000;
 // Margen entre SIGTERM y SIGKILL al parar el watchdog.
 const KILL_GRACE_MS = 3000;
 
+// Chromium mata la app con "GPU process isn't usable. Goodbye." y sale con
+// STATUS_BREAKPOINT (0x80000003). En entornos sin GPU usable (servidores,
+// escritorio remoto, dentro de otro agente) la app no arranca nunca y el
+// watchdog solo la relanza en bucle. Al Detectarlo se relanza UNA vez sin
+// GPU, que es lo que hace que funcione en cualquier sitio.
+const GPU_FATAL_CODE = 2147483651; // 0x80000003
+const NO_GPU_FLAGS = ['--disable-gpu', '--disable-gpu-sandbox', '--no-sandbox'];
+let gpuFallbackUsed = false;
+// Flags que se pasan a Electron. De momento, ninguno: si la GPU resulta
+// ser inutilizable, se rellenan con NO_GPU_FLAGS y se relanza.
+let gpuFlags = [];
+
 // Un sondeo es de una sola vez: si falla, reintentar 10 veces solo multiplica
 // el tiempo de espera del job de CI. El watchdog es para la app de bandeja,
 // que debe vivir siempre.
@@ -62,7 +74,7 @@ function launch() {
     restartTimer = null;
   }
 
-  const spawned = spawn(electronPath, [appRoot, ...args], {
+  const spawned = spawn(electronPath, [appRoot, ...gpuFlags, ...args], {
     env,
     stdio: 'inherit',
     windowsHide: false,
@@ -89,6 +101,21 @@ function launch() {
       // `code || 0` convertia una muerte por senal (code=null) en un exit 0,
       // que parece un cierre limpio. Con senal se propaga 128+N.
       process.exit(killedBySignal ? exitCode : code || 0);
+    }
+
+    // La GPU no es utilizable en este entorno: se relanza sin GPU, una sola
+    // vez. Si tampoco asi, es otro problema y sigue el relanzamiento normal.
+    if (exitCode === GPU_FATAL_CODE && !gpuFallbackUsed) {
+      gpuFallbackUsed = true;
+      gpuFlags = NO_GPU_FLAGS;
+      console.warn(
+        `[usagia] la GPU no es utilizable (codigo ${exitCode}). Relanzo sin GPU (${NO_GPU_FLAGS.join(' ')}).`
+      );
+      restartTimer = setTimeout(() => {
+        restartTimer = null;
+        launch();
+      }, RESTART_DELAY_MS);
+      return;
     }
 
     // Una vida larga rompe la racha de caidas seguidas.
