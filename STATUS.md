@@ -405,20 +405,31 @@ release (`Usagia-portable-1.0.0-beta.4-win-x64.exe`, 90 MB, `ProductVersion
 Ojo: se probó el **portable**, no el instalador NSIS. El instalador debería
 tener lo mismo (mismo `app.asar`), pero nadie lo ha instalado todavía.
 
-Y ojo también: **`beta.5` y `beta.6` son posteriores al binario que se
-probó** (llevan los arreglos de ids, `pct100`, la nota y el fallback sin GPU).
-La prueba de arriba vale como prueba de que **el empaquetado está bien**;
-para comprobar esos arreglos en concreto hay que repetirla sobre el portable
-de `beta.6`.
+**Y-repeatido sobre `beta.6` (2026-11-16 01:45)**: descargado el portable de
+`v1.0.0-beta.6` (90 MB, `ProductVersion 1.0.0-beta.6`) y **abierto de verdad**:
+el icono aparece en la zona visible de la bandeja (hay que promoverlo en
+`HKCU\Control Panel\NotifyIconSettings`, porque Windows 11 mete los iconos
+nuevos en *iconos ocultos*), el tooltip da los cuatro proveedores con datos
+vivos y **la tarjeta sale al pasar el ratón** (380×552) y **el ⚙ abre la
+ventana de configuración** (780×660). En la ventana se ve ya el texto nuevo de
+Claude (*"una clave API sk-ant-api no sirve para la cuota"*), o sea que los
+arreglos de `beta.5`/`beta.6` van en el binario publicado.
+
+Un apunte del camino: el **portable extrae a una carpeta distinta en cada
+arranque** (`%TEMP%\<aleatorio>`), así que su icono vuelve a *iconos ocultos*
+cada vez que se reinicia y hay que volver a promoverlo. Con el **instalador
+NSIS** la ruta es fija y el icono se queda visible solo: por eso instalarlo es
+lo cómodo para el uso diario.
 
 **Pendiente para mañana** (nada de esto toca ficheros que otra sesión tenga
 reservados):
 
-- [ ] **Repetir la verificación del portable de `beta.6`**: la prueba de
-      arriba se hizo sobre el de `beta.4`; `beta.5`/`beta.6` llevan los
-      arreglos de ids de cuenta, `pct100`, la nota de la cuenta y el fallback
-      sin GPU, y conviene verlos en el binario publicado (mismo script, otro
-      tag).
+- [x] ~~**Repetir la verificación del portable de `beta.6`**~~ → **hecho**
+      (2026-11-16 01:45): tarjeta al pasar el ratón y ⚙ → ventana de
+      configuración, en el binario publicado de `beta.6`. Detalle arriba.
+- [ ] **Instalar la `beta.6` con el instalador NSIS** y repetir la prueba
+      con la ruta fija: nadie ha instalado todavía, y es lo que deja el icono
+      visible en la bandeja sin tener que promoverlo a mano cada vez.
 
 - [ ] **`npm run preview:settings` se CUELGA con el fallback sin GPU.**
       Medido hoy: con `--in-process-gpu` (la bandera que puso `814b6f5`) la
