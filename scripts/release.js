@@ -76,6 +76,11 @@ function api(method, path, body) {
   });
 }
 
+/** Los borradores no cuentan: no estan publicados. */
+function sinBorradores(releases) {
+  return releases.filter((r) => !r.draft);
+}
+
 async function releasesPublicadas() {
   const todas = [];
   for (let page = 1; page <= 10; page += 1) {
@@ -83,8 +88,7 @@ async function releasesPublicadas() {
     todas.push(...lote);
     if (lote.length < 100) break;
   }
-  // Los borradores no cuentan: no estan publicados.
-  return todas.filter((r) => !r.draft);
+  return sinBorradores(todas);
 }
 
 const ESTABLE = /^v(\d+)\.(\d+)\.(\d+)$/;
@@ -97,6 +101,19 @@ function cmpVersion(a, b) {
   return 0;
 }
 
+/** Clasifica un commit (sha, asunto, cuerpo) segun conventional commits. */
+function clasificar(sha, asunto, cuerpo = '') {
+  const m = /^(\w+)(\([^)]*\))?(!)?:\s*(.+)$/.exec(asunto.trim());
+  const tipo = m ? m[1] : '';
+  const rompe = Boolean((m && m[3]) || /BREAKING CHANGE/.test(cuerpo));
+  return { sha, asunto: asunto.trim(), texto: m ? m[4].trim() : asunto.trim(), tipo, rompe };
+}
+
+/** Solo los cambios de la APP publican y salen en el changelog. */
+function publicable(c) {
+  return c.rompe || ['feat', 'fix', 'perf'].includes(c.tipo);
+}
+
 /** Commits entre `desde` (exclusivo) y HEAD, ya clasificados. */
 function commitsDesde(desde) {
   const rango = desde ? `${desde}..HEAD` : 'HEAD';
@@ -107,11 +124,43 @@ function commitsDesde(desde) {
     .filter(Boolean)
     .map((s) => {
       const [sha, asunto, cuerpo = ''] = s.split('\x1f');
-      const m = /^(\w+)(\([^)]*\))?(!)?:\s*(.+)$/.exec(asunto.trim());
-      const tipo = m ? m[1] : '';
-      const rompe = Boolean((m && m[3]) || /BREAKING CHANGE/.test(cuerpo));
-      return { sha, asunto: asunto.trim(), texto: m ? m[4].trim() : asunto.trim(), tipo, rompe };
+      return clasificar(sha, asunto, cuerpo);
     });
+}
+
+/** Ultima version estable publicada ("1.0.0") o null. */
+function ultimaEstableDe(releases) {
+  const estables = releases.map((r) => ESTABLE.exec(r.tag_name)).filter(Boolean).map((m) => m.slice(1).join('.'));
+  return estables.sort(cmpVersion).pop() || null;
+}
+
+/**
+ * Tag de la siguiente release y tag de la anterior (para el rango del
+ * changelog), segun la rama.
+ *
+ *   - main: `v<base>`; la anterior es la ultima estable.
+ *   - beta: `v<base>-beta.NNNN`, con NNNN = la mayor beta publicada DE ESA
+ *     BASE + 1, siempre con cuatro digitos. Las betas de otra base no
+ *     cuentan (al pasar de 1.0.0 a 1.1.0 se vuelve a empezar en 0001).
+ *
+ * @returns {{tag: string, anterior: string|null}}
+ */
+function siguienteTag(rama, base, releases, ultimaEstable) {
+  if (rama === 'main') {
+    return { tag: `v${base}`, anterior: ultimaEstable ? `v${ultimaEstable}` : null };
+  }
+  const betas = releases
+    .map((r) => ({ tag: r.tag_name, m: BETA.exec(r.tag_name) }))
+    .filter(({ m }) => m && m[1] === base)
+    .map(({ tag, m }) => ({ tag, n: parseInt(m[2], 10) }))
+    .sort((a, b) => a.n - b.n);
+  const ultima = betas.length ? betas[betas.length - 1] : null;
+  const tag = `v${base}-beta.${String((ultima ? ultima.n : 0) + 1).padStart(DIGITOS, '0')}`;
+  // La anterior es el tag REAL que existe en GitHub (no uno reconstruido):
+  // si la beta anterior se publico sin relleno ("beta.6"), reconstruir
+  // "beta.0006" daria un tag que no existe y `git rev-parse` fallaria.
+  const anterior = ultima ? ultima.tag : ultimaEstable ? `v${ultimaEstable}` : null;
+  return { tag, anterior };
 }
 
 function siguienteBase(ultimaEstable, commits) {
@@ -152,26 +201,10 @@ async function main() {
   const head = git('rev-parse', 'HEAD');
 
   const releases = await releasesPublicadas();
-  const estables = releases.map((r) => ESTABLE.exec(r.tag_name)).filter(Boolean).map((m) => m.slice(1).join('.'));
-  const ultimaEstable = estables.sort(cmpVersion).pop() || null;
+  const ultimaEstable = ultimaEstableDe(releases);
 
-  const publicable = (c) => c.rompe || ['feat', 'fix', 'perf'].includes(c.tipo);
   const base = siguienteBase(ultimaEstable, commitsDesde(ultimaEstable ? `v${ultimaEstable}` : null).filter(publicable));
-
-  let tag;
-  let anterior;
-  if (rama === 'main') {
-    tag = `v${base}`;
-    anterior = ultimaEstable ? `v${ultimaEstable}` : null;
-  } else {
-    const betas = releases
-      .map((r) => BETA.exec(r.tag_name))
-      .filter((m) => m && m[1] === base)
-      .map((m) => parseInt(m[2], 10));
-    const mayor = betas.length ? Math.max(...betas) : 0;
-    tag = `v${base}-beta.${String(mayor + 1).padStart(DIGITOS, '0')}`;
-    anterior = mayor ? `v${base}-beta.${String(mayor).padStart(DIGITOS, '0')}` : ultimaEstable ? `v${ultimaEstable}` : null;
-  }
+  const { tag, anterior } = siguienteTag(rama, base, releases, ultimaEstable);
 
   // Si el tag anterior no esta en el clon (fetch-depth insuficiente), se avisa en vez de inventar.
   if (anterior) git('rev-parse', '--verify', `${anterior}^{commit}`);
@@ -205,7 +238,24 @@ async function main() {
   salida({ tag, version: tag.slice(1), sha: head });
 }
 
-main().catch((e) => {
-  console.error(e.message);
-  process.exit(1);
-});
+// Las funciones puras se exportan para scripts/test-release.js; el script
+// solo publica cuando se ejecuta directamente.
+module.exports = {
+  clasificar,
+  publicable,
+  siguienteBase,
+  siguienteTag,
+  ultimaEstableDe,
+  sinBorradores,
+  notas,
+  cmpVersion,
+  ESTABLE,
+  BETA,
+};
+
+if (require.main === module) {
+  main().catch((e) => {
+    console.error(e.message);
+    process.exit(1);
+  });
+}
