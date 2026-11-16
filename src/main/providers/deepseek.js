@@ -11,7 +11,7 @@
 //       /api/v0/usage/amount?month&year  -> tokens del mes por modelo
 //       /api/v0/usage/cost?month&year    -> coste del mes
 
-const { fetchJson, tone } = require('../http');
+const { fetchJson, tone, formatTokens } = require('../http');
 const creds = require('../credentials');
 
 const PLATFORM = 'https://platform.deepseek.com';
@@ -429,13 +429,6 @@ function runwayWindow(runwayDays) {
   if (runwayDays <= 2) return 'daily';
   if (runwayDays <= 7) return 'weekly';
   return 'monthly';
-}
-
-function formatTokens(n) {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)} B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)} M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)} k`;
-  return String(n);
 }
 
 module.exports = {

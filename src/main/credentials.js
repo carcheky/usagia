@@ -84,7 +84,6 @@ const ENV_KEYS = {
   claude: ['ANTHROPIC_API_KEY', 'CLAUDE_API_KEY'],
   deepseek: ['DEEPSEEK_API_KEY'],
   antigravity: ['ANTIGRAVITY_TOKEN', 'ANTIGRAVITY_API_KEY', 'GOOGLE_ANTIGRAVITY_TOKEN'],
-  gemini: ['GOOGLE_API_KEY', 'GEMINI_API_KEY'],
 };
 
 function fromEnv(providerId) {
@@ -121,7 +120,6 @@ function fromDsh(providerId) {
     const token = grant?.payload?.token;
     return cand(token, 'harness DSH', 'deepseek-account OAuth');
   }
-  if (providerId === 'gemini') return cand(refs.GOOGLE_API_KEY, 'harness DSH', 'GOOGLE_API_KEY');
   if (providerId === 'claude') {
     // El bundle dsh-claude-subscription deja aqui la sesion OAuth de Claude
     // Code (registro "llm-pi-ai/anthropic"): access + refresh + expiracion.
@@ -171,5 +169,4 @@ module.exports = {
   fromDsh,
   claudeCodeToken,
   antigravityToken,
-  dshCredentials,
 };

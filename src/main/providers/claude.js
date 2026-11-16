@@ -24,7 +24,7 @@
 //  - Un 429: los 10 minutos de siempre. Es el caso en el que insistir gasta
 //    justo el margen que hay.
 
-const { fetchJson, pct100, tone, sortMetrics } = require('../http');
+const { fetchJson, pct100, tone, sortMetrics, formatTokens } = require('../http');
 const creds = require('../credentials');
 const ps = require('../local/ps');
 const scriptPath = require('../local/script-path');
@@ -338,12 +338,7 @@ function localUsage() {
   };
 }
 
-function formatTokens(n) {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)} B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)} M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)} k`;
-  return String(n);
-}
+
 
 async function fetchUsage(ctx) {
   const key = cacheKey(ctx);

@@ -156,10 +156,6 @@ function setInteractive(on) {
   }
 }
 
-function isInteractive() {
-  return interactive;
-}
-
 function show() {
   if (!win) return;
   // Se recoloca SIEMPRE al mostrarse: el ancla puede haber cambiado desde la
@@ -206,11 +202,9 @@ module.exports = {
   resize,
   setAnchor,
   setInteractive,
-  isInteractive,
   show,
   hide,
   isVisible,
   send,
   bounds,
-  CARD_WIDTH,
 };

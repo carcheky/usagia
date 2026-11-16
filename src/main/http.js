@@ -174,4 +174,14 @@ function fmtDuration(ms) {
   return `${m} min`;
 }
 
-module.exports = { fetchJson, pct100, used, tone, fmtPercent, fmtPercent1, fmtDuration, sortMetrics, WINDOW_ORDER };
+/**
+ * Formatea un número de tokens con sufijo k/M/B.
+ */
+function formatTokens(n) {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)} B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)} M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)} k`;
+  return String(n);
+}
+
+module.exports = { fetchJson, pct100, used, tone, fmtPercent, fmtPercent1, fmtDuration, sortMetrics, formatTokens, WINDOW_ORDER };

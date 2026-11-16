@@ -217,22 +217,10 @@ async function refreshAccessToken(refreshToken) {
   );
 }
 
-/** Diagnostico: de donde salen los clientes. */
-function describe() {
-  const pairs = [...configuredPairs(), ...discoverPairs()];
-  return {
-    total: pairs.length,
-    fromEnv: configuredPairs().length,
-    fromInstall: discoverPairs().length,
-    files: candidateFiles().filter((f) => fs.existsSync(f)),
-  };
-}
-
 module.exports = {
   refreshAccessToken,
   discoverPairs,
   extractPairs,
-  describe,
   TOKEN_URL,
   // Auxiliar (interno): la busqueda por trozos, expuesta para poder
   // probarla sin depender de una instalacion de Antigravity real.
