@@ -20,6 +20,15 @@
 > **Ojo: otra sesión está activa** (`dcd6277 fix(availability): show critical
 > only when all long windows are exhausted`, 13:46): toca
 > `src/main/availability.js` y su prueba, y no se ha tocado nada suyo.
+> **Sigue activa a las 14:00** con otro encargo ("no parece que se actualicen
+> los consumos automáticamente") y **reserva `src/main/providers/claude.js`
+> y `scripts/test-providers.js`**. Diagnóstico medido: la app **sí refresca**
+> cada 120 s (conexiones a las 13:50:55, justo en el ciclo del temporizador);
+> lo que se quedaba viejo era la fila de Claude, con una **caché de 10 minutos
+> para todo**. Hallazgo y arreglo en
+> [Lo último: el refresco y la caché de Claude](#lo-último-el-refresco-y-la-caché-de-claude-2026-11-16-1400).
+> **No se tocan `src/main/main.js` ni `src/renderer/card.js`**: son de la otra
+> sesión.
 > Esta versión **fusiona** lo que escribieron las sesiones `session-fa207887`
 > (plan de Android), `session-e9f5038b` (lead: verificación de la UI y de la
 > app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los
@@ -101,10 +110,10 @@ lugar de pisar.
 
 | Qué | Valor | Nota |
 |---|---|---|
-| Última release publicada | **v1.0.1-beta.0002** (2026-11-16 13:40 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. En GitHub hay 13 publicadas, en orden |
-| Última release estable | **v1.0.0** (2026-11-16 12:43 local) | La primera. Salió por el pipeline al empujar `main`; desde entonces las betas numeran `1.0.1-beta.NNNN` |
-| Rama de trabajo `beta` | `50da803` | Igual que `origin/beta`. Último commit: `ci:` con el nuevo pipeline (no publica) |
-| Rama `main` | `07e0354` | Ancestro de `beta`: el `--ff-only` no da conflicto |
+| Última release publicada | **v1.1.0-beta.0001** (2026-11-16 13:50 local) | Pre-release de las **actualizaciones** (`7f093b4`, `feat:` → salto a 1.1.0). Pipeline **en verde**: commits, verify (`npm test`, 9 suites), release, builds de Windows y Linux. En GitHub hay 14 publicadas |
+| Última release estable | **v1.0.0** (2026-11-16 12:43 local) | La primera. Salió por el pipeline al empujar `main`; desde entonces las betas numeran `1.0.1-beta.NNNN`... y al entrar un `feat:` saltaron a `1.1.0-beta.NNNN` |
+| Rama de trabajo `beta` | `7f093b4` | Igual que `origin/beta`. Último commit: `feat:` de las actualizaciones (publicó `v1.1.0-beta.0001`) |
+| Rama `main` | `c57d3df` | **Ancestro de `beta`** (comprobado): el `--ff-only` no da conflicto. Publicó `v1.0.0`; la fusión de `beta` sigue siendo decisión del usuario |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone `scripts/release.js` |
 
@@ -128,6 +137,58 @@ lugar de pisar.
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
 
 Releases: <https://github.com/carcheky/usagia/releases>
+
+## Lo último: el refresco y la caché de Claude (2026-11-16 14:00)
+
+**Encargo:** "bug: no parece que se actualicen los consumos automáticamente".
+
+**Lo primero era saber si el refresco automático funciona.** Se midió en la app
+**instalada y en marcha**, sin tocarla: muestreo de un segundo de las conexiones
+TCP de sus procesos durante 150 s.
+
+| Medido | Resultado |
+|---|---|
+| Conexiones de los procesos de Usagia | `13:50:55` (3 destinos) y `13:51:58` (2) |
+| Ciclo del temporizador | arranque `13:18:53` + `refreshSeconds` 120 s → **`13:50:53`** |
+| Veredicto | **el refresco automático funciona**: la ráfaga cae en el ciclo |
+
+Se descartaron también, leyendo y con pruebas, las otras causas posibles de
+"no se actualiza": `collect()` no tiene caché salvo la de Claude; los cuatro
+`fetchUsage` devuelven datos vivos (medido: Minimax 301 ms, DeepSeek 1,5 s,
+Antigravity 2 s, **Claude 14 ms = caché**); `http.fetchJson` corta a los 20 s y
+los `.ps1` a los 45 s, así que un cuelgue no deja `refreshInFlight` para
+siempre.
+
+**El bug de verdad: la caché de Claude era 10 minutos para TODO.**
+
+El refresco va cada 2 min y la caché duraba 10: **cinco refrescos seguidos
+enseñaban las mismas cifras** mientras el pie de la tarjeta decía "hace 30 s".
+En la captura del usuario, Claude salía al **81 %** en la 5 h cuando la API ya
+daba **100 %**: la fila tenía ~10 minutos. Y un fallo pasajero (red, token) se
+cacheaba también 10 minutos, dejando el respaldo local en pantalla.
+
+**El arreglo** (`src/main/providers/claude.js`), tres plazos en vez de uno:
+
+| Qué acaba de pasar | Cuánto se cachea | Por qué |
+|---|---|---|
+| Acierto | **2 min** (el refresco) | las cifras se mueven al ritmo de la app |
+| Fallo que no es 429 (red, token) | **1 min** | un tropiezo no dura diez |
+| **429** | **10 min** (como antes) | es el margen del endpoint: insistir lo gasta |
+
+Para el 429 hay que saber que lo fue: `remoteUsage()` ahora devuelve
+`rateLimited` (por `status === 429` en HTTP y por `/429/` en la salida del
+`.ps1`, que ya traía "HTTP 429: límite de peticiones del endpoint de uso").
+
+**Pruebas nuevas** (`scripts/test-providers.js`, +3): acierto caducado a los
+2 min, 429 respetado 10 min (no se insiste a los 3), y fallo normal caducado al
+minuto. El reloj se adelanta con `Date.now` parcheado, porque la caché caduca
+por tiempo. `npm test` → **9 suites, 34 pruebas de proveedores, en verde**.
+
+> **Lo que NO se toca (y por qué):** el pie de la tarjeta ("hace N s") mide el
+> último `collect`, no la antigüedad de cada fila. Con la caché a 2 min la
+> diferencia ya no engaña, pero si algún día vuelve a haber cachés largas,
+> habría que enseñar la edad **por proveedor**: eso son `main.js` (`broadcast`)
+> y `card.js`, que son de la otra sesión.
 
 ## Lo último: las actualizaciones (2026-11-16 13:50)
 
@@ -175,12 +236,22 @@ canal `auto` → `1.0.1-beta.0002`; con `0.0.0` (desarrollo) y `stable` →
   "más nueva" y búsqueda con `fetch` simulado). El banner de la tarjeta y su
   botón se prueban en `scripts/test-renderer.js`, y el canal en
   `scripts/test-local.js`.
+- **Publicado**: `7f093b4` en `beta` → release **`v1.1.0-beta.0001`** (el
+  `feat:` sube de 1.0.1 a 1.1.0) con el pipeline **en verde**: commits,
+  verify (`npm test` en CI), release y los dos builds. Windows (NSIS +
+  portable) y Linux (AppImage + deb) adjuntos.
 - **App real**: captura de la ventana de configuración con la sección nueva
   (*Actualizaciones*: interruptor, *Buscar ahora*, canal, versión) y captura
   de la tarjeta con el banner puesto a mano (`v0.0.0 → v1.0.0 disponible`).
   Las dos se ven bien; la captura de la tarjeta se restauró después
   (`git checkout -- preview-card.png`) para no dejar en el repo una versión
   de mentira.
+- **Lo que NO se ha probado**: el aviso del sistema (notificación) de punta a
+  punta, porque solo se muestra en la app **empaquetada** y con una versión
+  instalada menor que la publicada. Con `v1.0.1-beta.0002` instalada y
+  `v1.1.0-beta.0001` publicada, la próxima instalación del binario lo
+  enseñaría; la tarjeta y el menú sí enseñan el salto (comprobado con la
+  consulta real a GitHub).
 - **Trampa del entorno** (recordatorio): las vistas previas hay que lanzarlas
   con `Start-Process … -Wait` y redirección a fichero; con `&` en PowerShell
   no se espera al proceso y parece que "no ha hecho nada". El guardado de la
