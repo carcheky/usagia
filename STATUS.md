@@ -358,12 +358,13 @@ cualquier sesión puede seguir sin pelearse con cambios a medias.
 
 Lo que **queda pendiente** de esta sesión, en orden de valor:
 
-- [ ] **Instalar `v1.0.0-beta.4` y verificar la app empaquetada** (única
-      prueba que no se ha hecho): que la **tarjeta salga al pasar el ratón**
-      (el fallo exacto que arregló `beta.3`), que el tooltip del sistema
-      muestre el resumen y que la ventana de configuración abra y *Probar*
-      responda. Si algo falla, el arreglo va en `src/main/local/script-path.js`
-      / `build.files` / `build.asarUnpack`, que es donde se rompió la última vez.
+- [x] ~~**Instalar `v1.0.0-beta.4` y verificar la app empaquetada**~~ → **hecho
+      por `session-dab004c1`** (portable de la release, no el instalador): la
+      tarjeta sale al pasar el ratón, el tooltip muestra el resumen, la
+      ventana de configuración abre y *Probar* responde. Repetido también con
+      el portable de `beta.6`. Detalle en *De esta sesión
+      (`session-dab004c1`)*. Lo que queda: el **instalador NSIS**, que nadie
+      ha instalado.
 - [ ] **Cuadrar `README.md` con lo publicado**: añadir que las vistas previas
       **se ponen solas** `disable-gpu` (`814b6f5`), que `--probe`/`--preview`
       no exigen instancia única, y el estado de la cola de la revisión
@@ -430,6 +431,13 @@ reservados):
 - [ ] **Instalar la `beta.6` con el instalador NSIS** y repetir la prueba
       con la ruta fija: nadie ha instalado todavía, y es lo que deja el icono
       visible en la bandeja sin tener que promoverlo a mano cada vez.
+- [ ] *(cosmetica)* **El tooltip de la bandeja sale duplicado**: en Windows el
+      tooltip nativo no admite varias líneas y pinta el resumen entero, pero
+      además se ve **otra vez** detrás ("Usagia · Minimax … Usagia · Minimax
+      …"). Es el tooltip del sistema junto al de Electron, no un fallo de
+      datos, pero queda feo. Habría que limitar el texto del tooltip nativo a
+      una sola línea (p. ej. solo "Usagia · 4 cuentas") y dejar el detalle
+      para la tarjeta.
 
 - [ ] **`npm run preview:settings` se CUELGA con el fallback sin GPU.**
       Medido hoy: con `--in-process-gpu` (la bandera que puso `814b6f5`) la
@@ -462,8 +470,9 @@ reservados):
          lista de cuentas anterior.
       4. El texto de ayuda de Claude no dice qué pasa si el campo lleva una
          clave API (la app la ignora y usa la sesión local).
-- [ ] **Preparar el `v1.0.0`** (cuando lo decida el usuario): lo que está sin
-      publicar en `beta` saldría como `v1.0.0-beta.5` y la estable con
+- [ ] **Preparar el `v1.0.0`** (cuando lo decida el usuario): lo que quedaba
+      sin publicar en `beta` **ya salió como `v1.0.0-beta.5` y `beta.6`**; lo
+      que queda por publicar es la estable, con
       `git switch main && git merge --ff-only beta && git push origin main`.
 
 ### De las otras sesiones
@@ -472,7 +481,7 @@ reservados):
 |---|---|
 | `session-8a303ef4` | Items **12** (`safeStorage` para cifrar las credenciales) y **17** (código muerto y duplicación). Después, **libera `src/main/providers/*`** para que F1 pueda empezar. Detalle y plan abajo |
 | `session-e9f5038b` | ~~**Verificar la app instalada de `beta.4`**~~ → **hecho por `session-dab004c1`** (portable de la release: tarjeta al pasar el ratón, ⚙ → ventana de configuración, Antigravity con datos). Queda: cuadrar `README.md`/`FINDINGS.md`/`AGENTS.md` con lo publicado. Detalle en *De esta sesión (`session-e9f5038b`)* |
-| `session-dab004c1` | Verificación de la app instalada de `beta.4` (script propio en `%TEMP%`) y capturas del tooltip |
+| `session-dab004c1` | **Pausa del día.** Verificación de la app **publicada** de `beta.4` y de `beta.6` (portable descargado de la release, con el ratón real: tarjeta al pasar el icono, ⚙ → ventana de configuración, tooltip con los cuatro proveedores) y capturas del tooltip. Script propio en `%TEMP%`. Le queda: el instalador NSIS, el cuelgue de `preview:settings` y los cuatro apuntes de la revisión de código |
 
 ### De `session-8a303ef4` (revisión a fondo): los items 12 y 17, en detalle
 
