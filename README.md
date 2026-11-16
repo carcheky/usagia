@@ -242,7 +242,7 @@ git switch main && git merge --ff-only beta && git push origin main   # -> v1.1.
 El pipeline (`.github/workflows/release.yml`) encadena:
 
 ```
-commits (commitlint) -> verify (humo de la app) -> release (semantic-release)
+commits (commitlint) -> verify (humo de la app) -> release (scripts/release.js)
                                                          |
                                     +--------------------+--------------------+
                                     |                                         |
@@ -253,7 +253,10 @@ commits (commitlint) -> verify (humo de la app) -> release (semantic-release)
 Cada build compila **desde el tag** que nombra la release, no desde el HEAD de
 la rama, y adjunta sus binarios a esa misma release. La versión va incrustada
 en el binario (`--config.extraMetadata.version=`); en `package.json` queda
-`0.0.0` porque la gestiona semantic-release.
+`0.0.0` porque la pone `scripts/release.js`: en `beta` sale `v1.0.0-beta.NNNN`
+(siempre cuatro dígitos) y en `main` la estable `v1.0.0`. El changelog solo
+ lleva cambios de la app (`feat`, `fix`, `perf`); `ci:`, `chore:` o `docs:` ni
+ aparecen ni publican nada.
 
 ## Interacción
 

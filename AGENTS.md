@@ -1,6 +1,6 @@
 # Usagia — reglas para quien trabaje en este repo
 
-Mismo modelo que `woptimizer`: **conventional commits + semantic-release**, con
+Mismo modelo que `woptimizer`: **conventional commits + releases automáticas**, con
 `beta` como rama de trabajo y `main` como rama de publicación.
 
 ## Ramas
@@ -41,19 +41,23 @@ La versión **la decide el mensaje de commit**, no nadie a mano:
 Todo ocurre en `.github/workflows/release.yml`:
 
 `commits` (commitlint) → `verify` (humo de la app) → `release`
-(semantic-release) → `build-windows` + `build-linux` (electron-builder y
-adjuntar los binarios a la release)
+(`scripts/release.js`: numera, redacta el changelog y crea la release) →
+`build-windows` + `build-linux` (electron-builder y adjuntar los binarios a
+la release)
 
 ```bash
-git push origin beta     # -> Release v1.1.0-beta.N, marcada como pre-release
-git switch main && git merge --ff-only beta && git push origin main   # -> Release v1.1.0
+git push origin beta     # -> Release v1.0.0-beta.NNNN (cuatro digitos), pre-release
+git switch main && git merge --ff-only beta && git push origin main   # -> Release v1.0.0
 ```
 
 > ⚠️ **Nunca crees tags a mano** ni edites el número de versión:
-> `semantic-release` los pone, y un tag manual lo duplica.
-> La versión de `package.json` queda en `0.0.0`: la gestiona semantic-release
-> y el pipeline se la pasa a electron-builder con
-> `--config.extraMetadata.version=`.
+> `scripts/release.js` los pone, y un tag manual lo duplica.
+> La versión de `package.json` queda en `0.0.0`: la pone el script y el
+> pipeline se la pasa a electron-builder con `--config.extraMetadata.version=`.
+>
+> **El changelog es de la app, no del repo.** Un cambio del pipeline, de la
+> documentación o de las pruebas va como `ci:`, `docs:` o `test:`: no publica
+> release ni aparece en ninguna. Solo `feat:`, `fix:` y `perf:` son de la app.
 
 ## Reglas de la app
 

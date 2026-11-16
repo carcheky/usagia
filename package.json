@@ -31,7 +31,7 @@
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
-    "release:dry": "npx --yes semantic-release@25 --dry-run"
+    "release:dry": "node scripts/release.js --dry-run"
   },
   "devDependencies": {
     "electron": "^38.0.0",

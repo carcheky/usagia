@@ -1,8 +1,8 @@
 name: Release
 
-# Rama de release estable -> version sin sufijo (1.0.0, 1.0.1, 2.0.0...).
-# Rama `beta` -> prerelease (1.1.0-beta.1...). Al fusionarla en `main`, semantic-release
-# graduationa el prerelease y publica la version estable correspondiente.
+# Rama `beta` -> pre-release v1.0.0-beta.NNNN (siempre cuatro digitos).
+# Rama `main` -> version estable v1.0.0, v1.0.1... (solo la fusiona el usuario).
+# La version la deciden los commits de la app (feat/fix/perf); lo demas no publica.
 on:
   push:
     branches:
@@ -133,65 +133,44 @@ jobs:
       - name: Comprobacion del paquete
         run: node scripts/test-package.js
 
+  # Numero, changelog y release los pone `scripts/release.js`, no
+  # semantic-release: para semver "1.0.0-beta.0012" no es una version valida
+  # (ceros a la izquierda), asi que semantic-release o publicaba "beta.12" o,
+  # si se renombraba despues, dejaba de ver la release anterior y volvia a
+  # empezar en "beta.1". Con el script:
+  #
+  #   - En `beta`: v<base>-beta.NNNN, SIEMPRE con cuatro digitos.
+  #   - En `main`: v<base>, estable. Solo la fusiona el usuario.
+  #   - El changelog lleva SOLO cambios de la app (feat, fix, perf). Los
+  #     commits ci:, chore:, docs:, test:, refactor: ni aparecen ni publican.
+  #   - Sin cambios de la app desde la release anterior, no se publica nada.
+  #
+  # La release se crea por la API, que crea el tag a la vez: el bot no puede
+  # hacer `git push` de tags ni `POST /git/refs`.
   release:
-    name: semantic-release
+    name: Publicar la release
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     permissions:
       contents: write
     outputs:
-      tag: ${{ steps.resolve.outputs.tag }}
-      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.publicar.outputs.tag }}
+      version: ${{ steps.publicar.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
 
-      # Foto de los tags ya publicados ANTES de la corrida. El diff posterior es
-      # lo que dice si esta corrida publico algo; `git describe` no sirve,
-      # porque en un push sin commits publicables devolveria el tag viejo y
-      # reconstruiria encima de una release anterior.
-      - name: Congelar los tags ya publicados
-        run: git tag --list 'v*' | sort > "$RUNNER_TEMP/tags_before.txt"
-
-      # OJO con el segundo `-p` y con la MAYOR del preset, y no es cosmetico:
-      # 1. `conventional-changelog-conventionalcommits` NO viene con semantic-release.
-      #    `load-parser-config.js` (commit-analyzer) lo resuelve con
-      #    `importFrom(cwd, 'conventional-changelog-conventionalcommits')`, y sin el
-      #    paquete a mano el job muere con "Cannot find module". Ademas el preset por
-      #    defecto de commit-analyzer es `angular`, NO `conventionalcommits`: sin el,
-      #    los mensajes se parsean con otro criterio y la version sale mal.
-      # 2. La mayor va FIJADA a la 9, y por evidencia de dependencias, no por
-      #    costumbre: `@semantic-release/commit-analyzer@13.0.1` depende de
-      #    `conventional-changelog-writer` (API clasica), mientras que el preset v10
-      #    ya reescrito usa `@conventional-changelog/template`. La v9 es la ultima
-      #    mayor con la API que espera el writer.
-      - name: Calcular version y publicar la release
-        run: npx --yes -p semantic-release@25 -p conventional-changelog-conventionalcommits@9 semantic-release
+      - name: Numerar, redactar el changelog y publicar
+        id: publicar
+        run: node scripts/release.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Resolver el tag recien publicado
-        id: resolve
-        run: |
-          git fetch --tags --force --quiet
-          git tag --list 'v*' | sort > "$RUNNER_TEMP/tags_after.txt"
-          NUEVO="$(comm -13 "$RUNNER_TEMP/tags_before.txt" "$RUNNER_TEMP/tags_after.txt" | head -n1)"
-          if [ -z "$NUEVO" ]; then
-            echo "No hay commits publicables en este push: no se crea release."
-            echo "tag=" >> "$GITHUB_OUTPUT"
-            echo "version=" >> "$GITHUB_OUTPUT"
-          else
-            echo "Release publicada: $NUEVO"
-            echo "tag=$NUEVO" >> "$GITHUB_OUTPUT"
-            echo "version=${NUEVO#v}" >> "$GITHUB_OUTPUT"
-          fi
 
   build-windows:
     name: Empaquetar para Windows
@@ -281,73 +260,3 @@ jobs:
             dist/*.deb
             dist/*.blockmap
 
-  # GitHub ordena la lista de releases por el nombre del tag, como TEXTO. Con
-  # "v1.0.0-beta.10" la beta mas reciente NO sale la primera: '1' < '4', asi
-  # que la 10 queda entre la 5 y la 4, y la pagina del repo no enseña la
-  # ultima version.
-  #
-  # Con el numero a 4 digitos todos los nombres tienen la misma longitud y la
-  # lista sale de la mas nueva a la mas vieja. Se renombra SOLO el nombre de
-  # la release: el tag git se queda sin rellenar, porque semantic-release solo
-  # entiende los tags con version valida (semver no admite ceros a la
-  # izquierda) y si no, deja de numerar las betas.
-  #
-  # Va DESPUES de adjuntar los binarios: si se renombra antes, el paso de
-  # adjuntar no encuentra la release y crea otra, y la beta queda partida en
-  # dos (una con los .exe y otra con los de Linux).
-  numerar-beta:
-    name: Numerar las betas con 4 digitos
-    needs: [release, build-windows, build-linux]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - name: Renombrar las releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          # GitHub ordena la lista de releases por el nombre del tag, como
-          # TEXTO: con "v1.0.0-beta.10" la beta mas reciente NO sale la
-          # primera ('1' < '4', asi que la 10 queda entre la 5 y la 4) y la
-          # pagina del repo no enseña la ultima version.
-          #
-          # Con el numero a 4 digitos todos los nombres tienen la misma
-          # longitud y la lista sale de la mas nueva a la mas vieja. Se
-          # renombran TODAS, no solo la nueva: si unas llevan 000 y otras
-          # no, la lista vuelve a quedar mezclada.
-          #
-          # El tag GIT no se toca (se queda sin rellenar): semantic-release
-          # solo entiende los tags con version valida (semver no admite
-          # ceros a la izquierda) y si no, deja de numerar las betas.
-          #
-          # Va DESPUES de adjuntar los binarios: si se renombra antes, el
-          # paso de adjuntar no encuentra la release y crea otra, y la beta
-          # queda partida en dos (una con los .exe y otra con los de Linux).
-          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
-            --jq '.[] | [.id, .tag_name] | @tsv' > /tmp/releases.tsv
-          while IFS=$'\t' read -r ID TAG; do
-            [ -n "${TAG:-}" ] || continue
-            case "$TAG" in
-              *-beta.*) ;;
-              *) continue ;;
-            esac
-            PREFIJO="${TAG%.beta.*}"
-            SUFIJO="${TAG##*.}"
-            case "$SUFIJO" in
-              ''|*[!0-9]*)
-                echo "$TAG no acaba en numero: se deja como esta."
-                continue
-                ;;
-            esac
-            RELLENO=$(printf "%04d" "$SUFIJO")
-            if [ "$RELLENO" = "$SUFIJO" ]; then
-              echo "$TAG ya tiene 4 digitos."
-              continue
-            fi
-            NUEVO="$PREFIJO.beta.$RELLENO"
-            echo "Renombro $TAG -> $NUEVO (release $ID)"
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$ID" \
-              -f tag_name="$NUEVO" -f name="$NUEVO" --jq .tag_name
-          done < /tmp/releases.tsv
