@@ -229,6 +229,27 @@ por tiempo. `npm test` → **9 suites, 34 pruebas de proveedores, en verde**.
 > habría que enseñar la edad **por proveedor**: eso son `main.js` (`broadcast`)
 > y `card.js`, que son de la otra sesión.
 
+### Cierre (2026-11-16 18:00): publicado, instalado y en marcha
+
+| Paso | Estado |
+|---|---|
+| Commit | **`25a679a`** `fix: la cuota de Claude se refresca al ritmo de la app` (3 ficheros: proveedor, su prueba y `FINDINGS.md`) |
+| Release | **`v1.1.0-beta.0002`**, construida desde `25a679a`; changelog: *"la cuota de Claude se refresca al ritmo de la app"*. Windows (portable + Setup), Linux y `.deb` adjuntos |
+| Instalada | `Usagia-Setup-1.1.0-beta.0002` (sha256 verificado) sobre la `beta.0001`; el `app.asar` instalado **ya contiene** `CACHE_RATE_LIMIT_MS`, `rateLimited` y `allLongExhausted` |
+| En marcha | 4 procesos, arrancada desde el escritorio (`explorer.exe`), que es la única forma de arrancar Electron desde una sesión de DSH |
+| Endpoint sano | `npm run probe` a las 18:00: Claude `ok`, **sin 429** |
+
+> **Trampa de medición (para no repetirla):** contar conexiones TCP **solo de los
+> procesos de Usagia** no ve las peticiones que hace `get-claude-usage.ps1`: van
+> en un **proceso hijo de PowerShell**, con otro PID. Una ventana de 4,5 min sin
+> conexiones a `160.79.104.x` me hizo sospechar un 429 que no existía.
+
+> **Otra trampa del entorno:** desde una sesión de DSH **no se puede arrancar
+> Electron** (ni el de desarrollo ni el instalado): Chromium no puede crear su
+> lock de instancia única (`process_singleton_win.cc:457`, error 5) y la app
+> muere en silencio. `scripts/run.js` y `Start-Process` fallan igual; la única
+> forma que funcionó es `explorer.exe <exe>` (equivale al doble clic).
+
 ## Lo último: las actualizaciones (2026-11-16 13:50)
 
 **Encargo:** "actualizaciones. debe poder verse si hay nuevas actualizaciones,
