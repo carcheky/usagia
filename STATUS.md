@@ -20,20 +20,20 @@
 | Sección | Línea |
 |---|---|
 | Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 39 |
-| Resumen en una línea | 72 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 83 |
-| Versiones | 129 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 161 |
-| Qué funciona (verificado) | 184 |
-| Pendiente / siguiente | 203 |
-| Puntos abiertos y riesgos conocidos | 238 |
-| Límites del sandbox de DSH al medir (no son fallos de la app) | 262 |
-| Reparto entre sesiones (acuerdo) | 274 |
-| Cómo mantener este fichero | 296 |
-| Decisiones que son del usuario | 309 |
-| Notas para quien siga | 317 |
-| Retomar (en 5 minutos) | 324 |
-| Actualización automática desde la app (2026-11-16 18:45) | 339 |
+| Resumen en una línea | 71 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 82 |
+| Versiones | 128 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 160 |
+| Qué funciona (verificado) | 183 |
+| Pendiente / siguiente | 202 |
+| Puntos abiertos y riesgos conocidos | 237 |
+| Límites del sandbox de DSH al medir (no son fallos de la app) | 261 |
+| Reparto entre sesiones (acuerdo) | 273 |
+| Cómo mantener este fichero | 295 |
+| Decisiones que son del usuario | 308 |
+| Notas para quien siga | 316 |
+| Retomar (en 5 minutos) | 323 |
+| Actualización automática desde la app (2026-11-16 18:45) | 338 |
 <!-- fin-índice -->
 
 ## Lo último: documentación para humanos y agentes (2026-11-16 18:50)
@@ -60,14 +60,13 @@ excepción: el plan se lee entero).
 [0002](docs/decisions/0002-skill-y-reparto-del-contexto.md) y el cambio de OpenSpec en
 [openspec/changes/archive/2026-11-16-docs-carga-selectiva/](openspec/changes/archive/2026-11-16-docs-carga-selectiva/).
 
-**Lo que NO se ha tocado:** nada de `src/`. El trabajo en curso de la otra sesión
-(`src/main/update-install.js`, `updates.js`, preloads, renderer) sigue **sin commitear y
-sin tocar**. `npm test` → **10 suites en verde**.
+**Lo que NO se ha tocado:** nada de `src/`. El trabajo de la otra sesión (la instalación
+de actualizaciones) quedó commiteado por ella (`c9c9111`, `f446fcc`, `b97518c`) y esta
+sesión **no lo ha tocado**. `npm test` → **10 suites en verde**.
 
-**Sin empujar:** el commit es `docs:` y está **solo en local**, porque la regla del repo pide
-`git status --porcelain` vacío antes de cada `git push` y el árbol tiene el trabajo en curso
-de la otra sesión. Quien cierre el árbol puede empujarlo tal cual (no publica release:
-`docs:` no es de la app).
+**Push:** commiteado en `beta` (`36d831e`) y **empujado**: el árbol estaba limpio (la otra
+sesión había cerrado su trabajo), así que cumplía la regla del repo. Es un `docs:`: **no
+publica release**.
 
 ## Resumen en una línea
 
