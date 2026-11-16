@@ -25,6 +25,16 @@ if (PREVIEW_CONFIG_DIR) {
   app.setPath('userData', PREVIEW_CONFIG_DIR);
 }
 
+// En un entorno sin GPU utilizable (el sandbox de DSH, un contenedor, un RDP
+// sin aceleracion) Chromium mata la app al arrancar: "GPU process isn't
+// usable. Goodbye.". Las vistas previas se lanzan con la GPU dentro del
+// proceso (--in-process-gpu, lo pone el script de npm) para que funcionen en
+// cualquier sitio; la app de bandeja no se toca, porque ahi si se quiere el
+// proceso de GPU aparte.
+if (process.argv.includes('--preview') || process.argv.includes('--settings')) {
+  app.commandLine.appendSwitch('disable-gpu');
+}
+
 let tray = null;
 let anchorRect = null;
 let state = { results: {}, updatedAt: 0, refreshing: false };

@@ -30,7 +30,11 @@ const KILL_GRACE_MS = 3000;
 // Un sondeo es de una sola vez: si falla, reintentar 10 veces solo multiplica
 // el tiempo de espera del job de CI. El watchdog es para la app de bandeja,
 // que debe vivir siempre.
-const ONE_SHOT = args.includes('--probe') || args.includes('--preview');
+// `--settings` tambien es de una sola vez (es una vista previa de la ventana
+// de configuracion): si el watchdog lo relanzara, se abririan hasta 10
+// ventanas de configuracion seguidas.
+const ONE_SHOT =
+  args.includes('--probe') || args.includes('--preview') || args.includes('--settings');
 
 const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;

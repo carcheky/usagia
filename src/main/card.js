@@ -165,8 +165,16 @@ function isVisible() {
 }
 
 function send(channel, payload) {
-  if (!win) return;
-  win.webContents.send(channel, payload);
+  if (!win || win.isDestroyed()) return;
+  try {
+    win.webContents.send(channel, payload);
+  } catch (err) {
+    // Si la ventana se esta cerrando, el render ya no existe: no es un fallo
+    // de la app y no debe tumbar el proceso principal.
+    if (process.argv.includes('--verbose')) {
+      console.log(`[usagia] no se pudo enviar '${channel}': ${err.message}`);
+    }
+  }
 }
 
 function bounds() {
