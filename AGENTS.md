@@ -23,6 +23,13 @@ git push origin main
 > sin pasar por `beta` es lo que rompe el job `commits` (que mira el rango
 > del push).
 
+> **Regla más dura todavía: `main` solo la fusiona el usuario.** Publicar una
+> versión estable es su decisión, no la de ninguna sesión ni la de ningún
+> agente. Una sesión trabaja en `beta`, hace `git push origin beta` (eso sí
+> genera pre-releases, que es lo normal) y **no toca `main`**: ni la fusiona,
+> ni la crea, ni la empuja, ni cambia la rama por defecto del repo. Si cree
+> que toca publicar una estable, no la publica: lo dice y lo decide él.
+
 > Antes de cada `git push`, `git status --porcelain` tiene que salir vacío.
 
 ## Releases
