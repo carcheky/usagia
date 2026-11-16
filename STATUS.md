@@ -30,14 +30,14 @@
 | Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
 | Qué funciona (verificado) | 337 |
 | Pendiente / siguiente | 356 |
-| Puntos abiertos y riesgos conocidos | 386 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 410 |
-| Reparto entre sesiones (acuerdo) | 429 |
-| Cómo mantener este fichero | 451 |
-| Decisiones que son del usuario | 464 |
-| Notas para quien siga | 471 |
-| Retomar (en 5 minutos) | 478 |
-| Actualización automática desde la app (2026-11-16 18:45) | 493 |
+| Puntos abiertos y riesgos conocidos | 382 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 406 |
+| Reparto entre sesiones (acuerdo) | 425 |
+| Cómo mantener este fichero | 447 |
+| Decisiones que son del usuario | 460 |
+| Notas para quien siga | 467 |
+| Retomar (en 5 minutos) | 474 |
+| Actualización automática desde la app (2026-11-16 18:45) | 489 |
 <!-- fin-índice -->
 
 ## Lo último: items 12 y 17 completados (2026-11-16 20:50)

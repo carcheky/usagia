@@ -35,8 +35,8 @@
     "release:dry": "node scripts/release.js --dry-run"
   },
   "devDependencies": {
-    "electron": "^38.0.0",
-    "electron-builder": "^26.0.12"
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.usagia.tray",
