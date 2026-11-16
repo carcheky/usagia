@@ -1,13 +1,15 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 01:30 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-fa207887`
-> ("Plan de Android"). Esta versión **fusiona** lo que escribieron las sesiones
-> `session-e9f5038b` (docs, commit `de3d34f`) y `session-8a303ef4` (revisión a
-> fondo, cabecera de las 01:12 y cola de la revisión), sin perder nada de su
-> contenido. Si al abrirlo la cabecera dice otra sesión, **fusiona su
-> contenido** en vez de sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias
-> sesiones en el mismo repo*).
+> **Última actualización:** 2026-11-16 01:35 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-e9f5038b`
+> ("lead"). Esta versión **fusiona** lo que escribieron las sesiones
+> `session-8a303ef4` (revisión a fondo, commits `fcb920f` y `34aa4a9`) y
+> `session-fa207887` (plan de Android, commit `59692d2`), sin perder nada de su
+> contenido, y añade lo que solo tenía esta sesión: la **verificación de la
+> UI** (tarjeta y configuración, con datos vivos) y el estado de la
+> **verificación de la app instalada** de `beta.4`. Si al abrirlo la cabecera
+> dice otra sesión, **fusiona su contenido** en vez de sobrescribirlo (ver
+> [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
 > repo (ver [Cómo mantener este fichero](#cómo-mantener-este-fichero)).
@@ -21,7 +23,7 @@ y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.4`)**, sin versión
 estable todavía. La revisión a fondo del código (9 commits) está **publicada y
 verificada**; `beta` está a la par de `origin/beta` y el árbol está limpio.
 
-## Sesiones activas en este repo (2026-11-16 01:30)
+## Sesiones activas en este repo (2026-11-16 01:35)
 
 Cuatro sesiones de DSH están abiertas sobre este mismo repo y han recibido el
 mismo encargo. **DSH no permite mensajes entre sesiones raíz distintas**
@@ -31,10 +33,10 @@ lugar de pisar.
 
 | Sesión | Título | Qué está haciendo | Ficheros reservados |
 |---|---|---|---|
-| `session-fa207887` (**esta**) | Plan de Android | Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4` (Claude solo-OAuth, `test-parsers.js`, numeración de releases). La **implementación no ha empezado**: lo siguiente es ejecutar el plan por commits (F0-F6), empezando por el refactor del núcleo, que **no puede empezar hasta que la otra sesión libere `src/main/providers/*`**. Ver [Android: el plan y su estado](#android-el-plan-y-su-estado-2026-11-16) | `PLAN-ANDROID.md` · `STATUS.md` (fusionado, no pisado) |
-| `session-8a303ef4` | Revisión a fondo del código | Los 9 commits ya están publicados en `beta.4`. Ahora recoge la **cola de la revisión** (items 11-18, ver más abajo) y mantiene este fichero | `STATUS.md` · `scripts/run.js` · `src/main/credentials.js` · `src/main/settings.js` · `src/main/card.js` · `src/main/http.js` · `src/main/local/antigravity-client.js` · `src/main/providers/*.js` · `package.json` |
-| `session-e9f5038b` | lead (documentación) | Commiteó `de3d34f` (STATUS.md + las reglas "fusionar, no sobrescribir" y "reservar antes de editar" en `AGENTS.md`). En espera | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
-| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos); está leyendo `STATUS.md` y el historial de releases | (por anunciar) |
+| `session-e9f5038b` (**esta**) | lead (documentación y verificación) | Cuadra los documentos con lo publicado, **verificó la UI** (tarjeta y configuración, con datos vivos) y verificó `beta.4` en la app instalada. Commiteó `de3d34f` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
+| `session-8a303ef4` | Revisión a fondo del código | Los 9 commits ya están publicados en `beta.4`. Ahora trabaja la **cola de la revisión** (items 11-18): ya arregló el **13 y el 18** (`34aa4a9`, renderer con `sandbox: true` y sin guiones de prueba en el instalador) y tiene **diez ficheros modificados en el árbol** ahora mismo (items 11, 14, 15, 16, 17) | `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
+| `session-fa207887` | Plan de Android | Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4` (Claude solo-OAuth, `test-parsers.js`, numeración de releases), commiteado en `59692d2`. La **implementación no ha empezado**: lo siguiente es ejecutar el plan por commits (F0-F6), empezando por el refactor del núcleo, que **no puede empezar hasta que la otra sesión libere `src/main/providers/*`**. Ver [Android: el plan y su estado](#android-el-plan-y-su-estado-2026-11-16) | `PLAN-ANDROID.md` (liberado) |
+| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Ahora **verifica la app ya instalada** de `beta.4` con un script propio (`Temp\test-beta4.ps1`) y saca capturas del tooltip | (no toca el repo: trabaja en `%TEMP%`) |
 
 **Reglas de coordinación** (valen para todas; también en `AGENTS.md`):
 
@@ -61,8 +63,8 @@ lugar de pisar.
 |---|---|---|
 | Última release publicada | **v1.0.0-beta.4** (2026-11-16 00:46 local) | Pre-release; Windows (NSIS + portable) y Linux (AppImage + deb) adjuntos. Publicada por el pipeline al empujar `beta` |
 | Última release estable | **ninguna** | `main` nunca ha publicado; falta el primer `merge --ff-only beta` |
-| Rama de trabajo `beta` | `de3d34f` | **Igual que `origin/beta`**: los 17 commits (revisión + arreglo de la vista previa + docs) están empujados |
-| Rama `main` | `deebebb` | 17 commits por detrás de `beta` |
+| Rama de trabajo `beta` | `34aa4a9` (local) · `59692d2` en `origin/beta` | 18 commits desde `442f1ef`; el local va **uno por delante** (el arreglo de `sandbox` y guiones de prueba, aún sin pushear) |
+| Rama `main` | `deebebb` | 20 commits por detrás de `beta` |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone semantic-release |
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
@@ -104,15 +106,37 @@ tocar estos ficheros mientras los tenga reservados**:
 |---|---|---|---|
 | 11 | El watchdog no mata a Electron en `SIGTERM` y el contador de reinicios nunca vuelve a 0 | `scripts/run.js` | Un `SIGTERM` deja el hijo huérfano; tras 10 caídas repartidas en meses, el lanzador abandona |
 | 12 | Credenciales en texto plano en `config.json` | `src/main/credentials.js`, `src/main/settings.js` | Electron trae `safeStorage` (DPAPI en Windows, Keychain en mac): cifrar el campo al guardar y descifrar al leer |
-| 13 | `sandbox: false` en las dos ventanas | `src/main/card.js`, `src/main/settings.js` | Los preloads solo usan `contextBridge`/`ipcRenderer`: `sandbox: true` funciona igual |
+| 13 | ~~`sandbox: false` en las dos ventanas~~ **ARREGLADO** (`34aa4a9`) | `src/main/card.js`, `src/main/settings.js` | Los preloads solo usan `contextBridge`/`ipcRenderer`: `sandbox: true` funciona igual |
 | 14 | La comprobación de ruta del protocolo `app://` no exige separador | `src/main/main.js` | `target.startsWith(root)` aceptaría `…/renderer-otro/…`; usar `root + path.sep` |
 | 15 | PowerShell + UI Automation cada 10 s para localizar el icono | `src/main/hover.js` | ~0,5-1,5 s de CPU cada 10 s con la app viva; la caché de 10 s nunca acierta. Alargar a 30-60 s o invalidar solo al cambiar la pantalla |
 | 16 | `app.asar` de Antigravity entero en memoria | `src/main/local/antigravity-client.js` | Lectura `latin1` de >100 MB para dos regex, solo al renovar token |
 | 17 | Código muerto y duplicación | varios | `locale` sin usar, `gemini` sin proveedor, `isInteractive`/`CARD_WIDTH`/`describe()` sin consumidores, `--probe` duplicado en `main.js`, `formatTokens` copiado en `claude.js` y `deepseek.js`, bloque de métrica de porcentaje repetido 4 veces |
-| 18 | Sin linter; `build.files` mete scripts de test en el instalador | `package.json` | El bug de `!enabled` lo habría cazado ESLint; bastaría `scripts/*.ps1` en `files` |
+| 18 | ~~Sin linter; `build.files` mete scripts de test en el instalador~~ **ARREGLADO** (`34aa4a9`: el instalador ya no lleva los guiones de prueba) | `package.json` | El bug de `!enabled` lo habría cazado ESLint; bastaría `scripts/*.ps1` en `files` |
 
 Verificado el 2026-11-16 01:10 sobre `de3d34f`: `npm test` → **OK**
 (30 pruebas: 14 de cuentas + 16 de parsers) y `npm run test:package` → **OK**.
+
+### Trabajo en vuelo ahora mismo (2026-11-16 01:35)
+
+`session-8a303ef4` está con **diez ficheros modificados sin commitear** en el
+árbol de trabajo (`scripts/run.js`, `scripts/test-accounts.js`,
+`scripts/test-parsers.js`, `src/main/hover.js`, `src/main/http.js`,
+`src/main/instances.js`, `src/main/local/antigravity-client.js`,
+`src/main/main.js`, `src/main/settings.js`, `src/renderer/settings.js`):
+corresponden a los items 11, 14, 15, 16 y 17 de la cola.
+
+> **Ninguna otra sesión debe tocar esos ficheros** hasta que se commiteen.
+> Cuando se commitee y se empuje, la cola baja a los items **12** (cifrar
+> credenciales con `safeStorage`) y **17** (código muerto), que siguen sin
+> empezar.
+
+Commits nuevos desde la última actualización de este fichero:
+
+| Commit | Qué |
+|---|---|
+| `34aa4a9` fix | El renderer va con `sandbox: true` y el instalador sin los guiones de prueba (items 13 y 18 de la cola) |
+| `59692d2` docs | El plan de Android y el estado del proyecto, actualizados con las novedades de `beta.4` |
+| `fcb920f` docs | La cola de la revisión y la reserva de ficheros entre sesiones |
 
 ## Android: el plan y su estado (2026-11-16)
 
@@ -212,8 +236,9 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
 
 1. **Primera versión estable**: `beta.4` ya está publicada y verificada; falta
    `git switch main && git merge --ff-only beta && git push origin main` →
-   `v1.0.0`. Conviene hacerlo después de instalar `beta.4` y comprobar que la
-   tarjeta sale en la app instalada (el fallo que arregló `beta.3`).
+   `v1.0.0`. Falta una comprobación: que la tarjeta salga en la **app
+   instalada** (el fallo que arregló `beta.3`). La está haciendo la sesión
+   `session-dab004c1` con un script propio sobre el binario de `beta.4`.
 2. **Decidir lo de Electron**: el PR #1 de Dependabot (38.8.6 → 42.11.16) está
    **cerrado sin fusionar** y la rama sigue viva. GitHub avisa de **34
    vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
@@ -229,8 +254,10 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
    `src/main/providers/*`.
 4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
    binarios de macOS** (solo Windows y Linux).
-5. **Cola de la revisión a fondo** (items 11-18): los ocho puntos que
-   quedaron sin arreglar, con su fichero y su motivo, están en
+5. **Cola de la revisión a fondo** (items 11-18): los **13 y el 18 ya están
+   arreglados** (`34aa4a9`); los items **11, 14, 15, 16 y 17** están en
+   marcha ahora mismo, y el **12** (cifrar credenciales con `safeStorage`)
+   sigue sin empezar. Tabla completa en
    [Cola de la revisión a fondo](#cola-de-la-revisión-a-fondo-lo-que-queda-items-11-18-sin-hacer).
    Ninguno bloquea una release: son robustez, seguridad y limpieza. La sesión
    `session-8a303ef4` los tiene reservados.
@@ -273,7 +300,7 @@ Documentados en detalle en [FINDINGS.md §3](FINDINGS.md):
 
 ## Reparto entre sesiones (acuerdo)
 
-Ver [Sesiones activas en este repo](#sesiones-activas-en-este-repo-2026-11-16-0130),
+Ver [Sesiones activas en este repo](#sesiones-activas-en-este-repo-2026-11-16-0135),
 que es la tabla viva. En corto:
 
 - **DSH no permite mensajes entre sesiones raíz distintas**: `send_message`
