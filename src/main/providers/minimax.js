@@ -4,7 +4,7 @@
 // Endpoint público del panel de cuota: devuelve el % restante de la ventana de
 // 5 h y de la ventana semanal, por modelo.
 
-const { fetchJson, pct100, used, tone, fmtDuration } = require('../http');
+const { fetchJson, pct100, used, tone, fmtDuration, sortMetrics } = require('../http');
 const creds = require('../credentials');
 
 const ENDPOINT = 'https://api.minimax.io/v1/token_plan/remains';
@@ -45,13 +45,14 @@ async function fetchUsage(ctx) {
   // La API devuelve el porcentaje 0-100 de lo que QUEDA; el panel de Minimax
   // muestra lo USADO.
   const metrics = [];
-  const addMetric = (label, remainingPercent) => {
+  const addMetric = (label, remainingPercent, window) => {
     if (remainingPercent === null) return;
     const remaining = pct100(remainingPercent);
     if (remaining === null) return;
     const consumed = used(remaining);
     metrics.push({
       label,
+      window,
       value: `${Math.round(consumed * 100)}% usado`,
       short: `${Math.round(consumed * 100)}%`,
       remaining: `queda ${Math.round(remaining * 100)}%`,
@@ -59,8 +60,8 @@ async function fetchUsage(ctx) {
       tone: tone(remaining),
     });
   };
-  addMetric('ventana 5 h', bucket.current_interval_remaining_percent);
-  addMetric('semanal', bucket.current_weekly_remaining_percent);
+  addMetric('ventana 5 h', bucket.current_interval_remaining_percent, '5h');
+  addMetric('semanal', bucket.current_weekly_remaining_percent, 'weekly');
 
   const reset5h = fmtDuration(Number(bucket.remains_time));
   const resetWeek = fmtDuration(Number(bucket.weekly_remains_time));
@@ -72,7 +73,7 @@ async function fetchUsage(ctx) {
   return {
     status: 'ok',
     summary: metrics.map((m) => `${m.label}: ${m.value}`).join(' · '),
-    metrics,
+    metrics: sortMetrics(metrics),
     note: notes.join(' · '),
     source: credential.source,
   };

@@ -14,7 +14,7 @@
 // El endpoint no es publico y la comunidad reporta ~5 peticiones por ventana
 // (HTTP 429), asi que la respuesta se cachea 10 minutos.
 
-const { fetchJson, pct100, tone } = require('../http');
+const { fetchJson, pct100, tone, sortMetrics } = require('../http');
 const creds = require('../credentials');
 const ps = require('../local/ps');
 const scriptPath = require('../local/script-path');
@@ -127,18 +127,19 @@ function parseUsage(data) {
   const notes = [];
 
   const buckets = [
-    ['ventana 5 h', data?.five_hour],
-    ['semanal', data?.seven_day],
-    ['mensual', data?.seven_day_opus ?? data?.seven_day_sonnet],
+    ['ventana 5 h', data?.five_hour, '5h'],
+    ['semanal', data?.seven_day, 'weekly'],
+    ['mensual', data?.seven_day_opus ?? data?.seven_day_sonnet, 'monthly'],
   ];
 
-  for (const [label, raw] of buckets) {
+  for (const [label, raw, window] of buckets) {
     if (!raw || typeof raw !== 'object') continue;
     const consumed = pct100(raw.utilization);
     if (consumed === null) continue;
     const remaining = Math.max(0, 1 - consumed);
     metrics.push({
       label,
+      window,
       value: `${Math.round(consumed * 100)}% usado`,
       short: `${Math.round(consumed * 100)}%`,
       remaining: `queda ${Math.round(remaining * 100)}%`,
@@ -166,6 +167,7 @@ function parseUsage(data) {
       const scope = scoped.scope?.model?.display_name;
       metrics.push({
         label: scope ? `semanal ${scope}` : 'semanal con ámbito',
+        window: 'weekly_scoped',
         value: `${Math.round(consumed * 100)}% usado`,
         short: `${Math.round(consumed * 100)}%`,
         remaining: `queda ${Math.round(remaining * 100)}%`,
@@ -192,7 +194,7 @@ function parseUsage(data) {
     );
   }
 
-  return { metrics, notes };
+  return { metrics: sortMetrics(metrics), notes };
 }
 
 /** Primera linea util de un stderr de PowerShell, para el aviso. */

@@ -85,6 +85,60 @@ check('fmtDuration', () => {
   assert.strictEqual(http.fmtDuration(NaN), null);
 });
 
+check('sortMetrics pone la ventana mas corta primero, en TODOS los proveedores', () => {
+  // El orden que devuelve cada API es distinto: aqui esta al reves.
+  const metrics = [
+    { label: 'semanal', window: 'weekly' },
+    { label: 'ventana 5 h', window: '5h' },
+    { label: 'mensual', window: 'monthly' },
+  ];
+  assert.deepStrictEqual(
+    http.sortMetrics(metrics).map((m) => m.label),
+    ['ventana 5 h', 'semanal', 'mensual']
+  );
+
+  // El limite con ambito va tras la semanal (es otra cuota semanal).
+  const conAmbito = [
+    { label: 'semanal Fable', window: 'weekly_scoped' },
+    { label: 'ventana 5 h', window: '5h' },
+    { label: 'semanal', window: 'weekly' },
+  ];
+  assert.deepStrictEqual(
+    http.sortMetrics(conAmbito).map((m) => m.label),
+    ['ventana 5 h', 'semanal', 'semanal Fable']
+  );
+});
+
+check('sortMetrics respeta los GRUPOS (Antigravity) sin separarlos', () => {
+  const metrics = [
+    { label: 'Gemini Models · semanal', window: 'weekly', group: 'Gemini Models' },
+    { label: 'Claude and GPT models · semanal', window: 'weekly', group: 'Claude and GPT models' },
+    { label: 'Gemini Models · 5 h', window: '5h', group: 'Gemini Models' },
+    { label: 'Claude and GPT models · 5 h', window: '5h', group: 'Claude and GPT models' },
+  ];
+  assert.deepStrictEqual(
+    http.sortMetrics(metrics).map((m) => m.label),
+    [
+      'Gemini Models · 5 h',
+      'Gemini Models · semanal',
+      'Claude and GPT models · 5 h',
+      'Claude and GPT models · semanal',
+    ]
+  );
+});
+
+check('sortMetrics deja al final lo que no es una ventana de cuota', () => {
+  const metrics = [
+    { label: 'saldo', window: undefined },
+    { label: 'ventana 5 h', window: '5h' },
+    { label: 'tokens', window: undefined },
+  ];
+  assert.deepStrictEqual(
+    http.sortMetrics(metrics).map((m) => m.label),
+    ['ventana 5 h', 'saldo', 'tokens']
+  );
+});
+
 /* ---------------------------------------------------------------- claude */
 
 console.log('claude:');
@@ -184,6 +238,26 @@ check('el limite con ambito se marca por su nombre de modelo', () => {
   assert.strictEqual(scoped.tone, 'warning');
 });
 
+check('Claude sale en el orden canonico: 5 h, semanal, con ambito, mensual', () => {
+  const { metrics } = claude.parseUsage({
+    five_hour: { utilization: 100 },
+    seven_day: { utilization: 42 },
+    seven_day_opus: { utilization: 10 },
+    limits: [
+      {
+        kind: 'weekly_scoped',
+        is_active: true,
+        percent: 74,
+        scope: { model: { display_name: 'Fable' } },
+      },
+    ],
+  });
+  assert.deepStrictEqual(
+    metrics.map((m) => m.label),
+    ['ventana 5 h', 'semanal', 'semanal Fable', 'mensual']
+  );
+});
+
 /* ----------------------------------------------------------- antigravity */
 
 console.log('antigravity:');
@@ -232,6 +306,24 @@ check('manualKind distingue JSON de token a secas', () => {
   assert.strictEqual(antigravity.manualKind('  {"a":1}'), 'json');
   assert.strictEqual(antigravity.manualKind('ya29.abc'), 'raw');
   assert.strictEqual(antigravity.manualKind(''), 'raw');
+});
+
+check('Antigravity sale en el orden canonico: 5 h antes que semanal', () => {
+  const { metrics } = antigravity.parseSummary({
+    groups: [
+      {
+        displayName: 'Gemini Models',
+        buckets: [
+          { window: 'weekly', remainingFraction: 0.846 },
+          { window: '5h', remainingFraction: 0.5 },
+        ],
+      },
+    ],
+  });
+  assert.deepStrictEqual(
+    metrics.map((m) => m.label),
+    ['Gemini Models · 5 h', 'Gemini Models · semanal']
+  );
 });
 
 check('extractPairs empareja cada client_id con el secret siguiente', () => {

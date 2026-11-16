@@ -243,6 +243,30 @@ usarlo a ciegas.
 - En Windows el tooltip del sistema está limitado a ~127 caracteres: ahí cabe
   el resumen corto de las cuatro IAs; la tarjeta es la vista completa.
 
+### El orden de las ventanas (una regla para todos)
+
+Cada API devuelve sus ventanas en **su propio orden** y no coinciden: la 5 h
+iba primera en Minimax y en Claude, pero **segunda** en Antigravity (que la
+devuelve tras la semanal). Con la tarjeta era imposible comparar de un vistazo.
+
+**Regla única:** la ventana **más corta primero** (la que se acaba antes), y
+de más larga a más larga:
+
+| `window` | Ventana | Posición |
+|---|---|---|
+| `5h` | 5 horas | 1.ª |
+| `daily` | diaria | 2.ª |
+| `weekly` | semanal | 3.ª |
+| `weekly_scoped` | semanal con ámbito (otro modelo) | 4.ª |
+| `monthly` | mensual | 5.ª |
+
+Implementado en `http.sortMetrics()` (`src/main/http.js`), con el orden
+**estable** y respetuoso con los **grupos**: Antigravity separa sus cuotas
+por familia de modelos y sus bloques no se separan al ordenar (Gemini
+Models 5 h, Gemini Models semanal, Claude and GPT models 5 h, …). Lo que no
+sea una ventana de cuota (el saldo de DeepSeek, los tokens) queda al final:
+no compite por el sitio.
+
 ### Cómo se leen las barras (regla de la casa)
 
 La barra de cada métrica **mide lo CONSUMIDO**, igual que los paneles de cada

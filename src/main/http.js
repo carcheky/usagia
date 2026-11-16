@@ -96,6 +96,67 @@ function tone(p) {
   return 'ok';
 }
 
+/**
+ * Orden canónico de las ventanas de cuota.
+ *
+ * Cada proveedor devuelve sus ventanas en el orden que le da su API, y ese
+ * orden no coincide entre unos y otros: la 5 h iba primera en Minimax y en
+ * Claude, pero segunda en Antigravity. Con la tarjeta era imposible
+ * comparar de un vistazo.
+ *
+ * La regla es una sola para todos: **la ventana más corta primero** (la que
+ * se acaba antes), y luego de más larga a más larga.
+ *
+ * | `window` | Ventana | Posición |
+ * |---|---|---|
+ * | `5h` | 5 horas | 1.ª |
+ * | `daily` | diaria | 2.ª |
+ * | `weekly` | semanal | 3.ª |
+ * | `weekly_scoped` | semanal con ámbito (otro modelo) | 4.ª |
+ * | `monthly` | mensual | 5.ª |
+ *
+ * Lo que no lleve `window` (el saldo de DeepSeek, los tokens) se queda donde
+ * esté: no es una ventana de cuota y no compite por el sitio.
+ */
+const WINDOW_ORDER = { '5h': 0, daily: 1, weekly: 2, weekly_scoped: 3, monthly: 4 };
+
+/**
+ * Ordena las metricas por su ventana, sin tocar las que no tienen `window`.
+ * El orden es **estable**: a igual de ventana se respeta el de origen.
+ *
+ * Si las metricas traen `group` (Antigravity separa sus cuotas por familia
+ * de modelos), el grupo se respeta como bloque: las ventanas de un grupo no
+ * se separan de las del otro.
+ *
+ * @param {Array<object>} metrics
+ * @returns {Array<object>} una lista nueva, ordenada
+ */
+function sortMetrics(metrics) {
+  // El orden de los grupos es el de aparición: el del API, no el alfabético.
+  const groups = [];
+  for (const metric of metrics) {
+    if (metric.group === undefined || metric.group === null) continue;
+    if (!groups.includes(metric.group)) groups.push(metric.group);
+  }
+  const groupRank = (metric) => {
+    if (metric.group === undefined || metric.group === null) return -1;
+    return groups.indexOf(metric.group);
+  };
+
+  return metrics
+    .map((metric, index) => ({ metric, index }))
+    .sort((a, b) => {
+      const ga = groupRank(a.metric);
+      const gb = groupRank(b.metric);
+      if (ga !== gb) return ga - gb;
+      const ra = WINDOW_ORDER[a.metric.window] ?? Number.MAX_SAFE_INTEGER;
+      const rb = WINDOW_ORDER[b.metric.window] ?? Number.MAX_SAFE_INTEGER;
+      if (ra !== rb) return ra - rb;
+      return a.index - b.index;
+    })
+    .map((entry) => entry.metric);
+}
+
 function fmtPercent(p) {
   if (p === null || p === undefined) return '—';
   return `${Math.round(p * 100)}%`;
@@ -113,4 +174,4 @@ function fmtDuration(ms) {
   return `${m} min`;
 }
 
-module.exports = { fetchJson, pct100, used, tone, fmtPercent, fmtPercent1, fmtDuration };
+module.exports = { fetchJson, pct100, used, tone, fmtPercent, fmtPercent1, fmtDuration, sortMetrics, WINDOW_ORDER };

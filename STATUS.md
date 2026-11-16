@@ -1,11 +1,12 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 02:35 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 02:45 (Europe/Madrid).
 > **Quién escribe este fichero ahora mismo:** la sesión `session-lead-quota`
 > ("Claude en gris: cuota real y barras intuitivas"). Aporta el **arreglo de la
-> cuota de Claude** (no salía por un token caducado) y el **repintado de las
-> barras** (llenas y rojas al 100 %, sin barras grises sin porcentaje), con su
-> commit y su entrada en [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235).
+> cuota de Claude** (no salía por un token caducado), el **repintado de las
+> barras** (llenas y rojas al 100 %, sin barras grises sin porcentaje) y el
+> **orden canónico de las ventanas** (la 5 h primero en todos los
+> proveedores), con su commit y su entrada en [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235).
 > Esta versión **fusiona** lo que escribieron las sesiones `session-fa207887`
 > (plan de Android), `session-e9f5038b` (lead: verificación de la UI y de la
 > app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los
@@ -139,6 +140,23 @@ semanal al 42 %.
 
 **El color de las barras** (medido por lo que **queda**, como los paneles):
 verde > 30 %, amarillo 10-30 %, **rojo ≤ 10 %**. Barra llena = **consumido**.
+
+### 3. El orden de las ventanas (una regla para todos)
+
+Cada API devuelve sus ventanas en su propio orden y no coincidían: la 5 h iba
+**primera** en Minimax y en Claude, pero **segunda** en Antigravity (que la
+devuelve tras la semanal). Con la tarjeta era imposible comparar de un
+vistazo.
+
+**Regla única** (en `http.sortMetrics()`, `src/main/http.js`): la ventana
+**más corta primero**, de más larga a más larga → **5 h → diaria → semanal →
+semanal con ámbito → mensual**. El orden es estable y respeta los **grupos**
+de Antigravity (sus bloques por familia de modelos no se separan). Lo que no
+sea una ventana de cuota (saldo, tokens) queda al final.
+
+Verificado con `npm run probe`: Minimax `ventana 5 h, semanal` · Claude
+`ventana 5 h, semanal` · Antigravity `Gemini Models · 5 h, Gemini Models ·
+semanal, Claude and GPT models · 5 h, Claude and GPT models · semanal`.
 
 ### Verificación
 
