@@ -9,6 +9,7 @@ const statusEl = document.getElementById('status');
 const refreshEl = document.getElementById('refresh');
 const hoverDelayEl = document.getElementById('hoverDelay');
 const showOnHoverEl = document.getElementById('showOnHover');
+const debugEl = document.getElementById('debug');
 const updateCheckEl = document.getElementById('updateCheck');
 const updateAutoDownloadEl = document.getElementById('updateAutoDownload');
 const updateInstallOnQuitEl = document.getElementById('updateInstallOnQuit');
@@ -267,6 +268,7 @@ document.getElementById('save').addEventListener('click', async () => {
         refreshSeconds: Number(refreshEl.value),
         hoverCloseDelayMs: Number(hoverDelayEl.value),
         showOnHover: showOnHoverEl.checked,
+        debug: debugEl.checked,
         updateCheck: updateCheckEl.checked,
         updateAutoDownload: updateAutoDownloadEl.checked,
         updateInstallOnQuit: updateInstallOnQuitEl.checked,
@@ -348,6 +350,7 @@ async function init() {
     refreshEl.value = general.refreshSeconds ?? 120;
     hoverDelayEl.value = general.hoverCloseDelayMs ?? 400;
     showOnHoverEl.checked = general.showOnHover !== false;
+    debugEl.checked = general.debug === true;
     updateCheckEl.checked = general.updateCheck !== false;
     updateAutoDownloadEl.checked = general.updateAutoDownload !== false;
     updateInstallOnQuitEl.checked = general.updateInstallOnQuit !== false;

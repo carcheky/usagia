@@ -71,6 +71,26 @@ function orderedResults() {
     .filter((entry) => entry.provider);
 }
 
+/**
+ * Escribe los resultados en debug.log si el modo debug esta activo.
+ * El archivo esta en la carpeta de datos de la app y se puede enviar
+ * para diagnosticar problemas.
+ */
+function writeDebugLog(results) {
+  try {
+    if (!config.load().debug) return;
+    const logPath = path.join(config.userDataDir(), 'debug.log');
+    const entry = {
+      timestamp: new Date().toISOString(),
+      results,
+    };
+    // Append: cada refresco anade una linea JSON.
+    fs.appendFileSync(logPath, JSON.stringify(entry) + '\n', 'utf8');
+  } catch (err) {
+    console.error('[usagia] no se pudo escribir debug.log:', err?.message || err);
+  }
+}
+
 async function collect() {
   const cfg = config.load();
   const results = {};
@@ -110,6 +130,7 @@ async function refresh() {
     try {
       state.results = await collect();
       state.updatedAt = Date.now();
+      writeDebugLog(state.results);
     } catch (err) {
       console.error('[usagia] fallo el refresco:', err?.message || err);
     } finally {

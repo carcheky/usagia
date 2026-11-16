@@ -88,6 +88,7 @@ function snapshot() {
       refreshSeconds: cfg.refreshSeconds,
       showOnHover: cfg.showOnHover,
       hoverCloseDelayMs: cfg.hoverCloseDelayMs,
+      debug: cfg.debug,
       updateCheck: cfg.updateCheck,
       updateChannel: cfg.updateChannel,
       updateAutoDownload: cfg.updateAutoDownload,
@@ -171,6 +172,9 @@ function register(hooks = {}) {
     }
     if (typeof general.showOnHover === 'boolean') {
       patch.showOnHover = general.showOnHover;
+    }
+    if (typeof general.debug === 'boolean') {
+      patch.debug = general.debug;
     }
     if (typeof general.updateCheck === 'boolean') {
       patch.updateCheck = general.updateCheck;

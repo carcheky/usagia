@@ -198,6 +198,8 @@ t.check('los valores por defecto y la ruta del fichero', () => {
   assert.strictEqual(cfg.refreshSeconds, 120);
   assert.strictEqual(cfg.showOnHover, true);
   assert.strictEqual(cfg.hoverCloseDelayMs, 400);
+  // Debug desactivado por defecto.
+  assert.strictEqual(cfg.debug, false);
   // De fabrica: buscar actualizaciones, en el canal automático.
   assert.strictEqual(cfg.updateCheck, true);
   assert.strictEqual(cfg.updateChannel, 'auto');

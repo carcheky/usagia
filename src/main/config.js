@@ -12,6 +12,8 @@ const DEFAULTS = {
   showOnHover: true,
   // Segundos sin mover el ratón dentro de la zona del icono para cerrar la tarjeta.
   hoverCloseDelayMs: 400,
+  // Modo debug: guarda las respuestas de los proveedores en debug.log.
+  debug: false,
   // Buscar actualizaciones automáticamente.
   updateCheck: true,
   // Canal de actualización: 'auto' (sigue a la versión instalada), 'stable'
