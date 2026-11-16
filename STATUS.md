@@ -53,7 +53,7 @@ límites: `session` (5 h) al 20 %, `weekly_all` al 61 % y **`weekly_scoped` al
 `severity: critical`). Ese tope es un **extra**: solo afecta a ese modelo, y
 `weekly_scoped_shares` dice que le dan 50 de los 100 puntos de la semanal.
 
-**Lo que se ha cambiado** (`fix:` en `beta`):
+**Lo que se ha cambiado** (`fix:` en `beta`, publicado en `v1.1.0-beta.0007`):
 
 | | Antes | Ahora |
 |---|---|---|
@@ -195,9 +195,9 @@ El detalle de cada sesión (qué hizo, con qué commits) está en
 
 | Qué | Valor | Nota |
 |---|---|---|
-| Última release publicada | **v1.1.0-beta.0001** (2026-11-16 13:50 local) | Pre-release de las **actualizaciones** (`7f093b4`, `feat:` → salto a 1.1.0). Pipeline **en verde**: commits, verify (`npm test`, 9 suites), release, builds de Windows y Linux. En GitHub hay 14 publicadas |
+| Última release publicada | **v1.1.0-beta.0007** (2026-11-16 18:52 local) | Pre-release de los **extras** (`f7c04f9`, `fix:`). Pipeline **en verde**: commits, verify (`npm test`, 10 suites), release, builds de Windows y Linux |
 | Última release estable | **v1.0.0** (2026-11-16 12:43 local) | La primera. Salió por el pipeline al empujar `main`; desde entonces las betas numeran `1.0.1-beta.NNNN`... y al entrar un `feat:` saltaron a `1.1.0-beta.NNNN` |
-| Rama de trabajo `beta` | `90c1481` | Igual que `origin/beta`. Último commit: `docs:` de la carga selectiva de la documentación |
+| Rama de trabajo `beta` | `f7c04f9` | Igual que `origin/beta`. Último commit: `fix:` de los extras (tope con ámbito de Claude) |
 | Rama `main` | `c57d3df` | Publicó `v1.0.0`. `beta` va por delante |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone `scripts/release.js` |
