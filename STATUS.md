@@ -18,26 +18,55 @@
 <!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
 | Sección | Línea |
 |---|---|
-| Lo último: respaldo de GPU en modos one-shot (2026-11-16 20:22) | 42 |
-| Lo último: el sandbox ya no manda (2026-11-16 19:30) | 62 |
-| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 103 |
-| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 142 |
-| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 175 |
-| Resumen en una línea | 197 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 208 |
-| Versiones | 256 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 288 |
-| Qué funciona (verificado) | 311 |
-| Pendiente / siguiente | 330 |
-| Puntos abiertos y riesgos conocidos | 364 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 388 |
-| Reparto entre sesiones (acuerdo) | 407 |
-| Cómo mantener este fichero | 429 |
-| Decisiones que son del usuario | 442 |
-| Notas para quien siga | 449 |
-| Retomar (en 5 minutos) | 456 |
-| Actualización automática desde la app (2026-11-16 18:45) | 471 |
+| Lo último: items 12 y 17 completados (2026-11-16 20:50) | 43 |
+| Lo último: respaldo de GPU en modos one-shot (2026-11-16 20:22) | 71 |
+| Lo último: el sandbox ya no manda (2026-11-16 19:30) | 91 |
+| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 132 |
+| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 171 |
+| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 204 |
+| Resumen en una línea | 226 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 237 |
+| Versiones | 285 |
+| Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
+| Qué funciona (verificado) | 337 |
+| Pendiente / siguiente | 356 |
+| Puntos abiertos y riesgos conocidos | 387 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 411 |
+| Reparto entre sesiones (acuerdo) | 430 |
+| Cómo mantener este fichero | 452 |
+| Decisiones que son del usuario | 465 |
+| Notas para quien siga | 472 |
+| Retomar (en 5 minutos) | 479 |
+| Actualización automática desde la app (2026-11-16 18:45) | 494 |
 <!-- fin-índice -->
+
+## Lo último: items 12 y 17 completados (2026-11-16 20:50)
+
+**Encargo:** "siguiente pendiente" → items 12 y 17 de la cola de revisión.
+
+**Item 17 — código muerto y duplicación (`6f82da5`):**
+- `config.js`: quitado `locale` de `DEFAULTS` (no se usaba)
+- `credentials.js`: quitado `gemini` de `ENV_KEYS`/`fromDsh` (no hay proveedor)
+- `credentials.js`: quitado export de `dshCredentials` (solo interno)
+- `card.js`: quitados `isInteractive()` y export `CARD_WIDTH` (sin consumidores)
+- `antigravity-client.js`: quitado export `describe()` (sin consumidores)
+- `http.js`: movido `formatTokens` aquí (estaba duplicado en `claude.js`/`deepseek.js`)
+
+**Item 12 — credenciales cifradas con safeStorage (`4cdc332`):**
+- Nuevo módulo `src/main/crypto.js` que encapsula `safeStorage` de Electron
+- En Electron: usa DPAPI (Windows), Keychain (macOS), keyring (Linux)
+- En Node puro (`scripts/probe.js`, CI): las credenciales cifradas se marcan
+  con `_encrypted` pero no se pueden descifrar (la cascada las salta)
+- Formato `enc:v1:<base64>`, compatible con credenciales en claro existentes
+- Nueva suite `scripts/test-crypto.js` (8 tests)
+
+**Lo que quedó fuera:** el modo `--probe` de `main.js` duplica `scripts/probe.js`.
+No es código muerto (ambos funcionan), solo duplicación intencionada que
+requeriría cambios más profundos.
+
+**Verificado:** `npm test` → **12 suites en verde** (nueva: `test-crypto.js`).
+
+---
 
 ## Lo último: respaldo de GPU en modos one-shot (2026-11-16 20:22)
 
@@ -285,28 +314,25 @@ El detalle de cada sesión (qué hizo, con qué commits) está en
 
 Releases: <https://github.com/carcheky/usagia/releases>
 
-## Cola de la revisión a fondo: lo que queda (items 12 y 17)
+## Cola de la revisión a fondo: completada (2026-11-16 20:50)
 
 Del informe de la revisión eran ocho puntos, todos de robustez, seguridad o
-limpieza. **Los items 11, 13, 14, 15, 16 y 18 ya están arreglados y publicados**
-(tabla completa en [historial.md](docs/historial.md#cola-de-la-revisión-a-fondo-lo-que-queda-items-12-y-17)).
-Quedan dos, más una decisión de tooling:
+limpieza. **Todos arreglados y publicados** (tabla completa en
+[historial.md](docs/historial.md#cola-de-la-revisión-a-fondo-lo-que-queda-items-12-y-17)).
 
 | # | Qué | Dónde | Estado |
 |---|---|---|---|
-| 17 | Código muerto y duplicación (`locale` sin usar, `gemini` sin proveedor, `isInteractive`/`CARD_WIDTH`/`describe()` sin consumidores, `--probe` duplicado, `formatTokens` copiado, bloque de métrica repetido 4 veces) | varios | **PENDIENTE** (barato, sin riesgo de datos) |
-| 12 | Credenciales en texto plano en `config.json` | `src/main/credentials.js`, `src/main/settings.js`, `src/renderer/settings.js` | **PENDIENTE** (más delicado: `safeStorage`, DPAPI en Windows) |
+| 17 | Código muerto y duplicación | varios | **ARREGLADO** (`6f82da5`): `locale`, `gemini`, `isInteractive`, `CARD_WIDTH`, `describe()` eliminados; `formatTokens` unificado en `http.js` |
+| 12 | Credenciales en texto plano en `config.json` | `src/main/crypto.js`, `src/main/config.js` | **ARREGLADO** (`4cdc332`): nuevo módulo `crypto.js` con `safeStorage` (DPAPI/Keychain); formato `enc:v1:<base64>` compatible con claves en claro |
 | 18-bis | Sin linter | `package.json`, `.github/workflows/release.yml` | **DECISIÓN DEL USUARIO**: añadir ESLint + un job de CI toca el pipeline |
 
-El plan de trabajo de los dos pendientes, con ficheros, trampas y criterio de
-aceptación, está en
-[historial.md](docs/historial.md#de-session-8a303ef4-revisión-a-fondo-los-items-12-y-17-en-detalle).
+**Lo que quedó fuera del item 17** (no es código muerto, es duplicación intencionada):
+- El modo `--probe` de `main.js` duplica `scripts/probe.js`: ambos funcionan, uno
+  dentro de Electron y otro en Node puro. Eliminar uno requiere cambios más
+  profundos y no es prioritario.
 
-Verificado el 2026-11-16 01:36 sobre `60b9519`: `npm test` → **OK** y
-`npm run test:package` → **OK**. Además, las **dos vistas previas funcionan**
-en este entorno con `ELECTRON_RUN_AS_NODE` vacío y
-`--disable-gpu --disable-gpu-sandbox --no-sandbox`: la tarjeta se pinta con
-datos vivos y la ventana de configuración responde a *Probar* y a *Guardar*.
+Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en verde**
+(nueva: `test-crypto.js`).
 
 ## Qué funciona (verificado)
 
@@ -347,13 +373,10 @@ datos vivos y la ventana de configuración responde a *Probar* y a *Guardar*.
    `src/main/providers/*`.
 4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
    binarios de macOS** (solo Windows y Linux).
-5. **Cola de la revisión a fondo**: quedan solo el **12** (cifrar las
-   credenciales con `safeStorage`) y el **17** (código muerto y duplicación);
-   los items 11, 13, 14, 15, 16 y 18 ya están **arreglados y empujados**
-   (`34aa4a9`, `41bcda2`, `140e31d`). Tabla completa en
-   [Cola de la revisión a fondo](#cola-de-la-revisión-a-fondo-lo-que-queda-items-12-y-17).
-   Ninguno bloquea una release: son robustez, seguridad y limpieza. La sesión
-   `session-8a303ef4` los tiene reservados.
+5. ~~**Cola de la revisión a fondo**~~: **COMPLETADA** (`6f82da5`, `4cdc332`).
+   Items 12 (cifrado con `safeStorage`) y 17 (código muerto) arreglados.
+   Nueva suite `test-crypto.js`. Ver
+   [Cola de la revisión a fondo](#cola-de-la-revisión-a-fondo-completada-2026-11-16-2050).
 6. **Linter**: no hay ESLint ni formateador, y el bug de `!enabled` (arreglado
    en `031c693`) lo habría cazado. Añadirlo toca el pipeline, así que es
    decisión del usuario antes de meter un job de CI nuevo.
