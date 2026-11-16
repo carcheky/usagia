@@ -26,14 +26,14 @@
 | Cola de la revisión a fondo: lo que queda (items 12 y 17) | 160 |
 | Qué funciona (verificado) | 183 |
 | Pendiente / siguiente | 202 |
-| Puntos abiertos y riesgos conocidos | 237 |
-| Límites del sandbox de DSH al medir (no son fallos de la app) | 261 |
-| Reparto entre sesiones (acuerdo) | 273 |
-| Cómo mantener este fichero | 295 |
-| Decisiones que son del usuario | 308 |
-| Notas para quien siga | 316 |
-| Retomar (en 5 minutos) | 323 |
-| Actualización automática desde la app (2026-11-16 18:45) | 338 |
+| Puntos abiertos y riesgos conocidos | 233 |
+| Límites del sandbox de DSH al medir (no son fallos de la app) | 257 |
+| Reparto entre sesiones (acuerdo) | 269 |
+| Cómo mantener este fichero | 291 |
+| Decisiones que son del usuario | 304 |
+| Notas para quien siga | 311 |
+| Retomar (en 5 minutos) | 318 |
+| Actualización automática desde la app (2026-11-16 18:45) | 333 |
 <!-- fin-índice -->
 
 ## Lo último: documentación para humanos y agentes (2026-11-16 18:50)
@@ -131,8 +131,8 @@ El detalle de cada sesión (qué hizo, con qué commits) está en
 |---|---|---|
 | Última release publicada | **v1.1.0-beta.0001** (2026-11-16 13:50 local) | Pre-release de las **actualizaciones** (`7f093b4`, `feat:` → salto a 1.1.0). Pipeline **en verde**: commits, verify (`npm test`, 9 suites), release, builds de Windows y Linux. En GitHub hay 14 publicadas |
 | Última release estable | **v1.0.0** (2026-11-16 12:43 local) | La primera. Salió por el pipeline al empujar `main`; desde entonces las betas numeran `1.0.1-beta.NNNN`... y al entrar un `feat:` saltaron a `1.1.0-beta.NNNN` |
-| Rama de trabajo `beta` | `7f093b4` | Igual que `origin/beta`. Último commit: `feat:` de las actualizaciones (publicó `v1.1.0-beta.0001`) |
-| Rama `main` | `c57d3df` | **Ancestro de `beta`** (comprobado): el `--ff-only` no da conflicto. Publicó `v1.0.0`; la fusión de `beta` sigue siendo decisión del usuario |
+| Rama de trabajo `beta` | `90c1481` | Igual que `origin/beta`. Último commit: `docs:` de la carga selectiva de la documentación |
+| Rama `main` | `c57d3df` | Publicó `v1.0.0`. `beta` va por delante |
 | Rama por defecto en GitHub | `main` | Dependabot abre sus PR contra `main`, pero el PR #1 se creó contra `beta` |
 | `package.json` | `0.0.0` | Correcto: la versión la pone `scripts/release.js` |
 
@@ -201,13 +201,9 @@ datos vivos y la ventana de configuración responde a *Probar* y a *Guardar*.
 
 ## Pendiente / siguiente
 
-1. **Primera versión estable**: `beta.4` ya está publicada y verificada; falta
-   `git switch main && git merge --ff-only beta && git push origin main` →
-   `v1.0.0`. La comprobación que faltaba —que la tarjeta salga en la **app
-   instalada**— **ya está hecha** (`session-dab004c1`, sobre el portable
-   publicado de `beta.4`: ver [Pausa del día](docs/historial.md#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo)).
-   Lo que queda es la **instalación con el instalador NSIS**, que nadie ha
-   probado todavía.
+1. **Instalación con el instalador NSIS**: nadie lo ha instalado todavía. Lo que falta
+   es probarlo con la ruta fija (el portable extrae a una carpeta distinta en cada
+   arranque y el icono vuelve a *iconos ocultos*).
 2. **Decidir lo de Electron**: el PR #1 de Dependabot (38.8.6 → 42.11.16) está
    **cerrado sin fusionar** y la rama sigue viva. GitHub avisa de **34
    vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
@@ -307,7 +303,6 @@ Al terminar cada sesión de trabajo sobre el repo:
 
 ## Decisiones que son del usuario
 
-- **Publicar `v1.0.0`** (la primera estable) o seguir en `beta` un rato más.
 - **Electron 38.8.6 → 42.11.16**: el PR #1 de Dependabot está cerrado sin fusionar y GitHub
   avisa de **34 vulnerabilidades** en `main`. Subir o documentar el riesgo.
 - **Play Store** (o no): el plan de Android asume **sideload**, sin Google Play.

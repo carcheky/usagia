@@ -28,7 +28,11 @@ git push origin main
 > agente. Una sesión trabaja en `beta`, hace `git push origin beta` (eso sí
 > genera pre-releases, que es lo normal) y **no toca `main`**: ni la fusiona,
 > ni la crea, ni la empuja, ni cambia la rama por defecto del repo. Si cree
-> que toca publicar una estable, no la publica: lo dice y lo decide él.
+> que toca publicar una estable, no la publica.
+>
+> **Y no se lo recuerdes.** No lo menciones en los resúmenes, ni al cerrar una
+> tarea, ni en cada paso: publicar estable no es asunto de la sesión, y
+> repetirlo solo es ruido.
 
 > Antes de cada `git push`, `git status --porcelain` tiene que salir vacío.
 
