@@ -1,9 +1,8 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 20:15 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión de **la tarjeta y el
-> entorno** (el ⚙ al pie y la documentación de la política de aprobación). Ver
-> [Lo último: el sandbox ya no manda](#lo-último-el-sandbox-ya-no-manda-2026-11-16-1930).
+> **Última actualización:** 2026-11-16 20:22 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** sesión principal (item 7 de pendientes).
+> Ver [Lo último: respaldo de GPU en modos one-shot](#lo-último-respaldo-de-gpu-en-modos-one-shot-2026-11-16-2022).
 > **Ojo: hay otra sesión activa** en este repo (la del *onboarding* de cuentas, con su
 > propuesta en `openspec/changes/2026-11-16-onboarding-cuentas/`): **no se ha tocado nada
 > suyo**. Este fichero se ha **fusionado**, no reescrito.
@@ -19,25 +18,46 @@
 <!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
 | Sección | Línea |
 |---|---|
-| Lo último: el sandbox ya no manda (2026-11-16 19:30) | 42 |
-| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 83 |
-| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 122 |
-| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 155 |
-| Resumen en una línea | 177 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 188 |
-| Versiones | 236 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 268 |
-| Qué funciona (verificado) | 291 |
-| Pendiente / siguiente | 310 |
-| Puntos abiertos y riesgos conocidos | 348 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 372 |
-| Reparto entre sesiones (acuerdo) | 391 |
-| Cómo mantener este fichero | 413 |
-| Decisiones que son del usuario | 426 |
-| Notas para quien siga | 433 |
-| Retomar (en 5 minutos) | 440 |
-| Actualización automática desde la app (2026-11-16 18:45) | 455 |
+| Lo último: respaldo de GPU en modos one-shot (2026-11-16 20:22) | 42 |
+| Lo último: el sandbox ya no manda (2026-11-16 19:30) | 62 |
+| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 103 |
+| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 142 |
+| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 175 |
+| Resumen en una línea | 197 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 208 |
+| Versiones | 256 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 288 |
+| Qué funciona (verificado) | 311 |
+| Pendiente / siguiente | 330 |
+| Puntos abiertos y riesgos conocidos | 364 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 388 |
+| Reparto entre sesiones (acuerdo) | 407 |
+| Cómo mantener este fichero | 429 |
+| Decisiones que son del usuario | 442 |
+| Notas para quien siga | 449 |
+| Retomar (en 5 minutos) | 456 |
+| Actualización automática desde la app (2026-11-16 18:45) | 471 |
 <!-- fin-índice -->
+
+## Lo último: respaldo de GPU en modos one-shot (2026-11-16 20:22)
+
+**Encargo:** "siguiente pendiente" → item 7 de [Pendiente / siguiente](#pendiente--siguiente).
+
+**El problema:** `scripts/run.js` tiene un respaldo que relanza Electron sin GPU
+cuando muere con `0x80000003` (GPU no utilizable). Funcionaba para la app de larga
+vida, pero los modos one-shot (`--preview`, `--settings`, `--probe`) salían con ese
+código **sin reintentar**, porque el `if (ONE_SHOT)` estaba *antes* del `if (GPU_FATAL)`.
+
+**El fix (`951e478`):** mover la comprobación de GPU_FATAL_CODE al principio del
+manejador de exit. Así los modos one-shot también se benefician de un único
+reintento sin GPU antes de salir.
+
+**La prueba:** nueva suite `scripts/test-run.js` (9 casos, se descubre sola). Fija el
+comportamiento y documenta la regresión.
+
+**Verificado:** `npm test` → **11 suites en verde** (la nueva incluida).
+
+---
 
 ## Lo último: el sandbox ya no manda (2026-11-16 19:30)
 
@@ -337,13 +357,9 @@ datos vivos y la ventana de configuración responde a *Probar* y a *Guardar*.
 6. **Linter**: no hay ESLint ni formateador, y el bug de `!enabled` (arreglado
    en `031c693`) lo habría cazado. Añadirlo toca el pipeline, así que es
    decisión del usuario antes de meter un job de CI nuevo.
-7. **`fix:` del respaldo sin GPU en los modos de una sola vez**:
-   `scripts/run.js` solo relanza sin GPU en la app de larga vida; `--preview`,
-   `--settings` y `--probe` salen con `0x80000003` **sin reintentar**, así que
-   `npm run preview` no aprovecha el respaldo que el propio script tiene (en
-   esta máquina no hay GPU utilizable para Chromium). Sería un `fix:` con su
-   prueba, según la regla del repo. Detalle en
-   [FINDINGS.md §3](FINDINGS.md#el-sandbox-ya-no-estorba-2026-11-16-1930-danger-full-access--approval-never).
+7. ~~**`fix:` del respaldo sin GPU en los modos de una sola vez**~~: **HECHO**
+   (`951e478`). Los modos `--preview`, `--settings` y `--probe` ahora pasan por
+   el respaldo de GPU antes de salir. Nueva suite `scripts/test-run.js`.
 
 ## Puntos abiertos y riesgos conocidos
 
