@@ -213,6 +213,7 @@ function updateTooltip() {
       result,
       tone: result?.status === 'ok' ? availability.providerTone(result) : 'neutral',
     })),
+    MARKER,
     TOOLTIP_MAX
   );
 

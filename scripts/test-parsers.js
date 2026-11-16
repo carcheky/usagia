@@ -657,5 +657,50 @@ check('el tooltip usa el presupuesto entero si todo cabe', () => {
   assert.strictEqual(tooltip.fitTooltip(lineas, 127), lineas.join('\n'));
 });
 
+check('el tooltip EMPIEZA por el marcador (si no, el hover no funciona)', () => {
+  // El hover en Windows localiza el icono de la bandeja por UI Automation,
+  // buscando un boton cuyo tooltip empiece por el marcador
+  // (scripts/find-tray-icon.ps1). Si la primera linea no lo lleva, el icono
+  // no se encuentra y la tarjeta NO sale al pasar el raton. Esto ya se
+  // rompio una vez: el tooltip se reescribio y se perdio el marcador.
+  const texto = tooltip.buildTooltip(
+    [
+      { label: 'Minimax', result: { status: 'ok', metrics: [{ label: 'ventana 5 h', pct: 0.39 }] }, tone: 'ok' },
+      { label: 'Claude', result: { status: 'ok', metrics: [{ label: 'semanal', pct: 0.74 }] }, tone: 'warning' },
+    ],
+    tooltip.MARKER,
+    127
+  );
+  assert.ok(
+    texto.startsWith(tooltip.MARKER),
+    `el tooltip tiene que empezar por "${tooltip.MARKER}": ${JSON.stringify(texto)}`
+  );
+  // Y con muchos proveedores, el marcador sigue en cabeza.
+  const muchos = tooltip.buildTooltip(
+    Array.from({ length: 10 }, (_, i) => ({
+      label: `Prov ${i}`,
+      result: { status: 'ok', metrics: [{ label: 'semanal', pct: 0.5 }] },
+      tone: 'ok',
+    })),
+    tooltip.MARKER,
+    127
+  );
+  assert.ok(muchos.startsWith(tooltip.MARKER), `el marcador se ha perdido: ${JSON.stringify(muchos)}`);
+  assert.ok(muchos.length <= 127, `el tooltip no puede pasar del presupuesto: ${muchos.length}`);
+});
+
+check('el tooltip lleva lo mas urgente en la primera linea', () => {
+  const texto = tooltip.buildTooltip(
+    [
+      { label: 'Minimax', result: { status: 'ok', metrics: [{ label: 'ventana 5 h', pct: 0.1 }] }, tone: 'ok' },
+      { label: 'Claude', result: { status: 'ok', metrics: [{ label: 'semanal', pct: 0.74 }] }, tone: 'warning' },
+    ],
+    tooltip.MARKER,
+    127
+  );
+  // Claude es el mas gastado: va el primero.
+  assert.ok(texto.indexOf('Claude') < texto.indexOf('Minimax'), texto);
+});
+
 console.log(failures ? `\nFALLO: ${failures} prueba(s) fallida(s)` : '\nOK: todos los parsers pasan');
 process.exit(failures ? 1 : 0);

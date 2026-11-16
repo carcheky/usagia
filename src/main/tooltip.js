@@ -14,6 +14,11 @@
 // Presupuesto del tooltip del sistema en Windows.
 const TOOLTIP_MAX = 127;
 
+// Marcador del icono de la bandeja. El hover en Windows localiza el icono
+// por este texto (ver `buildTooltip` y scripts/find-tray-icon.ps1): la
+// PRIMERA linea del tooltip tiene que empezar por aqui.
+const MARKER = 'Usagia';
+
 // Orden de urgencia: lo que peor esta, primero.
 const TONE_RANK = { critical: 0, warning: 1, ok: 2, neutral: 3 };
 
@@ -89,23 +94,50 @@ function fitTooltip(lines, max = TOOLTIP_MAX) {
 /**
  * Construye el tooltip completo a partir de los proveedores.
  *
+ * **OJO: la primera linea SIEMPRE tiene que empezar por el marcador**
+ * ("Usagia"). El hover en Windows localiza el icono de la bandeja por UI
+ * Automation, buscando un boton cuyo tooltip EMPIECE por ese texto
+ * (scripts/find-tray-icon.ps1). Si el tooltip no empieza por el marcador,
+ * el script no encuentra el icono y la tarjeta NO sale nunca al pasar el
+ * raton. Esa linea no se quita jamas, aunque no quepa el resto.
+ *
  * @param {Array<{label: string, result: object, tone: string}>} providers
+ * @param {string} marker texto por el que se localiza el icono
  * @param {number} max presupuesto
  * @returns {string}
  */
-function buildTooltip(providers, max = TOOLTIP_MAX) {
+function buildTooltip(providers, marker = MARKER, max = TOOLTIP_MAX) {
   const entries = (providers || [])
-    .map((provider) => ({ label: provider.label, text: tooltipLine(provider.result) }))
+    // El `tone` se conserva: es lo que ordena las lineas por urgencia.
+    .map((provider) => ({
+      label: provider.label,
+      text: tooltipLine(provider.result),
+      tone: provider.tone,
+    }))
     .filter((entry) => entry.text);
 
   // Lo mas urgente primero: el proveedor que peor esta, para que se vea
   // sin tener que leer las cuatro lineas.
   entries.sort((a, b) => (TONE_RANK[a.tone] ?? 3) - (TONE_RANK[b.tone] ?? 3));
 
-  return fitTooltip(
-    entries.map((entry) => `${entry.label}: ${entry.text}`),
-    max
-  );
+  const lines = entries.map((entry) => `${entry.label}: ${entry.text}`);
+
+  // La cabecera lleva el marcador y lo mas urgente, en una sola linea:
+  // asi, si Windows solo enseña la primera, se ve lo que importa; y si las
+  // enseña todas, esta informs de todo.
+  const head = lines.length ? `${marker} · ${lines[0]}` : marker;
+  const rest = lines.slice(1);
+
+  // El presupuesto se reparte: la cabecera entra siempre, y el resto se
+  // recorta quitando lineas enteras por el final.
+  const budget = Math.max(0, max - head.length - 1);
+  const kept = [];
+  for (const line of rest) {
+    const cost = kept.length ? kept.join('\n').length + 1 + line.length : line.length;
+    if (cost <= budget) kept.push(line);
+  }
+
+  return [head, ...kept].join('\n');
 }
 
-module.exports = { TOOLTIP_MAX, shortWindow, tooltipLine, fitTooltip, buildTooltip };
+module.exports = { TOOLTIP_MAX, MARKER, shortWindow, tooltipLine, fitTooltip, buildTooltip };
