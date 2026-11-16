@@ -31,7 +31,10 @@ function create(preloadPath) {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      // El preload solo usa contextBridge e ipcRenderer: no necesita el
+      // sandbox desactivado, y con sandbox:true el renderer queda aislado
+      // del sistema de ficheros.
+      sandbox: true,
     },
   });
 

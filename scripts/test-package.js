@@ -55,6 +55,15 @@ check('los scripts se desempaquetan del asar', () => {
   );
 });
 
+// 2-bis) En el instalador solo viajan los scripts que la app EJECUTA (los
+// .ps1). Los guiones de prueba y de publicacion no hacen falta ahi y solo
+// engordan el paquete.
+check('el instalador no lleva los guiones de prueba', () => {
+  const files = (build.files || []).map((p) => p.replace(/\\/g, '/'));
+  const bringsAll = files.some((p) => p === 'scripts/**/*' || p === 'scripts/*');
+  assert.ok(!bringsAll, `build.files incluye todos los scripts: ${JSON.stringify(files)}`);
+});
+
 // 3) Todo script que el codigo ejecuta tiene que existir de verdad.
 check('los scripts que ejecuta el codigo existen', () => {
   const src = path.join(repo, 'src');

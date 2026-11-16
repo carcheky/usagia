@@ -44,11 +44,11 @@
     "files": [
       "src/**/*",
       "assets/**/*",
-      "scripts/**/*",
+      "scripts/*.ps1",
       "package.json"
     ],
     "asarUnpack": [
-      "scripts/**/*"
+      "scripts/*.ps1"
     ],
     "win": {
       "target": [

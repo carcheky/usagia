@@ -39,7 +39,9 @@ function open() {
       preload: preloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      // El preload solo usa contextBridge e ipcRenderer: con sandbox:true el
+      // renderer no tiene acceso al sistema de ficheros.
+      sandbox: true,
     },
   });
 
