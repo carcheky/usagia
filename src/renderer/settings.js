@@ -167,10 +167,15 @@ function buildAccount(account) {
         note.textContent = `${result.summary || 'sin datos'}${result.note ? ` · ${result.note}` : ''}`;
       } else if (result.status === 'unconfigured') {
         note.className = 'acc-note warning';
-        note.textContent = 'No se ha encontrado ninguna credencial para esta cuenta.';
+        // La nota explica POR QUE no hay cuota (p.ej. el 429 del endpoint de
+        // Claude): sin ella, "sin credencial" miente.
+        note.textContent = result.note
+          ? `Sin cuota disponible. ${result.note}`
+          : 'No se ha encontrado ninguna credencial para esta cuenta.';
       } else {
         note.className = 'acc-note error';
-        note.textContent = result.error || 'error al consultar';
+        const detalle = [result.error || 'error al consultar', result.note].filter(Boolean).join(' · ');
+        note.textContent = detalle;
       }
     } catch (err) {
       note.className = 'acc-note error';
