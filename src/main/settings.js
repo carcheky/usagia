@@ -80,9 +80,12 @@ function snapshot() {
 function sanitizeAccounts(raw) {
   const list = Array.isArray(raw) ? raw : [];
   const used = new Set();
-  return list
+  const accounts = list
     .map((entry) => instances.normalizeAccount(entry, used))
     .filter(Boolean);
+  // Los ids tienen que ser unicos: son la clave de los resultados y de las
+  // caches por cuenta (ver instances.uniqueIds).
+  return instances.uniqueIds(accounts);
 }
 
 /** Prueba una credencial sin guardarla. */

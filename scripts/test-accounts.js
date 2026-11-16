@@ -123,6 +123,35 @@ check('las cuentas sin id reciben un id ESTABLE entre llamadas', () => {
   assert.strictEqual(new Set(first).size, 3, 'los ids derivados tienen que ser unicos');
 });
 
+check('los ids de cuentas que se parecen NO pueden coincidir', () => {
+  // El id derivado sale de un slug de la etiqueta: "Trabajo!" y "Trabajo?"
+  // dan el mismo slug. Si comparten id, la fila de una ensena la cuota de
+  // la otra (el id es la clave de state.results y de las caches por cuenta).
+  writeConfig({
+    accounts: [
+      { provider: 'minimax', label: 'Trabajo!' },
+      { provider: 'minimax', label: 'Trabajo?' },
+      { provider: 'minimax', label: 'Trabajo-2' },
+    ],
+  });
+  const ids = instances.list().map((i) => i.id);
+  assert.strictEqual(new Set(ids).size, 3, `los ids tienen que ser unicos: ${ids.join(', ')}`);
+  // Y tienen que seguir siendo estables entre llamadas.
+  assert.deepStrictEqual(ids, instances.list().map((i) => i.id));
+});
+
+check('un id escrito a mano no puede pisar al de otra cuenta', () => {
+  writeConfig({
+    accounts: [
+      { id: 'minimax:trabajo', provider: 'minimax', label: 'Trabajo!' },
+      { provider: 'minimax', label: 'Trabajo?' },
+    ],
+  });
+  const ids = instances.list().map((i) => i.id);
+  assert.strictEqual(new Set(ids).size, 2, `los ids tienen que ser unicos: ${ids.join(', ')}`);
+  assert.strictEqual(ids[0], 'minimax:trabajo', 'el id escrito a mano se respeta');
+});
+
 check('las cuentas de un proveedor desconocido se descartan', () => {
   writeConfig({
     accounts: [

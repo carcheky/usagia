@@ -78,6 +78,35 @@ function derivedId(provider, label) {
 }
 
 /**
+ * Garantiza que cada cuenta tenga un id UNICO.
+ *
+ * El id es la clave de `state.results` y de las caches por cuenta: si dos
+ * cuentas comparten id, la fila de una ensena la cuota de la otra (el ultimo
+ * `write` gana) y el tono del icono de la bandeja se calcula sobre el dato
+ * equivocado.
+ *
+ * Hace falta porque el id derivado de `derivedId()` sale de un slug de la
+ * etiqueta: "Trabajo!" y "Trabajo?" dan el mismo slug, y un id escrito a
+ * mano puede coincidir con uno derivado. El sufijo depende solo del orden,
+ * asi que el id sigue siendo ESTABLE entre refrescos.
+ */
+function uniqueIds(accounts) {
+  const seen = new Set();
+  const out = [];
+  for (const account of accounts) {
+    let id = account.id;
+    let n = 2;
+    while (seen.has(id)) {
+      id = `${account.id}-${n}`;
+      n += 1;
+    }
+    seen.add(id);
+    out.push({ ...account, id });
+  }
+  return out;
+}
+
+/**
  * Normaliza una cuenta configurada por el usuario.
  * @returns {object|null} null si el proveedor no existe.
  */
@@ -108,7 +137,8 @@ function list() {
   const used = new Set();
 
   if (cfg.accounts.length) {
-    return cfg.accounts.map((raw) => normalizeAccount(raw, used)).filter(Boolean);
+    const accounts = cfg.accounts.map((raw) => normalizeAccount(raw, used)).filter(Boolean);
+    return uniqueIds(accounts);
   }
 
   // Autodetección: una cuenta por proveedor, con la activación heredada.
@@ -126,4 +156,4 @@ function byId(id) {
   return list().find((i) => i.id === id) || null;
 }
 
-module.exports = { list, byId, catalog, normalizeAccount, providerById };
+module.exports = { list, byId, catalog, normalizeAccount, uniqueIds, providerById };
