@@ -240,7 +240,7 @@ t.check('con el token de la CLI vigente la cuota sale por HTTP directo', async (
   assert.strictEqual(r.note, '');
 });
 
-t.check('la respuesta se CACHEA 10 min por cuenta: otra cuenta no hereda la respuesta', async () => {
+t.check('la respuesta se CACHEA por cuenta: otra cuenta no hereda la respuesta', async () => {
   claudeCli('sk-ant-oat01-cli', FUTURE);
   const calls = t.mockFetch(() => ({ body: claudeBody }));
   const first = await claude.fetchUsage(ctx('claude', {}, 'claude:cache'));
@@ -249,6 +249,61 @@ t.check('la respuesta se CACHEA 10 min por cuenta: otra cuenta no hereda la resp
   assert.strictEqual(first, again);
   await claude.fetchUsage(ctx('claude', {}, 'claude:otra'));
   assert.strictEqual(calls.length, 2, 'otra cuenta hace su propia peticion');
+});
+
+/**
+ * Ejecuta `fn` con el reloj adelantado `ms`. La cache de Claude caduca por
+ * tiempo, y sin mover el reloj no habria forma de comprobarlo en un test que
+ * tiene que durar milisegundos.
+ */
+async function conRelojAdelantado(ms, fn) {
+  const real = Date.now;
+  Date.now = () => real() + ms;
+  try {
+    return await fn();
+  } finally {
+    Date.now = real;
+  }
+}
+
+t.check('un acierto se cachea lo que dura el refresco: a los 2 min se vuelve a preguntar', async () => {
+  // La cache de 10 min congelaba las cifras de Claude cinco refrescos
+  // seguidos: el consumo parecia no actualizarse.
+  claudeCli('sk-ant-oat01-fresco', FUTURE);
+  const calls = t.mockFetch(() => ({ body: claudeBody }));
+  const id = 'claude:ttl-acierto';
+  await claude.fetchUsage(ctx('claude', {}, id));
+  await conRelojAdelantado(90 * 1000, () => claude.fetchUsage(ctx('claude', {}, id)));
+  assert.strictEqual(calls.length, 1, 'dentro de los 2 min no se repite la peticion');
+  await conRelojAdelantado(2 * 60 * 1000 + 1000, () => claude.fetchUsage(ctx('claude', {}, id)));
+  assert.strictEqual(calls.length, 2, 'pasados los 2 min se vuelve a preguntar');
+});
+
+t.check('un 429 se respeta 10 minutos: no se insiste en gastar el margen', async () => {
+  claudeCli('sk-ant-oat01-topado', FUTURE);
+  const calls = t.mockFetch(() => ({ status: 429, body: { error: { message: 'rate limited' } } }));
+  const id = 'claude:ttl-429';
+  const primero = await claude.fetchUsage(ctx('claude', {}, id));
+  assert.notStrictEqual(primero.status, 'ok', 'un 429 no se da por bueno');
+  // A los 3 minutos no se molesta al endpoint otra vez.
+  await conRelojAdelantado(3 * 60 * 1000, () => claude.fetchUsage(ctx('claude', {}, id)));
+  assert.strictEqual(calls.length, 1, 'el 429 se cachea: no se insiste a los 3 min');
+  // Pasados los 10, si.
+  await conRelojAdelantado(11 * 60 * 1000, () => claude.fetchUsage(ctx('claude', {}, id)));
+  assert.strictEqual(calls.length, 2, 'pasados los 10 min se reintenta');
+});
+
+t.check('un fallo normal se cachea un minuto, no diez: el tropiezo no dura', async () => {
+  claudeCli('sk-ant-oat01-caido', FUTURE);
+  const calls = t.mockFetch(() => {
+    throw new Error('red caida');
+  });
+  const id = 'claude:ttl-fallo';
+  await claude.fetchUsage(ctx('claude', {}, id));
+  await conRelojAdelantado(30 * 1000, () => claude.fetchUsage(ctx('claude', {}, id)));
+  assert.strictEqual(calls.length, 1, 'dentro del minuto se sirve la cache del fallo');
+  await conRelojAdelantado(61 * 1000, () => claude.fetchUsage(ctx('claude', {}, id)));
+  assert.strictEqual(calls.length, 2, 'pasado un minuto se reintenta');
 });
 
 t.check('un 401 pasa al SIGUIENTE candidato y lo cuenta en la nota', async () => {

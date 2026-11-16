@@ -12,7 +12,17 @@
 // scripts/get-claude-usage.ps1, que necesita PowerShell 7.
 //
 // El endpoint no es publico y la comunidad reporta ~5 peticiones por ventana
-// (HTTP 429), asi que la respuesta se cachea 10 minutos.
+// (HTTP 429), asi que la respuesta se cachea. Cuanto dura la cache depende de
+// lo que haya pasado:
+//
+//  - Un acierto: lo que dura el refresco de la app (2 min). Con una cache de
+//    10 min para todo, las cifras de Claude se quedaban congeladas hasta cinco
+//    refrescos seguidos mientras el pie de la tarjeta decia "hace 30 s": el
+//    consumo parecia no actualizarse nunca.
+//  - Un fallo (red, token): un minuto. Antes tambien eran 10, asi que un
+//    tropiezo pasajero dejaba la fila en el respaldo local diez minutos.
+//  - Un 429: los 10 minutos de siempre. Es el caso en el que insistir gasta
+//    justo el margen que hay.
 
 const { fetchJson, pct100, tone, sortMetrics } = require('../http');
 const creds = require('../credentials');
@@ -23,7 +33,12 @@ const { aggregate, claudeProjectsDir } = require('../local/jsonl-tokens');
 const USAGE_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
 const OAUTH_BETA = 'oauth-2025-04-20';
 const SCRIPT = scriptPath.script('get-claude-usage.ps1');
-const CACHE_MS = 10 * 60 * 1000;
+// Exito: al ritmo del refresco por defecto (config.refreshSeconds = 120).
+const CACHE_MS = 2 * 60 * 1000;
+// Fallo que no es un 429: no hace falta esperar diez minutos para reintentar.
+const CACHE_FAIL_MS = 60 * 1000;
+// 429: no insistir. Es el margen que el endpoint no da.
+const CACHE_RATE_LIMIT_MS = 10 * 60 * 1000;
 
 // La cache va por CUENTA: con varias cuentas de Claude, una respuesta de la
 // cuenta A no puede servirse para la cuenta B.
@@ -237,9 +252,10 @@ async function remoteUsage(ctx, credential) {
     if (!result.ok) {
       const detail = firstLine(result.stderr);
       // El script avisa con "HTTP 401" cuando el token que ha elegido esta
-      // caducado: eso si es un problema de autenticacion.
+      // caducado: eso si es un problema de autenticacion. Y con "429" cuando
+      // se ha agotado el margen de peticiones del endpoint de uso.
       const authError = /401|unauthorized|revoked/i.test(detail);
-      return { error: `sesión de Claude Desktop: ${detail}`, authError };
+      return { error: `sesión de Claude Desktop: ${detail}`, authError, rateLimited: /429/.test(detail) };
     }
     if (!result.stdout.trim()) return { error: 'sesión de Claude Desktop: el script no devolvió nada' };
     let parsed;
@@ -262,7 +278,13 @@ async function remoteUsage(ctx, credential) {
     },
   });
   if (!res.ok) {
-    return { error: res.error, authError: res.status === 401 || res.status === 403 };
+    return {
+      error: res.error,
+      authError: res.status === 401 || res.status === 403,
+      // El 429 es el unico fallo que pide esperar de verdad: es el margen del
+      // endpoint, no un tropiezo.
+      rateLimited: res.status === 429,
+    };
   }
 
   const parsed = parseUsage(res.data);
@@ -294,7 +316,7 @@ function formatTokens(n) {
 async function fetchUsage(ctx) {
   const key = cacheKey(ctx);
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_MS) {
+  if (hit && Date.now() - hit.at < hit.ttl) {
     return hit.result;
   }
 
@@ -356,7 +378,15 @@ async function fetchUsage(ctx) {
     }
   }
 
-  cache.set(key, { at: Date.now(), result });
+  // Cuanto dura lo que acaba de responderse. Un acierto se refresca al ritmo
+  // de la app; un 429 se respeta diez minutos; el resto de fallos, uno.
+  let ttl = CACHE_MS;
+  if (remote.rateLimited) {
+    ttl = CACHE_RATE_LIMIT_MS;
+  } else if (result.status !== 'ok') {
+    ttl = CACHE_FAIL_MS;
+  }
+  cache.set(key, { at: Date.now(), result, ttl });
   return result;
 }
 

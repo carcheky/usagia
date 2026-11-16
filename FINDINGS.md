@@ -208,7 +208,13 @@ usarlo a ciegas.
    `seven_day_breakdown.rows[].key === "claude_code"`: dice qué parte de la
    cuota semanal es de Claude Code (frente a chat o cowork).
 3. **El endpoint de cuota de Claude no es público** y la comunidad reporta ~5
-   peticiones por ventana (429). La app cachea la respuesta 10 minutos.
+   peticiones por ventana (429). La app cachea la respuesta **según lo que haya
+   pasado** (2026-11-16 14:00): un **acierto, 2 minutos** (el ritmo del refresco;
+   antes eran 10 para todo y las cifras se quedaban congeladas cinco refrescos
+   seguidos); un **fallo que no es 429, 1 minuto**; y un **429, 10 minutos**, que
+   es el caso en el que insistir gasta el margen. El 429 se detecta por
+   `status === 429` en HTTP y por `/429/` en la salida de
+   `get-claude-usage.ps1` ("HTTP 429: límite de peticiones del endpoint de uso").
 4. El token de Claude caduca el **2026-12-04**; lo renueva Claude Desktop al
    usarlo. Si caduca sin renovar, hay que reloguear la app de Claude. Los
    tokens de `~/.claude/.credentials.json` caducan mucho antes (horas): por eso
