@@ -47,6 +47,10 @@ check('pct100 es una escala fija 0-100 -> 0-1 (no adivina)', () => {
   assert.strictEqual(http.pct100(undefined), null);
   assert.strictEqual(http.pct100(''), null);
   assert.strictEqual(http.pct100('nada'), null);
+  // Una cadena de solo espacios tambien es "ausente": Number(' ') es 0, y 0
+  // para un restante significa "agotado" (rojo).
+  assert.strictEqual(http.pct100(' '), null);
+  assert.strictEqual(http.pct100('  \t '), null);
 });
 
 check('fmtPercent1 solo lleva decimal cuando hace falta', () => {

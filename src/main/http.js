@@ -54,7 +54,9 @@ async function fetchJson(url, options = {}) {
 function pct100(value) {
   // Number(null) y Number('') son 0: un campo ausente se convertia en "0 %",
   // que para un restante significa "agotado" (critico). Ausente = null.
-  if (value === null || value === undefined || value === '') return null;
+  // Tambien una cadena de solo espacios: Number(' ') es 0 igual que Number('').
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
   return n / 100;
