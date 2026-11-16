@@ -125,11 +125,13 @@ fichero (app de bandeja).
 - **Electron no arranca en el sandbox** (`GPU process launch failed:
   error_code=18`), así que `npm run preview` y `preview:settings` no se pueden
   ejecutar desde una sesión de DSH: hay que lanzarlos fuera.
-- **Cómo se lanzan fuera del sandbox** (probado el 2026-11-16 00:42): con
-  `ELECTRON_RUN_AS_NODE` **vacío** (si está activo, Electron corre como Node y
-  responde *"bad option: --disable-gpu"*, que es el síntoma engañoso) y con
-  `--disable-gpu --disable-gpu-sandbox --no-sandbox`. Los errores de caché de
-  GPU son ruido: la app funciona igual.
+- **Cómo se lanzan fuera del sandbox** (probado el 2026-11-16 00:42, ajustado
+  el 01:55 con `814b6f5`): la app **se pone sola** `disable-gpu` cuando ve
+  `--preview` o `--settings`, así que basta `npm run preview` /
+  `npm run preview:settings`. Lo único que hay que cuidar es que
+  `ELECTRON_RUN_AS_NODE` esté **vacío**: si está activo, Electron corre como
+  Node y responde *"bad option: --disable-gpu"*, que es el síntoma engañoso.
+  Antes de `814b6f5` había que pasar las banderas a mano.
 - **Las vistas previas ya no mueren en silencio** con la app en marcha: antes
   el bloqueo de instancia única las echaba (código 0, sin decir nada) y no se
   llegaba a sacar la captura. Ahora `--preview` y `--settings` están exentos
