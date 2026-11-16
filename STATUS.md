@@ -1,9 +1,9 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 18:55 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión de **documentación** (la que partió
-> este fichero en *estado* + *historial*). Ver
-> [Lo último: documentación para humanos y agentes](#lo-último-documentación-para-humanos-y-agentes-2026-11-16-1850).
+> **Última actualización:** 2026-11-16 19:05 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión de **cuota y extras** (el tope con
+> ámbito de Claude). Ver
+> [Lo último: los extras no cuentan (Claude)](#lo-último-los-extras-no-cuentan-claude-2026-11-16-1905).
 > **Ojo: hay otra sesión activa** en este repo (la del *onboarding* de cuentas, con su
 > propuesta en `openspec/changes/2026-11-16-onboarding-cuentas/`): **no se ha tocado nada
 > suyo**. Este fichero se ha **fusionado**, no reescrito.
@@ -19,25 +19,66 @@
 <!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
 | Sección | Línea |
 |---|---|
-| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 40 |
-| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 72 |
-| Resumen en una línea | 94 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 105 |
-| Versiones | 152 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 184 |
-| Qué funciona (verificado) | 207 |
-| Pendiente / siguiente | 226 |
-| Puntos abiertos y riesgos conocidos | 257 |
-| Límites del sandbox de DSH al medir (no son fallos de la app) | 281 |
-| Reparto entre sesiones (acuerdo) | 293 |
-| Cómo mantener este fichero | 315 |
-| Decisiones que son del usuario | 328 |
-| Notas para quien siga | 335 |
-| Retomar (en 5 minutos) | 342 |
-| Actualización automática desde la app (2026-11-16 18:45) | 357 |
+| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 41 |
+| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 80 |
+| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 113 |
+| Resumen en una línea | 135 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 146 |
+| Versiones | 194 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 226 |
+| Qué funciona (verificado) | 249 |
+| Pendiente / siguiente | 268 |
+| Puntos abiertos y riesgos conocidos | 299 |
+| Límites del sandbox de DSH al medir (no son fallos de la app) | 323 |
+| Reparto entre sesiones (acuerdo) | 335 |
+| Cómo mantener este fichero | 357 |
+| Decisiones que son del usuario | 370 |
+| Notas para quien siga | 377 |
+| Retomar (en 5 minutos) | 384 |
+| Actualización automática desde la app (2026-11-16 18:45) | 399 |
 <!-- fin-índice -->
 
+## Lo último: los extras no cuentan (Claude) (2026-11-16 19:05)
+
+**Pregunta del usuario:** *"te parece correcto claude? intuitivo? o sea tengo mi
+cuota normal de 5h libre, y me pones 100 % lleno y el icono en la bandeja
+amarillo"*, y luego la regla: *"la cuota de 5 h y semanal es la que cuenta
+para la media global en las IAs que consumen así; lo demás son extras"*.
+
+**Lo que pasaba:** el "100 %" era **real**, no un bug. La respuesta cruda del
+endpoint de Claude (medida el 2026-11-16 18:45, en
+[FINDINGS.md §3](FINDINGS.md#3-valores-verificados-2026-11-15-1435)) trae tres
+límites: `session` (5 h) al 20 %, `weekly_all` al 61 % y **`weekly_scoped` al
+100 %**, que es el **tope semanal del modelo "Fable"** (`is_active: true`,
+`severity: critical`). Ese tope es un **extra**: solo afecta a ese modelo, y
+`weekly_scoped_shares` dice que le dan 50 de los 100 puntos de la semanal.
+
+**Lo que se ha cambiado** (`fix:` en `beta`):
+
+| | Antes | Ahora |
+|---|---|---|
+| Cabecera de la fila de Claude | "100 % usado · semanal Fable" | **"61 % usado · semanal"** |
+| Punto de la fila | amarillo | **verde** |
+| Icono de la bandeja | **amarillo** | **verde** |
+| Fila del extra | "semanal Fable · 100 % usado" (sin reinicio) | **"Fable (tope semanal) · 100 % usado ↻ 18/11, 17:59"** |
+| Nota | — | "Fable: tope semanal del modelo agotado (extra: no cuenta para la cuota general)" |
+
+**Dónde:** `src/main/availability.js` (`countingMetrics()`: los topes con
+ámbito no entran en la media, ni en las ventanas agotadas, ni en el color),
+`src/main/summary.js` y `src/main/tooltip.js` (cabecera y tooltip usan las
+ventanas que cuentan), `src/main/providers/claude.js` (reinicio del extra y la
+nota que lo explica).
+
+**Pruebas:** `scripts/test-parsers.js` y `scripts/test-local.js` fijan la
+regla (el extra no cuenta; si solo hay extras, cuentan). `npm test` → **10
+suites en verde**. Comprobado con **datos vivos**: la cabecera sale "61 % usado
+· semanal", el icono "ok" (verde) y la fila del extra con su reinicio.
+
+**Lo que NO se ha perdido:** el extra se sigue viendo entero (barra roja, su
+reinicio, su nota). Solo deja de ponderar el estado global.
+
 ## Lo último: documentación para humanos y agentes (2026-11-16 18:50)
+
 
 **Encargo:** "la regla de oro del agente es documentar todo debidamente en una carpeta
 human/ia oriented, siguiendo una metodología de carga documental selectiva según la tarea",
@@ -117,6 +158,7 @@ ficheros aquí y fusiona en lugar de pisar.
 | `session-onboarding` | **Activa**: propuesta de conectar cuentas en [openspec/changes/2026-11-16-onboarding-cuentas/](openspec/changes/2026-11-16-onboarding-cuentas/proposal.md). Además, instalación de actualizaciones en curso | `src/main/update-install.js` · `src/main/updates.js` · `src/preload/*` · `src/renderer/card.*` · `src/renderer/settings.*` · `scripts/test-updates.js` |
 | `session-docs` (**esta**) | Documentación: `docs/` con índice y carga selectiva, `STATUS.md` partido en estado + historial, skill `usagia-docs`, `scripts/test-docs.js` y `scripts/docs-metrics.js` | `docs/` · `scripts/test-docs.js` · `scripts/docs-metrics.js` · `STATUS.md` · `FINDINGS.md` (solo el índice) · `AGENTS.md` · `.agents/skills/usagia-docs/` |
 | `session-lead` | **Activa**: el ⚙ de la tarjeta baja al pie, al lado de la pista (ver *Lo último*) | `src/renderer/card.html` · `src/renderer/card.css` · `src/renderer/card.js` · `scripts/test-renderer.js` · `README.md` (interacción) |
+| `session-cuota` (**esta**) | Cuota y extras: el tope con ámbito de Claude no cuenta para la media, la cabecera ni el icono | `src/main/availability.js` · `src/main/summary.js` · `src/main/tooltip.js` · `src/main/providers/claude.js` · `scripts/test-parsers.js` · `scripts/test-local.js` · `FINDINGS.md` (semántica del extra) · `STATUS.md` |
 
 El detalle de cada sesión (qué hizo, con qué commits) está en
 [docs/historial.md](docs/historial.md#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión).

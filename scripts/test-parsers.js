@@ -171,7 +171,7 @@ check('la semanal y el limite con ambito salen como consumido', () => {
   const { metrics } = claude.parseUsage(claudeResponse);
   const weekly = metrics.find((m) => m.label === 'semanal');
   assert.strictEqual(weekly.pct, 0.28);
-  const scoped = metrics.find((m) => m.label === 'semanal Fable');
+  const scoped = metrics.find((m) => m.label === 'Fable (tope semanal)');
   assert.ok(scoped, 'falta la metrica del limite con ambito');
   assert.strictEqual(scoped.pct, 0.46);
   // El limite inactivo no se pinta.
@@ -249,10 +249,52 @@ check('el limite con ambito se marca por su nombre de modelo', () => {
       },
     ],
   });
-  const scoped = metrics.find((m) => m.label === 'semanal Fable');
+  const scoped = metrics.find((m) => m.label === 'Fable (tope semanal)');
   assert.ok(scoped, 'falta la metrica con ambito');
   assert.strictEqual(scoped.pct, 0.74);
   assert.strictEqual(scoped.tone, 'warning');
+});
+
+check('el limite con ambito lleva su reinicio y avisa cuando se agota', () => {
+  // El endpoint trae `resets_at` tambien para el limite con ambito: sin eso,
+  // la fila deia "100 % usado" sin decir hasta cuando.
+  const { metrics, notes } = claude.parseUsage({
+    five_hour: { utilization: 20 },
+    seven_day: { utilization: 61 },
+    limits: [
+      {
+        kind: 'weekly_scoped',
+        is_active: true,
+        percent: 100,
+        resets_at: '2026-11-18T17:00:00Z',
+        scope: { model: { display_name: 'Fable' } },
+      },
+    ],
+  });
+  const scoped = metrics.find((m) => m.label === 'Fable (tope semanal)');
+  assert.ok(scoped, 'falta la metrica con ambito');
+  assert.ok(scoped.reset, 'el limite con ambito tiene que decir cuando se repone');
+  // Agotado: se avisa, y se dice que es un EXTRA (no la cuota general).
+  assert.ok(
+    notes.some((n) => n.includes('Fable') && n.includes('extra')),
+    `notas: ${notes.join(' | ')}`
+  );
+});
+
+check('un limite con ambito que NO esta agotado no llena la nota', () => {
+  const { notes } = claude.parseUsage({
+    five_hour: { utilization: 20 },
+    seven_day: { utilization: 61 },
+    limits: [
+      {
+        kind: 'weekly_scoped',
+        is_active: true,
+        percent: 46,
+        scope: { model: { display_name: 'Fable' } },
+      },
+    ],
+  });
+  assert.deepStrictEqual(notes, [], notes.join(' | '));
 });
 
 check('Claude sale en el orden canonico: 5 h, semanal, con ambito, mensual', () => {
@@ -271,7 +313,7 @@ check('Claude sale en el orden canonico: 5 h, semanal, con ambito, mensual', () 
   });
   assert.deepStrictEqual(
     metrics.map((m) => m.label),
-    ['ventana 5 h', 'semanal', 'semanal Fable', 'mensual']
+    ['ventana 5 h', 'semanal', 'Fable (tope semanal)', 'mensual']
   );
 });
 
@@ -519,19 +561,51 @@ check('el punto de la fila usa el mismo criterio que el icono', () => {
 });
 
 check('una ventana larga agotada pero otra con cuota es amarillo, no rojo', () => {
-  // Este es el caso de Claude: weekly_scoped (Fable) al 100 %, pero weekly al 56 %.
-  // Es un aviso (amarillo), no un problema serio (rojo).
+  // Una ventana larga (semanal) agotada, con la mensual todavia con cuota:
+  // es un aviso (amarillo), no un problema serio (rojo).
   assert.strictEqual(
-    availability.providerTone(prov([['5h', 0.81], ['weekly', 0.56], ['weekly_scoped', 1]])),
+    availability.providerTone(prov([['5h', 0.1], ['weekly', 1], ['monthly', 0.1]])),
     'warning',
     'una ventana larga agotada pero otra con cuota -> amarillo'
   );
-  // El icono global tampoco deberia ser rojo: hay cuota de sobra en las otras.
+  // Y si la larga AGOTADA es la unica larga, es rojo: la semanal no se
+  // repone en dias.
+  assert.strictEqual(
+    availability.providerTone(prov([['5h', 0.1], ['weekly', 1]])),
+    'critical',
+    'la semanal agotada es un problema de verdad'
+  );
+});
+
+check('el limite con ambito de Claude es un EXTRA: no cuenta para la media', () => {
+  // Caso real del 2026-11-16: la ventana de 5 h al 20 % usada, la semanal al
+  // 61 %, y el tope semanal del modelo "Fable" al 100 %. Ese ultimo es un
+  // extra (solo afecta a ese modelo): no puede(Media) ni ensuciar el estado
+  // de la cuota general.
+  const claude = prov([
+    ['5h', 0.2],
+    ['weekly', 0.61],
+    ['weekly_scoped', 1],
+  ]);
+  const state = availability.providerState(claude);
+  // La media sale SOLO de la 5 h y la semanal: (0,8 + 0,39x2) / 3 = 0,527.
+  assert.ok(state.left > 0.5, `media ${state.left} (el extra no puede contar)`);
+  // Y el extra agotado no pone el punto de la fila en amarillo: el criterio
+  // del punto es el mismo que el del icono.
+  assert.strictEqual(availability.providerTone(claude), 'ok');
+  // El icono global tampoco: hay cuota de sobra en la ventana de 5 h.
   const { tone } = availability.computeAvailability([
-    prov([['5h', 0.81], ['weekly', 0.56], ['weekly_scoped', 1]]),
+    claude,
     prov([['5h', 0.29], ['weekly', 0.18]]),
   ]);
-  assert.strictEqual(tone, 'warning', 'icono amarillo, no rojo');
+  assert.strictEqual(tone, 'ok', 'el icono se queda en verde');
+});
+
+check('si solo hay un extra, ese cuenta (es lo unico que se sabe)', () => {
+  const solo = prov([['weekly_scoped', 1]]);
+  const state = availability.providerState(solo);
+  assert.ok(state.left !== null, 'la media tiene que existir');
+  assert.strictEqual(availability.providerTone(solo), 'critical');
 });
 
 check('las ventanas de 5 h pesan menos que las semanales en la media', () => {
@@ -645,6 +719,19 @@ check('la linea del tooltip dice la ventana MAS AGOTADA', () => {
     ],
   };
   assert.strictEqual(tooltip.tooltipLine(resultado), '42% sem');
+});
+
+check('la linea del tooltip ignora el extra (limite con ambito)', () => {
+  // El extra no describe la cuota general: el tooltip dice lo que cuenta.
+  const resultado = {
+    status: 'ok',
+    metrics: [
+      { label: 'ventana 5 h', pct: 0.2, window: '5h' },
+      { label: 'semanal', pct: 0.61, window: 'weekly' },
+      { label: 'Fable (tope semanal)', pct: 1, window: 'weekly_scoped' },
+    ],
+  };
+  assert.strictEqual(tooltip.tooltipLine(resultado), '61% sem');
 });
 
 check('la linea del tooltip avisa cuando no hay cuota', () => {

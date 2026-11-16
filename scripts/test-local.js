@@ -45,6 +45,21 @@ t.check('con cuotas: la ventana MAS AGOTADA, con el porcentaje DELANTE', () => {
   assert.strictEqual(summary.primarySummary(r), '74% usado · semanal');
 });
 
+t.check('la cabecera ignora los EXTRAS (limite con ambito de un modelo)', () => {
+  // Caso real del 2026-11-16: la 5 h al 20 %, la semanal al 61 %, y el tope
+  // semanal del modelo "Fable" al 100 %. Ese ultimo es un extra (solo afecta
+  // a ese modelo): la cabecera dice lo que pasa con la cuota general.
+  const r = {
+    status: 'ok',
+    metrics: [
+      { label: 'ventana 5 h', value: '20% usado', pct: 0.2, window: '5h' },
+      { label: 'semanal', value: '61% usado', pct: 0.61, window: 'weekly' },
+      { label: 'Fable (tope semanal)', value: '100% usado', pct: 1, window: 'weekly_scoped' },
+    ],
+  };
+  assert.strictEqual(summary.primarySummary(r), '61% usado · semanal');
+});
+
 t.check('la cabecera propia del proveedor (headline) manda', () => {
   const r = { status: 'ok', headline: '$33.64 · aguanta 12 meses', metrics: [{ label: 'x', value: '1', pct: 0.9 }] };
   assert.strictEqual(summary.primarySummary(r), '$33.64 · aguanta 12 meses');

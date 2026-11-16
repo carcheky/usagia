@@ -181,21 +181,53 @@ function parseUsage(data) {
 
   // El panel de Claude muestra ademas un limite con ambito (por modelo, p. ej.
   // "Fable") en `limits[]`. Si esta activo, es el que aplica de verdad.
+  //
+  // OJO: este limite es un EXTRA. No es la cuota que se consume al hacer
+  // tareas (esa son la ventana de 5 h y la semanal, que van aparte): es un
+  // tope que solo afecta a ese modelo. Por eso se enseña en su propia fila,
+  // con su barra y su reinicio, pero no cuenta para la media, ni para el
+  // color del icono, ni para la cabecera (ver availability.js).
   const scoped = (data?.limits || []).find((l) => l.kind === 'weekly_scoped' && l.is_active);
   if (scoped && typeof scoped.percent === 'number') {
     const consumed = pct100(scoped.percent);
     if (consumed !== null) {
       const remaining = Math.max(0, 1 - consumed);
       const scope = scoped.scope?.model?.display_name;
-      metrics.push({
-        label: scope ? `semanal ${scope}` : 'semanal con ámbito',
+      const metric = {
+        // La etiqueta dice QUE es: un tope, y de que modelo. "semanal Fable"
+        // se leia como una ventana mas de la cuota, y no lo es.
+        label: scope ? `${scope} (tope semanal)` : 'tope semanal con ámbito',
+        fullLabel: scope ? `tope semanal del modelo ${scope}` : 'tope semanal con ámbito',
         window: 'weekly_scoped',
         value: `${Math.round(consumed * 100)}% usado`,
         short: `${Math.round(consumed * 100)}%`,
         remaining: `queda ${Math.round(remaining * 100)}%`,
         pct: consumed,
         tone: tone(remaining),
-      });
+      };
+      // El reinicio viene tambien para este limite: sin el, la fila decia
+      // "100 % usado" sin decir hasta cuando.
+      if (scoped.resets_at) {
+        const when = new Date(scoped.resets_at);
+        if (!Number.isNaN(when.getTime())) {
+          metric.reset = when.toLocaleString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+      }
+      metrics.push(metric);
+
+      // Agotado: se avisa en la nota, y se dice que es un extra. Sin esto,
+      // un "100 % usado" en una fila parecía que te quedabas sin Claude
+      // entero.
+      if (remaining <= 0) {
+        notes.push(
+          `${scope || 'el modelo'}: tope semanal del modelo agotado (extra: no cuenta para la cuota general)`
+        );
+      }
     }
   }
 

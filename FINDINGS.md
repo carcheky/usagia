@@ -15,10 +15,10 @@ consume tokens de IA).
 | 1. Convención de semántica (lo que más confunde) | 24 |
 | 2. Endpoints y credenciales | 61 |
 | 3. Valores verificados (2026-11-15 ~14:35) | 85 |
-| 4. Puntos abiertos (para el otro agente) | 202 |
-| 5. Comportamiento de la app | 249 |
-| 6. El paquete (asar): el fallo que no se veía en desarrollo | 439 |
-| 7. Guiones sueltos que ya funcionan | 481 |
+| 4. Puntos abiertos (para el otro agente) | 240 |
+| 5. Comportamiento de la app | 290 |
+| 6. El paquete (asar): el fallo que no se veía en desarrollo | 514 |
+| 7. Guiones sueltos que ya funcionan | 556 |
 <!-- fin-índice -->
 
 ## 1. Convención de semántica (lo que más confunde)
@@ -129,6 +129,44 @@ fichero (app de bandeja).
 **La ventana de 5 h de Claude estaba AL 100 %** (reinicia a las 4:30), y la app
 no lo enseñaba: se quedaba en el respaldo local. Ver *Por qué Claude no salía*.
 
+### Medición del 2026-11-16 18:45: el tope con ámbito de Claude, a pelo
+
+Respuesta cruda de `GET https://api.anthropic.com/api/oauth/usage` (token OAuth
+del harness; los tres `limits[]` tal cual):
+
+```json
+"five_hour": { "utilization": 20, "resets_at": "2026-11-16T22:10:00Z" },
+"seven_day": { "utilization": 61, "resets_at": "2026-11-18T17:00:00Z" },
+"limits": [
+  { "kind": "session",       "percent": 20,  "is_active": false },
+  { "kind": "weekly_all",    "percent": 61,  "is_active": false },
+  { "kind": "weekly_scoped", "percent": 100, "severity": "critical", "is_active": true,
+    "resets_at": "2026-11-18T16:59:59Z",
+    "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null } }
+],
+"weekly_scoped_shares": [
+  { "limit_index": 2, "used_percent_of_weekly": 50, "allowance_percent_of_weekly": 50 }
+],
+"seven_day_breakdown": { "rows": [
+  { "key": "claude_code", "percent": 96 },
+  { "key": "cowork", "percent": 4 } ] }
+```
+
+Lo que dice ese JSON:
+
+| Dato | Lectura |
+|---|---|
+| `five_hour.utilization = 20` | ventana de 5 h al **20 % usada** (queda 80 %) |
+| `seven_day.utilization = 61` | semanal general al **61 % usada** (queda 39 %) |
+| `limits[2].percent = 100`, `is_active: true`, `severity: critical` | el **tope del modelo "Fable" está AGOTADO** y es el límite activo |
+| `weekly_scoped_shares[0]` | ese tope cubre **50 de los 100 puntos** de la cuota semanal (`allowance_percent_of_weekly: 50`) y ya gastó los 50 (`used_percent_of_weekly: 50`) |
+| `seven_day_breakdown` | el **96 %** del consumo semanal es **Claude Code** |
+
+O sea: el "100 %" de la tarjeta **no es un bug** (el `pct100()` lo trata bien) y
+**tampoco es la cuota general**: es un tope que solo afecta a un modelo. La
+cuota que se consume al hacer tareas (5 h y semanal) iba bien. Ver *Los
+EXTRAS* en §5.
+
 ### Por qué Claude no salía (y cómo se arregla)
 
 Tres cosas a la vez, todas verificadas el 2026-11-16 02:00-02:30:
@@ -219,8 +257,11 @@ usarlo a ciegas.
 
 2. **Claude: el límite con ámbito puede ir más cargado que el agregado.**
    El panel de Claude muestra además `limits[].kind === "weekly_scoped"` (por
-   modelo, p. ej. "Fable"), que es el límite que aplica de verdad. El agregado
-   `seven_day.utilization` puede verse mucho más bajo. Ojo también con
+   modelo, p. ej. "Fable"): es un **extra**, un tope que solo aplica a ese
+   modelo, y puede ir al 100 % mientras la cuota general (5 h y semanal) va
+   bien. `weekly_scoped_shares` dice qué parte de la semanal se le concede
+   (`allowance_percent_of_weekly`) y cuánto lleva gastado
+   (`used_percent_of_weekly`). Ojo también con
    `seven_day_breakdown.rows[].key === "claude_code"`: dice qué parte de la
    cuota semanal es de Claude Code (frente a chat o cowork).
 3. **El endpoint de cuota de Claude no es público** y la comunidad reporta ~5
@@ -319,8 +360,11 @@ que se quejó el 2026-11-16.
    |---|---|
    | `5h` | 1 |
    | `daily` | 1,5 |
-   | `weekly` / `weekly_scoped` | 2 |
+   | `weekly` | 2 |
    | `monthly` | 2,5 |
+
+   Los topes **con ámbito** (`weekly_scoped`) no entran en la media: son
+   extras (ver *Los EXTRAS*, más abajo).
 
 2. Se distingue la ventana **agotada** de la que **se repone pronto**: la de
    5 h (o la diaria) vuelve en un rato, así que enrojecerse por ella sería
@@ -345,6 +389,37 @@ Comprobado con los datos reales del 2026-11-16:
 > **Ojo con el "bloqueado":** un proveedor está bloqueado cuando **todas**
 > sus ventanas de cuota están agotadas (no se puede usar ese proveedor).
 > Uno bloqueado entre varios → amarillo; todos bloqueados → rojo.
+
+### Los EXTRAS: el tope con ámbito de un modelo (Claude)
+
+Un proveedor puede exponer, aparte de su cuota, un **tope que solo aplica a
+una cosa**: en Claude, `limits[].kind === "weekly_scoped"` es el tope semanal
+de un modelo ("Fable"). El caso real del 2026-11-16: ese tope al **100 %**
+mientras la ventana de 5 h iba al 20 % y la semanal al 61 %.
+
+**Regla de la casa:** a la cuota que se consume al hacer tareas (5 h y
+semanal) es la que cuenta. Los topes con ámbito son **extras**.
+
+| | Con los extras (antes) | Solo la cuota general (ahora) |
+|---|---|---|
+| Media del icono de la bandeja | Claude: 31 % | Claude: 53 % |
+| Color del icono de la bandeja | **amarillo** | **verde** |
+| Cabecera de la fila | "100 % usado · semanal Fable" | "61 % usado · semanal" |
+| Punto de la fila | amarillo | verde |
+| Fila propia del extra | se ve | se ve, con su barra y su reinicio |
+
+Lo que **no** se pierde: la fila del extra sigue ahí, con su barra (roja si
+está agotada), **su reinicio** (el endpoint lo trae en `resets_at`, y antes no
+se pintaba) y una nota que lo explica: *"Fable: tope semanal del modelo
+agotado (extra: no cuenta para la cuota general)"*.
+
+La etiqueta de esa fila es **"Fable (tope semanal)"**, no "semanal Fable": la
+anterior se leía como una ventana más de la cuota, y no lo es.
+
+Implementado en `src/main/availability.js` (`countingMetrics()`), que usan
+también la cabecera (`summary.js`) y el tooltip (`tooltip.js`): si un
+proveedor solo devolviera topes con ámbito, entonces cuentan (es lo único que
+se sabe).
 
 ### El reinicio de cada ventana, junto a su barra
 
@@ -374,7 +449,7 @@ de más larga a más larga:
 | `5h` | 5 horas | 1.ª |
 | `daily` | diaria | 2.ª |
 | `weekly` | semanal | 3.ª |
-| `weekly_scoped` | semanal con ámbito (otro modelo) | 4.ª |
+| `weekly_scoped` | tope con ámbito (otro modelo) | 4.ª |
 | `monthly` | mensual | 5.ª |
 
 Implementado en `http.sortMetrics()` (`src/main/http.js`), con el orden

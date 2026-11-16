@@ -6,13 +6,17 @@
 // de un vistazo, y ha cambiado varias veces (cual es la ventana "peor", que
 // va delante, que pasa sin porcentajes...).
 
+const { countingMetrics } = require('./availability');
+
 /** Linea corta para el menu contextual de la bandeja. */
 function shortSummary(result) {
   if (!result) return '—';
   if (result.status === 'unconfigured') return 'sin credencial';
   if (result.status === 'error') return 'error';
   if (result.status === 'warning') return 'cuota no disponible';
-  const metrics = result.metrics || [];
+  // Los EXTRAS (tope con ambito) no cuentan: la linea del menu habla de la
+  // cuota que se consume al hacer tareas.
+  const metrics = countingMetrics(result.metrics || []);
   if (!metrics.length) return result.summary || '—';
   const parts = metrics.slice(0, 2).map((m) => m.short || m.value);
   // Todas las metricas en porcentaje son "consumido", como en los paneles.
@@ -28,6 +32,10 @@ function shortSummary(result) {
  * ha gastado. El nombre de la ventana va detras, y las filas de abajo lo
  * repiten con su barra.
  *
+ * Los EXTRAS (tope con ambito, p. ej. el "Fable" de Claude) NO cuentan: la
+ * cabecera describe la cuota general (5 h, semanal, mensual). El extra se ve
+ * en su propia fila, con su barra y su reinicio.
+ *
  * @param {object} result
  * @returns {string}
  */
@@ -40,7 +48,7 @@ function primarySummary(result) {
   // "saldo · aguanta 12 meses"), porque su cuenta no es una cuota por
   // ventanas de tiempo.
   if (result.headline) return result.headline;
-  const all = result.metrics || [];
+  const all = countingMetrics(result.metrics || []);
   const metrics = all.filter((m) => typeof m.pct === 'number');
   if (!metrics.length) {
     // Sin porcentajes (saldo, tokens): solo los valores, como antes.

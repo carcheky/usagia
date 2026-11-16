@@ -42,6 +42,32 @@ const WINDOW_WEIGHT = {
   monthly: 2.5,
 };
 
+// Ventana con AMBITO: un tope que el proveedor expone aparte, para un solo
+// modelo (Claude: "Fable"). No es la cuota general: es un EXTRA.
+//
+// OJO con esto, que es lo que se confunde: el tope de "Fable" al 100 % NO
+// significa que te quedes sin Claude. La cuota que se consume al hacer
+// tareas (5 h y semanal) va aparte, y es la que cuenta. El extra se
+// teaches (fila propia con su barra) pero no pesa: ni en la media, ni en el
+// color del icono, ni en la cabecera de la fila.
+const SCOPED_WINDOW = 'weekly_scoped';
+
+/**
+ * Las metricas que CUENTAN para el estado de la cuota: las ventanas sin
+ * ambito (5 h, diaria, semanal, mensual).
+ *
+ * Si no hay ninguna (un proveedor que solo devuelve un tope con ambito),
+ * entonces ese extra es lo unico que se sabe y cuenta.
+ *
+ * @param {Array<object>} metrics
+ * @returns {Array<object>}
+ */
+function countingMetrics(metrics) {
+  const list = metrics || [];
+  const general = list.filter((m) => m?.window !== SCOPED_WINDOW);
+  return general.length ? general : list;
+}
+
 // Peso por defecto de una ventana de la que no se sabe el tipo.
 const DEFAULT_WEIGHT = 1.5;
 
@@ -101,6 +127,8 @@ function windowsOf(result) {
       left,
       window: metric.window,
       transient: TRANSIENT_WINDOWS.has(metric.window),
+      // Un tope con ambito es un extra: no cuenta (ver countingMetrics).
+      scoped: metric.window === SCOPED_WINDOW,
     });
   }
   return out;
@@ -127,24 +155,32 @@ function providerState(result) {
     anyLongExhausted: false,
     allLongExhausted: false,
     lowBalance: false,
+    extrasExhausted: false,
   };
   if (!windows.length && !hasBalance(result)) return empty;
 
+  // Los EXTRAS (tope con ambito) no cuentan: la cuota general es la de las
+  // ventanas sin ambito. Si no hay ninguna ventana general, el extra es lo
+  // unico que se sabe y cuenta.
+  const general = windows.filter((w) => !w.scoped);
+  const extras = windows.filter((w) => w.scoped);
+  const counted = general.length ? general : extras;
+
   let sum = 0;
   let weights = 0;
-  for (const w of windows) {
+  for (const w of counted) {
     const weight = weightOf({ window: w.window });
     sum += w.left * weight;
     weights += weight;
   }
 
-  const exhausted = windows.filter((w) => w.left <= 0);
-  const longWindows = windows.filter((w) => !w.transient);
+  const exhausted = counted.filter((w) => w.left <= 0);
+  const longWindows = counted.filter((w) => !w.transient);
   const exhaustedLong = exhausted.filter((w) => !w.transient);
   const balance = (result?.metrics || []).find((m) => m.kind === 'balance');
   return {
     left: weights > 0 ? sum / weights : null,
-    blocked: windows.length > 0 && exhausted.length === windows.length,
+    blocked: counted.length > 0 && exhausted.length === counted.length,
     exhaustedTransient: exhausted.some((w) => w.transient),
     // Alguna ventana larga agotada: aviso (amarillo).
     anyLongExhausted: exhaustedLong.length > 0,
@@ -152,6 +188,9 @@ function providerState(result) {
     allLongExhausted: longWindows.length > 0 && exhaustedLong.length === longWindows.length,
     // Un saldo por debajo del 15 % es poco: hay que recargar.
     lowBalance: Boolean(balance) && balance.tone === 'critical',
+    // Un extra agotado se informa (fila propia y nota), pero no cambia el
+    // estado de la cuota: es informacion, no alarma.
+    extrasExhausted: extras.some((w) => w.left <= 0),
   };
 }
 
@@ -168,6 +207,9 @@ function hasBalance(result) {
  * - Alguna ventana larga agotada (pero no todas) → amarillo
  * - Una de 5 h agotada → amarillo
  * - Lo demas → verde
+ *
+ * Los EXTRAS (tope con ambito, p. ej. el de un modelo) no entran: son
+ * informacion, no estado de la cuota.
  *
  * @param {object} result
  * @returns {string} 'ok' | 'warning' | 'critical' | 'neutral'
@@ -261,6 +303,8 @@ module.exports = {
   providerState,
   providerTone,
   windowsOf,
+  countingMetrics,
+  SCOPED_WINDOW,
   THRESHOLDS,
   WINDOW_WEIGHT,
 };

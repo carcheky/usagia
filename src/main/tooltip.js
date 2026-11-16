@@ -11,6 +11,8 @@
 //   - `shortWindow`   : el nombre corto de una ventana
 //   - `fitTooltip`    : como encajar las lineas en el presupuesto
 
+const { countingMetrics } = require('./availability');
+
 // Presupuesto del tooltip del sistema en Windows.
 const TOOLTIP_MAX = 127;
 
@@ -55,7 +57,9 @@ function tooltipLine(result) {
   // DeepSeek dice lo suyo: "$33,64 · aguanta 12 meses".
   if (result.headline) return result.headline;
 
-  const metrics = (result.metrics || []).filter((m) => typeof m.pct === 'number');
+  // Los EXTRAS (tope con ambito, p. ej. el "Fable" de Claude) no cuentan: el
+  // tooltip resume la cuota que se consume al hacer tareas.
+  const metrics = countingMetrics(result.metrics || []).filter((m) => typeof m.pct === 'number');
   if (!metrics.length) {
     const first = (result.metrics || [])[0];
     return first ? `${first.label} ${first.value}` : null;
