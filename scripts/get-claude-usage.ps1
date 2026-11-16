@@ -76,13 +76,19 @@ function Unprotect-ChromiumV10 {
 }
 
 function Get-ClaudeCodeToken {
-  <# Devuelve @{ Token; Source; ExpiresAt } del primer grant válido con scope claude_code. #>
-  # 1) CLI standalone: .claude\.credentials.json (si tiene token real).
+  <# Devuelve @{ Token; Source; ExpiresAt } del primer grant VALIDO con scope claude_code. #>
+  # 1) CLI standalone: .claude\.credentials.json (si tiene token real Y vigente).
+  #    OJO: su token CADUCA solo. Si se usa uno caducado, el endpoint responde
+  #    401 "OAuth access token has been revoked" y la cuota real se pierde.
+  $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
   if (Test-Path -LiteralPath $CliCredentialsPath) {
     try {
       $cli = Get-Content -LiteralPath $CliCredentialsPath -Raw | ConvertFrom-Json
       $a = $cli.claudeAiOauth
-      if ($a.accessToken -and $a.accessToken.Length -gt 20) {
+      $exp = 0
+      if ($a.expiresAt) { try { $exp = [int64]$a.expiresAt } catch { $exp = 0 } }
+      $vigente = ($exp -eq 0) -or ($exp -gt $now)
+      if ($a.accessToken -and $a.accessToken.Length -gt 20 -and $vigente) {
         return @{ Token = $a.accessToken; Source = $CliCredentialsPath; ExpiresAt = $a.expiresAt }
       }
     } catch { }
@@ -104,6 +110,10 @@ function Get-ClaudeCodeToken {
       if ($name -notmatch 'claude_code') { continue }          # scope claude_code
       $val = $p.Value
       if (-not $val -or -not $val.token) { continue }
+      $exp = 0
+      if ($val.expiresAt) { try { $exp = [int64]$val.expiresAt } catch { $exp = 0 } }
+      # Un grant caducado NO vale: se descarta antes de gastarlo un 401.
+      if ($exp -gt 0 -and $exp -le $now) { continue }
       $candidates += [pscustomobject]@{
         Token     = $val.token
         ExpiresAt = $val.expiresAt
@@ -113,10 +123,9 @@ function Get-ClaudeCodeToken {
     }
   }
   if (-not $candidates.Count) { throw 'La caché no contiene ningún grant con scope claude_code.' }
-  $valid = $candidates | Where-Object { -not $_.ExpiresAt -or $_.ExpiresAt -gt ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) }
-  $pick = ($valid | Sort-Object ExpiresAt -Descending | Select-Object -First 1)
-  if (-not $pick) { $pick = $candidates | Sort-Object ExpiresAt -Descending | Select-Object -First 1 }
-  return @{ Token = $pick.Token; Source = "$ConfigPath ($($pick.Field))"; ExpiresAt = $pick.ExpiresAt }
+  $valid = $candidates | Sort-Object ExpiresAt -Descending | Select-Object -First 1
+  if (-not $valid) { $valid = $candidates | Select-Object -First 1 }
+  return @{ Token = $valid.Token; Source = "$ConfigPath ($($valid.Field))"; ExpiresAt = $valid.ExpiresAt }
 }
 
 # ------------------------------------------------------------------- DPAPI ---

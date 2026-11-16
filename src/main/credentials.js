@@ -122,6 +122,20 @@ function fromDsh(providerId) {
     return cand(token, 'harness DSH', 'deepseek-account OAuth');
   }
   if (providerId === 'gemini') return cand(refs.GOOGLE_API_KEY, 'harness DSH', 'GOOGLE_API_KEY');
+  if (providerId === 'claude') {
+    // El bundle dsh-claude-subscription deja aqui la sesion OAuth de Claude
+    // Code (registro "llm-pi-ai/anthropic"): access + refresh + expiracion.
+    // A diferencia del fichero de ~/.claude, esta copia la RENUEVA el
+    // harness (pi-ai), asi que suele estar mas al dia.
+    const grant = creds.records?.['llm-pi-ai/anthropic'];
+    const payload = grant?.payload;
+    const c = cand(payload?.access, 'harness DSH', 'llm-pi-ai/anthropic');
+    if (c) {
+      c.expiresAt = Number(payload?.expires) || null;
+      c.refresh = payload?.refresh || null;
+    }
+    return c;
+  }
   return null;
 }
 
@@ -129,10 +143,15 @@ function fromDsh(providerId) {
 function claudeCodeToken() {
   const file = path.join(os.homedir(), '.claude', '.credentials.json');
   const data = readJson(file);
-  const token = data?.claudeAiOauth?.accessToken;
-  const subscription = data?.claudeAiOauth?.subscriptionType;
+  const oauth = data?.claudeAiOauth;
+  const token = oauth?.accessToken;
+  const subscription = oauth?.subscriptionType;
   const c = cand(token, 'Claude Code', '.claude/.credentials.json');
-  if (c && subscription) c.hint = `Claude Code · ${subscription}`;
+  if (c) {
+    if (subscription) c.hint = `Claude Code · ${subscription}`;
+    c.expiresAt = Number(oauth?.expiresAt) || null;
+    c.refresh = oauth?.refreshToken || null;
+  }
   return c;
 }
 

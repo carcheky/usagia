@@ -101,16 +101,53 @@ las cuatro cuotas juntas, y una tabla de estado que coincide con las cifras
 anteriores. La coordinación vive en los dos lados: `AGENTS.md` (enrutado) y este
 fichero (app de bandeja).
 
-### Medición del 2026-11-16 00:20 (desde una sesión de DSH)
+### Medición del 2026-11-16 02:30 (desde una sesión de DSH, fuera del sandbox)
 
 | Recurso | Lo que queda | Lo usado | Cómo se midió |
 |---|---|---|---|
-| Minimax | 62 % (5 h) · 22 % (semanal) | **38 %** · **78 %** | `npm run probe` (HTTP directo) |
-| DeepSeek | $33,64 + ¥4,65 de bonus | 22,4 M tokens, 475 peticiones | `npm run probe` (HTTP directo) |
-| Claude | — | — | **no medible desde el sandbox** (ver abajo) |
-| Antigravity | — | — | **no medible desde el sandbox** (ver abajo) |
+| Minimax | 26 % (5 h) · 92 % (semanal) | **74 %** · **8 %** | `npm run probe` (HTTP directo) |
+| Claude | 0 % (5 h) · 58 % (semanal) | **100 %** · **42 %** | `npm run probe` (HTTP directo, token del harness) |
+| Antigravity | 84,6 % (semanal) | 15,4 % | `npm run probe` (HTTP directo) |
+| DeepSeek | $33,64 + ¥4,38 de bonus | 24,7 M tokens, 511 peticiones | `npm run probe` (HTTP directo) |
 
-**Lo que se midió y lo que no, y por qué (no es un fallo de la app):**
+**La ventana de 5 h de Claude estaba AL 100 %** (reinicia a las 4:30), y la app
+no lo enseñaba: se quedaba en el respaldo local. Ver *Por qué Claude no salía*.
+
+### Por qué Claude no salía (y cómo se arregla)
+
+Tres cosas a la vez, todas verificadas el 2026-11-16 02:00-02:30:
+
+1. **El token de `~/.claude/.credentials.json` estaba CADUCADO** (`expiresAt`
+   = 2026-11-15T20:38Z, ya en el pasado). Con ese token el endpoint responde
+   **401** *"OAuth access token has been revoked"*, no 429 ni 200. El
+   `.ps1` lo elegía sin mirar la fecha, así que gastaba la única petición
+   de la ventana en un token muerto.
+2. **El token del harness sí valía** (`~/.dsh/.credentials.yaml` →
+   `records['llm-pi-ai/anthropic'].payload.access`, `expires` 2026-11-16T06:26Z):
+   **HTTP 200** con `five_hour.utilization = 100`. Es la misma sesión OAuth de
+   Claude Code, pero la copia que el harness renueva.
+3. **La caché cifrada de Claude Desktop también valía** (`oauth:tokenCacheV2`,
+   grants con scope `user:sessions:claude_code`, `expiresAt` 2026-12-04):
+   **HTTP 200**. Es la fuente **más duradera**: sus tokens duran meses cuando
+   los de la CLI caducan en horas.
+
+**El arreglo:** la app deja de elegir *un* token y prueba una **lista de
+candidatos en orden** (manual → CLI si no caducado → harness si no caducado →
+caché de Claude Desktop). Solo se pasa al siguiente si el anterior falló de
+**autenticación** (401/403): un 429 no se reintenta, porque el endpoint da
+~5 peticiones por ventana y repetirlas las gasta. Además, un token con
+`expiresAt` en el pasado no se usa: se descarta antes de gastarlo un 401.
+
+**El `.ps1` también**: ahora descarta los grants caducados de la caché
+(`expiresAt` en el pasado) y salta el token de la CLI si venció, en vez de
+usarlo a ciegas.
+
+> **Ojo con `~/.claude/.credentials.json`:** Claude Code lo reescribe por su
+> cuenta (el 2026-11-16 01:56 lo dejó sin `accessToken` en claro). Por eso la
+> app no debe depender de ese fichero: la caché de Claude Desktop y el
+> registro del harness cubren ese hueco.
+
+### Lo que se midió y lo que no, y por qué (no es un fallo de la app):
 
 - `npm run probe` da **`spawn EPERM`** en Claude y Antigravity: el sandbox de
   DSH no permite que Node lance un proceso hijo capturando su salida por tubería
@@ -136,6 +173,11 @@ fichero (app de bandeja).
   el bloqueo de instancia única las echaba (código 0, sin decir nada) y no se
   llegaba a sacar la captura. Ahora `--preview` y `--settings` están exentos
   (como `--probe`) y el segundo arranque de la app explica por qué se cierra.
+- **La captura sale a 0 bytes si la app instalada está en marcha**: el
+  `userData` compartido y el caché de disco en uso hacen que Chromium no
+  cree su caché y el *render frame* muera antes de tiempo. Con un
+  `--user-data-dir` propio y `--disable-gpu --disable-gpu-sandbox --no-sandbox`
+  la captura sale bien (verificado el 2026-11-16 02:20).
 - El endpoint de cuota de Claude estaba devolviendo **HTTP 429** durante la
   revisión del 2026-11-16 00:00 (límite de ~5 peticiones por ventana). Con el
   `trap` nuevo del `.ps1` el motivo sale entero: *"HTTP 429: límite de
@@ -168,11 +210,19 @@ fichero (app de bandeja).
 3. **El endpoint de cuota de Claude no es público** y la comunidad reporta ~5
    peticiones por ventana (429). La app cachea la respuesta 10 minutos.
 4. El token de Claude caduca el **2026-12-04**; lo renueva Claude Desktop al
-   usarlo. Si caduca sin renovar, hay que reloguear la app de Claude.
+   usarlo. Si caduca sin renovar, hay que reloguear la app de Claude. Los
+   tokens de `~/.claude/.credentials.json` caducan mucho antes (horas): por eso
+   la app prueba **varios** candidatos en vez de fiarse del primero.
 5. La ventana de 5 h de Minimax es de **hora fija** (no rodante desde la
    primera petición): los reinicios que muestra la app salen del propio API.
 6. **Google AI Studio**: la clave propia está en **Free Tier** (429 con
    `limit: 0` en 6 de 22 modelos). No es una reserva fiable.
+7. **El `limits[]` de Claude trae una fila `kind: "session"`** con
+   `percent: 100` y `severity: "critical"` cuando la ventana de 5 h está
+   agotada (es el mismo dato que `five_hour.utilization`, no una cuota
+   aparte). El `weekly_scoped` (`percent: 74`, "Fable") sale con
+   `is_active: false` cuando la cuota con ámbito no es la que aplica: la app
+   la ignora, que es lo correcto.
 
 ## 5. Comportamiento de la app
 
@@ -192,6 +242,39 @@ fichero (app de bandeja).
   dividir por 2 para colocar el puntero.
 - En Windows el tooltip del sistema está limitado a ~127 caracteres: ahí cabe
   el resumen corto de las cuatro IAs; la tarjeta es la vista completa.
+
+### Cómo se leen las barras (regla de la casa)
+
+La barra de cada métrica **mide lo CONSUMIDO**, igual que los paneles de cada
+proveedor: **barra llena = cuota agotada**, y el color avisa antes de que
+llegue:
+
+| Lo que queda | Color | Lectura |
+|---|---|---|
+| > 30 % | verde | de sobra |
+| 10-30 % | amarillo | ojo, se acaba |
+| ≤ 10 % | **rojo** | casi agotada |
+
+Con el **punto** de la fila pasa lo mismo: refleja la **cuota**, no el estado
+de la consulta. Una cuota al 100 % se pinta en rojo aunque la consulta haya
+ido bien.
+
+Reglas que se aplican:
+
+- **Una métrica SIN PORCENTAJE no lleva barra.** Antes se pintaba una barra
+  apagada al 100 % de ancho, que parecía "cuota agotada" cuando en realidad no
+  había porcentaje (saldo, tokens, peticiones). Ahora solo sale el valor.
+- **La etiqueta va solo con el nombre** de la ventana. Antes llevaba también
+  "queda 43 %", que no cabía en los 122 px de la columna y se cortaba a
+  medias. Lo que queda se ve en el **tooltip** (ratón encima de la barra o del
+  valor).
+- **El porcentaje va DELANTE en la cabecera** de la fila ("100 % usado ·
+  ventana 5 h"): la columna se recorta por el final, así que lo que no puede
+  perderse es cuanto se ha gastado.
+- **Sin cuota remota NO es "todo correcto"**: el estado es `warning` (punto
+  amarillo, texto en amarillo) y la nota explica por qué. Antes la fila
+  salía en verde con datos que NO eran la cuota (transcripciones locales), que
+  es justo la confusión de "no sé si he gastado la cuota".
 
 ### Cuentas (varias del mismo proveedor)
 

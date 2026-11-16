@@ -1,17 +1,18 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 01:35 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-dab004c1`
-> ("Monitor de IAs en barra de tareas"). **Pausa del día**: se añade el
-> resultado de la **verificación del binario publicado de `beta.4`** (que era
-> el pendiente de `session-e9f5038b`) y lo que le queda a esta sesión, en
-> [Pausa del día](#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo).
+> **Última actualización:** 2026-11-16 02:35 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-lead-quota`
+> ("Claude en gris: cuota real y barras intuitivas"). Aporta el **arreglo de la
+> cuota de Claude** (no salía por un token caducado) y el **repintado de las
+> barras** (llenas y rojas al 100 %, sin barras grises sin porcentaje), con su
+> commit y su entrada en [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235).
 > Esta versión **fusiona** lo que escribieron las sesiones `session-fa207887`
 > (plan de Android), `session-e9f5038b` (lead: verificación de la UI y de la
 > app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los
-> items 11-18) y `session-dab004c1` (fallback sin GPU). Si al abrirlo la
-> cabecera dice otra sesión, **fusiona su contenido** en vez de sobrescribirlo
-> (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo repo*).
+> items 11-18), `session-dab004c1` (fallback sin GPU) y `session-lead-quota`
+> (cuota de Claude y barras). Si al abrirlo la cabecera dice otra sesión,
+> **fusiona su contenido** en vez de sobrescribirlo (ver [AGENTS.md](AGENTS.md),
+> *Varias sesiones en el mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
 > repo (ver [Cómo mantener este fichero](#cómo-mantener-este-fichero)).
@@ -24,9 +25,9 @@ App de bandeja (Electron) que muestra la cuota de Minimax, Claude, Antigravity
 y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.6`)**, sin versión
 estable todavía. La revisión a fondo del código está **publicada y
 verificada**, y el **binario publicado de `beta.4`** se comprobó de extremo a
-extremo (tarjeta al pasar el ratón + ⚙ → ventana de configuración). `beta`
-está a la par de `origin/beta` y **el árbol está limpio**: no queda nada sin
-commitear.
+extremo (tarjeta al pasar el ratón + ⚙ → ventana de configuración). **Sin
+publicar**: el arreglo de la cuota de Claude y el repintado de las barras
+(2026-11-16 02:35). `beta` está a la par de `origin/beta`.
 
 ## Sesiones activas en este repo (2026-11-16 02:00)
 
@@ -42,6 +43,7 @@ lugar de pisar.
 | `session-e9f5038b` | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
 | `session-8a303ef4` (**esta**) | Revisión a fondo del código | **Pausa del día**. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca`. Mañana: **17 antes que 12**, y los dos **antes que F1** (que mueve `src/main/http.js` y `src/main/providers/*`). Plan detallado en [Pausa del día](#de-session-8a303ef4-revisión-a-fondo-los-items-12-y-17-en-detalle) | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
 | `session-dab004c1` (**esta**) | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). **Pausa del día**. **Verificó el binario publicado de `beta.4`** (portable descargado de la release): la tarjeta sale al pasar el ratón y el ⚙ abre la ventana de configuración. Su fallback sin GPU ya está commiteado en `814b6f5`; sus arreglos (ids de cuenta, `pct100` con espacios, nota de la cuenta) los recogieron `cfe09d7`, `3e13411`, `31f03ca` y `814b6f5`. Lo que le queda: el **cuelgue de `preview:settings`** con ese fallback y cuatro apuntes de la revisión de código, en [Pausa del día](#de-esta-sesión-session-dab004c1-la-sesión-larga-del-repo) | (repositorio: sus cambios ya están dentro) |
+| `session-lead-quota` (**esta**) | Cuota de Claude y barras | **Hecho y commiteado**: la cuota real de Claude (el token de la CLI estaba caducado) y el repintado de las barras (llenas y rojas al 100 %, sin barras grises donde no hay porcentaje). En [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235) | `src/main/providers/claude.js` · `src/main/credentials.js` · `src/main/main.js` · `src/renderer/card.js` · `src/renderer/card.css` · `src/renderer/settings.js` · `scripts/get-claude-usage.ps1` · `scripts/test-parsers.js` · `FINDINGS.md` · `STATUS.md` |
 
 > ✅ **Conflicto resuelto a las 01:55**: `session-dab004c1` y
 > `session-8a303ef4` editaban `src/main/main.js`, `src/main/card.js` y
@@ -49,6 +51,12 @@ lugar de pisar.
 > **commiteados juntos** (ver *Trabajo commiteado y pusheado*), así que ya no
 > hay dos sesiones editando los mismos ficheros: quien siga con ellos parte
 > de `814b6f5`, no de un árbol con cambios a medias.
+>
+> ⚠️ **Ficheros tocados por `session-lead-quota`** (los mismos que tenía
+> reservados `session-8a303ef4`: `src/main/main.js`, `src/main/credentials.js`,
+> `src/main/providers/*.js`, `src/renderer/settings.js`): ya está todo
+> **commiteado**, así que quien siga parte de ese commit y no de un árbol con
+> cambios a medias.
 > Ojo también a `preview-card.png`, que se regenera en cada vista previa
 > (una ejecución interrumpida lo deja a **0 bytes**: se restauró con
 > `git checkout -- preview-card.png` en vez de commitear una captura rota).
@@ -85,6 +93,68 @@ lugar de pisar.
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
 
 Releases: <https://github.com/carcheky/usagia/releases>
+
+## Lo último: la cuota de Claude y las barras (2026-11-16 02:35)
+
+**El encargo:** "no me queda claro si he gastado o no mi cuota de Claude, sale
+en gris; si he gastado el 100 % las barras deberían estar llenas y rojas".
+
+Salían las dos cosas, y por motivos distintos. Los dos están arreglados y
+verificados con la app real (captura de la tarjeta con datos vivos).
+
+### 1. La cuota de Claude no salía (token caducado)
+
+La app elegía **un** token OAuth y se aferraba a él. Eligió el de
+`~/.claude/.credentials.json`, que estaba **caducado** (`expiresAt` =
+2026-11-15T20:38Z): el endpoint responde **401** *"OAuth access token has been
+revoked"*, la app caía al respaldo local (transcripciones de Claude Code) y
+esa fila **no era la cuota**. Las otras dos fuentes sí funcionaban:
+
+| Fuente | Estado | Expiración |
+|---|---|---|
+| `~/.claude/.credentials.json` | **401** (caducado) | 2026-11-15T20:38Z |
+| `~/.dsh/.credentials.yaml` → `llm-pi-ai/anthropic` | **200** | 2026-11-16T06:26Z |
+| `%APPDATA%\Claude\config.json` → `oauth:tokenCacheV2` | **200** | 2026-12-04 |
+
+**El arreglo:** `resolve()` devuelve ahora una **lista de candidatos** en orden
+(manual → CLI si no caducado → harness si no caducado → caché de Claude
+Desktop) y se prueban hasta que uno responda. Solo se pasa al siguiente si el
+anterior falló de **autenticación** (401/403): un **429 no se reintenta**,
+porque el endpoint da ~5 peticiones por ventana. Un token con `expiresAt` en
+el pasado **no se usa**: se descarta antes de gastarlo un 401. El `.ps1`
+también (descarta los grants caducados y salta el token de la CLI si venció).
+
+Ahora la cuota real se ve: **ventana 5 h al 100 %** (reinicia a las 4:30),
+semanal al 42 %.
+
+### 2. Las barras (por qué salían en gris y por qué no se entendían)
+
+| Antes | Ahora |
+|---|---|
+| Una métrica **sin porcentaje** (saldo, tokens, peticiones) pintaba una barra **apagada al 100 % de ancho**: parecía "cuota agotada" | **Sin barra**: solo el valor, que es lo que significa |
+| La etiqueta decía `ventana 5 h · queda 23 %` y se **cortaba** a los 122 px | La etiqueta va solo con el nombre; lo que queda, en el **tooltip** |
+| El punto de la fila era **verde** (estado de la consulta), aunque la cuota estuviera al 100 % | El punto refleja la **cuota**: **rojo** al 100 %, amarillo al 90 % |
+| La cabecera decía `100% / 42% usado`: no se sabe cuál es cuál | La cabecera dice `100 % usado · ventana 5 h` (la **peor** ventana, y el % delante para que no se recorte) |
+| Sin cuota remota la fila salía **verde**, como si todo fuera bien | Estado **`warning`**: punto y texto amarillos, con la nota explicando por qué |
+
+**El color de las barras** (medido por lo que **queda**, como los paneles):
+verde > 30 %, amarillo 10-30 %, **rojo ≤ 10 %**. Barra llena = **consumido**.
+
+### Verificación
+
+- `npm test` → **OK** (pruebas nuevas: token caducado, cuota al 100 % con
+  barra llena y tono crítico, límite con ámbito por modelo).
+- `npm run probe` → Claude **ok**: `ventana 5 h: 100% usado · semanal: 42% usado`.
+- **App real** (Electron, con datos vivos): la tarjeta sale con Claude en
+  **rojo** y la barra de 5 h **llena**, y DeepSeek **sin barras grises**.
+- La captura sale a 0 bytes si la app instalada está en marcha (caché de disco
+  compartido): con `--user-data-dir` propio y `--disable-gpu
+  --disable-gpu-sandbox --no-sandbox` sale bien. Es un problema del entorno
+  de prueba, no de la app.
+
+> **Lo que NO se ha hecho:** publicar. El commit está en `beta`, sin publicar;
+> la captura `preview-card.png` del repo **sigue restaurada** (no se
+> commitea una captura generada a mano).
 
 ## Lo último: revisión a fondo del código (9 commits, ya en `v1.0.0-beta.4`)
 

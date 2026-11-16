@@ -127,7 +127,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 45%;
+  max-width: 32%;
 }
 
 .value {
@@ -137,7 +137,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 55%;
+  max-width: 62%;
   text-align: right;
 }
 
@@ -152,6 +152,14 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Metrica SIN PORCENTAJE (saldo, tokens, peticiones): no hay barra, solo el
+   valor. Sin esto se pintaba una barra apagada al 100 %, que parece
+   "cuota agotada" cuando en realidad no hay porcentaje que representar. */
+.metric.plain .metric-label {
+  width: auto;
+  flex: 1;
 }
 
 .metric-label {
@@ -217,6 +225,12 @@ body {
 .row.unconfigured .name,
 .row.unconfigured .value {
   color: var(--fg-dim);
+}
+
+/* Cuota no disponible (por ejemplo, Claude cae a las transcripciones
+   locales): se avisa en amarillo, no se disimula como si todo fuera bien. */
+.row.warning .value {
+  color: var(--warning);
 }
 
 .foot {

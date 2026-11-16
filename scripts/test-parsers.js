@@ -141,6 +141,49 @@ check('solo un token OAuth sirve como credencial manual', () => {
   assert.strictEqual(claude.isOauthToken(null), false);
 });
 
+check('un token caducado se detecta (si se usa, el endpoint responde 401)', () => {
+  const ahora = Date.now();
+  assert.strictEqual(claude.isExpired(ahora - 1000), true);
+  assert.strictEqual(claude.isExpired(ahora + 3600000), false);
+  // Sin fecha de expiracion no se puede affirmar que este caducado.
+  assert.strictEqual(claude.isExpired(null), false);
+  assert.strictEqual(claude.isExpired(undefined), false);
+  assert.strictEqual(claude.isExpired(0), false);
+  assert.strictEqual(claude.isExpired('nada'), false);
+});
+
+check('una cuota al 100 % sale critica y con la barra llena', () => {
+  const { metrics } = claude.parseUsage({
+    five_hour: { utilization: 100, resets_at: '2026-11-16T03:30:00Z' },
+    seven_day: { utilization: 42 },
+  });
+  const fiveHour = metrics.find((m) => m.label === 'ventana 5 h');
+  // pct = lo CONSUMIDO: 1 = barra al 100 %.
+  assert.strictEqual(fiveHour.pct, 1);
+  assert.strictEqual(fiveHour.value, '100% usado');
+  // El tono se decide por lo que QUEDA: 0 % que queda = critico (rojo).
+  assert.strictEqual(fiveHour.tone, 'critical');
+  assert.strictEqual(fiveHour.remaining, 'queda 0%');
+});
+
+check('el limite con ambito se marca por su nombre de modelo', () => {
+  const { metrics } = claude.parseUsage({
+    seven_day: { utilization: 42 },
+    limits: [
+      {
+        kind: 'weekly_scoped',
+        is_active: true,
+        percent: 74,
+        scope: { model: { display_name: 'Fable' } },
+      },
+    ],
+  });
+  const scoped = metrics.find((m) => m.label === 'semanal Fable');
+  assert.ok(scoped, 'falta la metrica con ambito');
+  assert.strictEqual(scoped.pct, 0.74);
+  assert.strictEqual(scoped.tone, 'warning');
+});
+
 /* ----------------------------------------------------------- antigravity */
 
 console.log('antigravity:');

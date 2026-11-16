@@ -118,6 +118,7 @@ function shortSummary(result) {
   if (!result) return '—';
   if (result.status === 'unconfigured') return 'sin credencial';
   if (result.status === 'error') return 'error';
+  if (result.status === 'warning') return 'cuota no disponible';
   const metrics = result.metrics || [];
   if (!metrics.length) return result.summary || '—';
   const parts = metrics.slice(0, 2).map((m) => m.short || m.value);
@@ -126,15 +127,68 @@ function shortSummary(result) {
   return `${parts.join(' / ')}${allPercent ? ' usado' : ''}`;
 }
 
+/**
+ * Lo que se ve en la cabecera de la fila: la ventana MAS AGOTADA.
+ *
+ * El porcentaje va DELANTE a proposito: la columna se recorta por el final
+ * (con puntos suspensivos), asi que lo que no puede perderse es cuanto se
+ * ha gastado. El nombre de la ventana va detras, y las filas de abajo lo
+ * repeaten con su barra.
+ *
+ * @param {object} result
+ * @returns {string}
+ */
+function primarySummary(result) {
+  if (!result) return '—';
+  if (result.status === 'unconfigured') return 'sin credencial';
+  if (result.status === 'error') return 'error';
+  if (result.status === 'warning') return 'cuota no disponible';
+  const all = result.metrics || [];
+  const metrics = all.filter((m) => typeof m.pct === 'number');
+  if (!metrics.length) {
+    // Sin porcentajes (saldo, tokens): solo los valores, como antes.
+    if (!all.length) return result.summary || '—';
+    return all
+      .slice(0, 2)
+      .map((m) => m.value)
+      .join(' / ');
+  }
+  const worst = metrics.reduce((a, b) => (b.pct > a.pct ? b : a));
+  return `${worst.value} · ${worst.label}`;
+}
+
 function worstTone() {
   const order = { critical: 3, warning: 2, ok: 1, neutral: 0 };
   let worst = 'neutral';
   for (const { result } of orderedResults()) {
-    if (!result || result.status !== 'ok') continue;
-    for (const metric of result.metrics || []) {
-      if (!metric.tone || metric.tone === 'neutral') continue;
-      if (order[metric.tone] > order[worst]) worst = metric.tone;
+    if (!result) continue;
+    // Una cuenta sin cuota consultable (warning) tambien avisa: si no, el
+    // icono de la bandeja dira "todo bien" sin saber que hay un hueco.
+    if (result.status === 'warning') {
+      if (order.warning > order[worst]) worst = 'warning';
+      continue;
     }
+    if (result.status !== 'ok') continue;
+    const tone = providerTone(result);
+    if (order[tone] > order[worst]) worst = tone;
+  }
+  return worst;
+}
+
+/**
+ * Tono de un proveedor: el peor de sus metricas con porcentaje.
+ *
+ * El punto de la tarjeta lo usa: con una cuota al 100 % el punto tiene que
+ * estar en ROJO, no en verde de "todo correcto". Solo cuentan las metricas
+ * con porcentaje (las de saldo o de tokens no tienen nada que opinar).
+ */
+function providerTone(result) {
+  const order = { critical: 3, warning: 2, ok: 1, neutral: 0 };
+  let worst = 'neutral';
+  for (const metric of result?.metrics || []) {
+    if (typeof metric.pct !== 'number') continue;
+    if (!metric.tone || metric.tone === 'neutral') continue;
+    if (order[metric.tone] > order[worst]) worst = metric.tone;
   }
   return worst;
 }
@@ -337,7 +391,10 @@ function broadcast() {
       color: provider.color,
       status: result?.status || 'pending',
       summary: result?.summary || '',
-      primary: shortSummary(result),
+      primary: primarySummary(result),
+      // El punto refleja la CUOTA, no el estado de la consulta: una cuota al
+      // 100 % se pinta en rojo aunque la consulta haya ido bien.
+      tone: result?.status === 'ok' ? providerTone(result) : 'neutral',
       metrics: result?.metrics || [],
       note: result?.note || '',
       error: result?.error || '',

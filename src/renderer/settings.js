@@ -165,6 +165,11 @@ function buildAccount(account) {
       if (result.status === 'ok') {
         note.className = 'acc-note ok';
         note.textContent = `${result.summary || 'sin datos'}${result.note ? ` · ${result.note}` : ''}`;
+      } else if (result.status === 'warning') {
+        // Hay datos, pero no la CUOTA (por ejemplo, Claude cae a las
+        // transcripciones locales). No es un error: se avisa en amarillo.
+        note.className = 'acc-note warning';
+        note.textContent = `${result.summary || 'cuota no disponible'}${result.note ? ` · ${result.note}` : ''}`;
       } else if (result.status === 'unconfigured') {
         note.className = 'acc-note warning';
         // La nota explica POR QUE no hay cuota (p.ej. el 429 del endpoint de

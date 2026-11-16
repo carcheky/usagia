@@ -30,8 +30,22 @@ function relativeTime(ts) {
 
 function statusTone(status) {
   if (status === 'ok') return 'ok';
+  if (status === 'warning') return 'warning';
   if (status === 'error') return 'critical';
   return 'neutral';
+}
+
+/**
+ * Tono del punto de un proveedor.
+ *
+ * Si la consulta va bien, manda la CUOTA: una ventana al 100 % se pinta en
+ * rojo. El "ok" de la consulta solo se usa cuando no hay ningun porcentaje
+ * con el que opinar (por ejemplo, el saldo de DeepSeek).
+ */
+function providerTone(provider) {
+  if (provider.status !== 'ok') return statusTone(provider.status);
+  if (provider.tone && provider.tone !== 'neutral') return provider.tone;
+  return 'ok';
 }
 
 function el(tag, className, text) {
@@ -48,7 +62,7 @@ function render(payload) {
     const row = el('div', `row ${provider.status}`);
 
     const head = el('div', 'row-head');
-    head.appendChild(el('span', `dot ${statusTone(provider.status)}`));
+    head.appendChild(el('span', `dot ${providerTone(provider)}`));
     head.appendChild(el('span', 'name', provider.label));
 
     const source = el('span', 'source', provider.source || '');
@@ -65,6 +79,8 @@ function render(payload) {
             ? '…'
             : provider.primary
     );
+    // El resumen completo, para cuando la columna se recorta.
+    value.title = provider.summary || provider.primary || '';
     head.appendChild(value);
     row.appendChild(head);
 
@@ -76,20 +92,34 @@ function render(payload) {
       const metrics = el('div', 'metrics');
       for (const metric of shown) {
         const item = el('div', 'metric');
-        const labelText = metric.remaining ? `${metric.label} · ${metric.remaining}` : metric.label;
-        const label = el('span', 'metric-label', labelText);
-        label.title = labelText;
+        const hasPct = typeof metric.pct === 'number';
+        // La etiqueta va solo con el nombre de la ventana: antes llevaba
+        // tambien "queda 43 %", que no cabia en 122 px y se cortaba a medias.
+        // El % que queda se deja en el tooltip, que si tiene sitio.
+        const label = el('span', 'metric-label', metric.label);
+        label.title = metric.remaining ? `${metric.label}: ${metric.remaining}` : metric.label;
         item.appendChild(label);
 
-        const bar = el('span', 'bar');
-        const fill = el('i', metric.tone || 'neutral');
-        const hasPct = typeof metric.pct === 'number';
-        fill.style.width = hasPct ? `${Math.max(2, Math.min(1, metric.pct) * 100)}%` : '100%';
-        if (!hasPct) fill.style.opacity = '0.3';
-        bar.appendChild(fill);
-        item.appendChild(bar);
+        // Una metrica SIN PORCENTAJE (saldo, tokens, peticiones) no lleva
+        // barra: una barra apagada de ancho completo parece "100 % usado" y
+        // no significa nada. Se deja solo el valor, que si es concreto.
+        if (hasPct) {
+          const bar = el('span', 'bar');
+          const fill = el('i', metric.tone || 'neutral');
+          // La barra mide lo CONSUMIDO: llena = cuota agotada.
+          fill.style.width = `${Math.max(2, Math.min(1, metric.pct) * 100)}%`;
+          bar.title = `${metric.label}: ${Math.round(metric.pct * 100)}% usado${metric.remaining ? ` · ${metric.remaining}` : ''}`;
+          bar.appendChild(fill);
+          item.appendChild(bar);
+        } else {
+          item.classList.add('plain');
+        }
 
-        item.appendChild(el('span', 'metric-value', metric.value));
+        const valueEl = el('span', 'metric-value', metric.value);
+        if (hasPct && metric.remaining) {
+          valueEl.title = `${metric.label}: ${metric.value} · ${metric.remaining}`;
+        }
+        item.appendChild(valueEl);
         metrics.appendChild(item);
       }
       row.appendChild(metrics);

@@ -29,14 +29,14 @@ const CACHE_MS = 10 * 60 * 1000;
 // cuenta A no puede servirse para la cuenta B.
 const cache = new Map();
 
-/** Clave de cache por cuenta, sin guardar el token en claro. */
-function cacheKey(ctx, credential) {
-  const instanceId = ctx.instance?.id || 'claude';
-  const kind = credential?.kind || 'none';
-  const value = String(credential?.value || '');
-  let hash = 5381;
-  for (let i = 0; i < value.length; i += 1) hash = ((hash << 5) + hash + value.charCodeAt(i)) | 0;
-  return `${instanceId}:${kind}:${hash}`;
+/**
+ * Clave de cache por cuenta. Se usa el id de la cuenta y NO el token: con
+ * una lista de candidatos, el token que acaba funcionando puede cambiar de
+ * una consulta a otra, y la respuesta de la cuenta A no puede servirse para
+ * la cuenta B.
+ */
+function cacheKey(ctx) {
+  return `claude:${ctx.instance?.id || 'default'}`;
 }
 
 /**
@@ -50,31 +50,69 @@ function isOauthToken(value) {
 }
 
 /**
- * Credencial de la cuenta. `kind`:
+ * Candidatos de credencial, en orden de preferencia.
+ *
+ * Cada uno lleva `kind`:
  *  - manual:  token OAuth pegado por el usuario -> HTTP directo.
- *  - oauth:   token de ~/.claude/.credentials.json -> HTTP directo
- *             (en Windows, el script, que ademas sabe leer la cache cifrada).
+ *  - oauth:   token OAuth vigente en claro (Claude Code o el harness DSH)
+ *             -> HTTP directo.
  *  - desktop: sin token en claro; en Windows el script descifra la cache de
- *             Claude Desktop (DPAPI + AES-GCM). Antes este caso devolvia null
- *             y el script NUNCA llegaba a ejecutarse, que era justo el
- *             escenario para el que se escribio.
- * `ignored` lleva la fuente de una clave API descartada, para avisar.
+ *             Claude Desktop (DPAPI + AES-GCM). Los tokens de ahi duran
+ *             meses, asi que es el mas duradero de los tres.
+ *
+ * OJO con los tokens CADUCADOS: si se usan, el endpoint responde 401 y la
+ * app cae al respaldo local (transcripciones), que NO es la cuota. Por eso
+ * un token con `expiresAt` en el pasado no se usa: se pasa al siguiente.
+ *
+ * @returns {Promise<Array<object>>} lista de candidatos (puede estar vacia)
  */
 async function resolve(ctx) {
   const manual = creds.firstValid([
     creds.fromUserConfig(ctx.config, 'claude', 'apiKey', ctx.instance),
     creds.fromEnv('claude'),
   ]);
-  if (manual && isOauthToken(manual.value)) return { ...manual, kind: 'manual' };
   const ignored = manual ? `${manual.source} (${manual.hint})` : null;
+  const candidates = [];
 
-  const oauth = creds.claudeCodeToken();
-  if (oauth) return { ...oauth, kind: 'oauth', ignored };
-
-  if (process.platform === 'win32') {
-    return { value: '', source: 'Claude Desktop', hint: 'cache cifrada', kind: 'desktop', ignored };
+  // 1) Token pegado a mano: manda sobre cualquier otra cosa.
+  if (manual && isOauthToken(manual.value)) {
+    candidates.push({ ...manual, kind: 'manual', ignored });
+    return candidates;
   }
-  return null;
+
+  // 2) Tokens OAuth en claro que NO esten caducados. El del harness DSH
+  //    ("llm-pi-ai/anthropic") es la misma sesion de Claude Code, pero la
+  //    copia que el harness renueva: suele estar mas al dia que el fichero
+  //    de ~/.claude.
+  const oauth = creds.claudeCodeToken();
+  if (oauth && !isExpired(oauth.expiresAt)) {
+    candidates.push({ ...oauth, kind: 'oauth', ignored });
+  }
+  const dsh = creds.fromDsh('claude');
+  if (dsh && !isExpired(dsh.expiresAt)) {
+    candidates.push({ ...dsh, kind: 'oauth', ignored });
+  }
+
+  // 3) Cache cifrada de Claude Desktop (solo Windows). Es la mas duradera:
+  //    sus grants siguen vivos semanas, cuando los tokens de la CLI caducan
+  //    en horas.
+  if (process.platform === 'win32') {
+    candidates.push({ value: '', source: 'Claude Desktop', hint: 'cache cifrada', kind: 'desktop', ignored });
+  }
+  return candidates;
+}
+
+/**
+ * Un token con `expiresAt` en el pasado ya no vale: el endpoint responde 401
+ * ("OAuth access token has been revoked") y la cuota real desaparece.
+ *
+ * @param {number|null|undefined} expiresAt milisegundos epoch
+ * @returns {boolean} true si el token esta caducado
+ */
+function isExpired(expiresAt) {
+  const ms = Number(expiresAt);
+  if (!Number.isFinite(ms) || ms <= 0) return false;
+  return ms <= Date.now();
 }
 
 /**
@@ -168,16 +206,29 @@ function firstLine(text) {
 
 /**
  * Consulta remota de la cuota.
- * @returns {Promise<{metrics, notes, source}|{error:string}>}
+ *
+ * Un fallo de AUTENTICACION (401/403) se marca con `authError: true`: es el
+ * unico motivo por el que tiene sentido probar el siguiente candidato (un
+ * token caducado o revocado). Un 429 o un fallo de red NO se reintentan: el
+ * endpoint da pocas peticiones por ventana y probarlo otra vez solo gasta el
+ * margen.
+ *
+ * @returns {Promise<{metrics, notes, source}|{error:string, authError?:boolean}>}
  */
 async function remoteUsage(ctx, credential) {
-  // Una credencial puesta a mano (token OAuth de otra cuenta, por ejemplo) va
-  // siempre por HTTP: el script de PowerShell solo sirve para la sesion local
-  // de Claude Desktop.
-  const useScript = process.platform === 'win32' && credential.kind !== 'manual';
+  // El script de PowerShell solo hace falta cuando NO hay un token en claro
+  // (caso "desktop": la cache cifrada de Claude Desktop). Con un token OAuth
+  // a mano se va por HTTP, que es mas rápido y no depende de PowerShell.
+  const useScript = process.platform === 'win32' && credential.kind === 'desktop';
   if (useScript) {
     const result = await ps.runScript(SCRIPT, ['-Json']);
-    if (!result.ok) return { error: `sesión de Claude Desktop: ${firstLine(result.stderr)}` };
+    if (!result.ok) {
+      const detail = firstLine(result.stderr);
+      // El script avisa con "HTTP 401" cuando el token que ha elegido esta
+      // caducado: eso si es un problema de autenticacion.
+      const authError = /401|unauthorized|revoked/i.test(detail);
+      return { error: `sesión de Claude Desktop: ${detail}`, authError };
+    }
     if (!result.stdout.trim()) return { error: 'sesión de Claude Desktop: el script no devolvió nada' };
     let parsed;
     try {
@@ -198,7 +249,9 @@ async function remoteUsage(ctx, credential) {
       Accept: 'application/json',
     },
   });
-  if (!res.ok) return { error: res.error };
+  if (!res.ok) {
+    return { error: res.error, authError: res.status === 401 || res.status === 403 };
+  }
 
   const parsed = parseUsage(res.data);
   if (!parsed.metrics.length) return { error: 'respuesta sin cuotas' };
@@ -227,17 +280,40 @@ function formatTokens(n) {
 }
 
 async function fetchUsage(ctx) {
-  const credential = await resolve(ctx);
-  const key = cacheKey(ctx, credential);
+  const key = cacheKey(ctx);
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) {
     return hit.result;
   }
 
-  const remote = credential ? await remoteUsage(ctx, credential) : { error: 'sin sesión de Claude' };
+  const candidates = await resolve(ctx);
   const warnings = [];
-  if (credential?.ignored) {
-    warnings.push(`se ignora la clave API de ${credential.ignored}: la cuota solo se consulta con un token OAuth`);
+
+  // Se prueban los candidatos EN ORDEN hasta que uno responda. El endpoint
+  // es generoso (un 429 por ventana), asi que solo se pasa al siguiente si
+  // el anterior fallo de AUTENTICACION: un 429 no se reintenta, porque
+  // repetirlo solo gastaria el poco margen que tiene.
+  let remote = null;
+  let used = null;
+  for (const candidate of candidates) {
+    const attempt = await remoteUsage(ctx, candidate);
+    if (!attempt.error) {
+      remote = attempt;
+      used = candidate;
+      break;
+    }
+    if (attempt.authError) {
+      warnings.push(`${candidate.source}: ${attempt.error}`);
+      continue;
+    }
+    // Otro tipo de fallo (429, red): no se prueba mas, se informa tal cual.
+    remote = attempt;
+    break;
+  }
+  if (!remote) remote = { error: 'sin sesión de Claude' };
+
+  if (used?.ignored) {
+    warnings.push(`se ignora la clave API de ${used.ignored}: la cuota solo se consulta con un token OAuth`);
   }
 
   let result;
@@ -250,16 +326,17 @@ async function fetchUsage(ctx) {
       source: remote.source,
     };
   } else {
-    // Respaldo: transcripciones locales. El motivo por el que no se pudo
-    // consultar la cuota real se deja en la nota, para que no pase en silencio.
+    // Respaldo: transcripciones locales. NO son la cuota, asi que el estado
+    // es "warning" y no "ok": si la fila saliera en verde, alguien leeria
+    // "todo correcto" sin saber que la cuota real no se pudo consultar.
     warnings.unshift(`cuota remota no disponible: ${remote.error}`);
     const local = localUsage();
     if (!local) {
-      result = { status: 'unconfigured', summary: 'sin sesión', metrics: [], note: warnings.join(' · ') };
+      result = { status: 'unconfigured', summary: 'sin cuota', metrics: [], note: warnings.join(' · ') };
     } else {
       result = {
-        status: 'ok',
-        summary: local.metrics.map((m) => `${m.label}: ${m.value}`).join(' · '),
+        status: 'warning',
+        summary: 'cuota no disponible',
         metrics: local.metrics,
         note: [...local.notes, ...warnings].join(' · '),
         source: 'Claude Code (local)',
@@ -286,4 +363,5 @@ module.exports = {
   // Expuestos para las pruebas (funciones puras).
   parseUsage,
   isOauthToken,
+  isExpired,
 };
