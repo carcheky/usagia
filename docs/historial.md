@@ -13,16 +13,16 @@
 | Sección | Línea |
 |---|---|
 | Lo último: la política de aprobación pasa a `never` (2026-11-16 19:30) | 28 |
-| Lo último: el refresco y la caché de Claude (2026-11-16 14:00) | 67 |
-| Lo último: las actualizaciones (2026-11-16 13:50) | 140 |
-| Lo último: la suite de pruebas (2026-11-16 13:20) | 208 |
-| Lo último: la cuota, las barras y el icono (2026-11-16 09:55) | 250 |
-| Lo último: revisión a fondo del código (9 commits, ya en `v1.0.0-beta.4`) | 403 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 439 |
-| Android: el plan y su estado (2026-11-16) | 482 |
-| Verificación de la UI (2026-11-16 00:42, sesión `session-e9f5038b`) | 538 |
-| Pausa del día (2026-11-16 02:00): qué le queda a cada sesión | 560 |
-| Historial de releases | 778 |
+| Lo último: el refresco y la caché de Claude (2026-11-16 14:00) | 70 |
+| Lo último: las actualizaciones (2026-11-16 13:50) | 143 |
+| Lo último: la suite de pruebas (2026-11-16 13:20) | 211 |
+| Lo último: la cuota, las barras y el icono (2026-11-16 09:55) | 253 |
+| Lo último: revisión a fondo del código (9 commits, ya en `v1.0.0-beta.4`) | 406 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 442 |
+| Android: el plan y su estado (2026-11-16) | 485 |
+| Verificación de la UI (2026-11-16 00:42, sesión `session-e9f5038b`) | 541 |
+| Pausa del día (2026-11-16 02:00): qué le queda a cada sesión | 563 |
+| Historial de releases | 781 |
 <!-- fin-índice -->
 
 ## Lo último: la política de aprobación pasa a `never` (2026-11-16 19:30)
@@ -60,7 +60,10 @@ pendiente en `STATUS.md` (con su prueba, según la regla del repo).
   elevación de sandbox (con `approval: never` **se rechaza sola**) y
   `~/.dsh/AGENTS.md` tiene una sección **"Permisos y aprobaciones"** que avisa
   de que el interruptor de la GUI es **por sesión**: lo durable es
-  `defaultPreset` del perfil, que sigue en `workspace-write` + `ask`.
+  `defaultPreset` del perfil. Por eso, además, se cambiaron los presets del
+  perfil (`~/.dsh/profiles/desktop/cordis.patch.yml`): los tres pasan a
+  `approval: never` y `defaultPreset` a `danger-full-access`, de modo que las
+  sesiones nuevas ya nacen sin pedir aprobación.
 
 Commit: `c65ee56` (`docs:`). `npm test` en verde (10 suites).
 

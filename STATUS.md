@@ -1,6 +1,6 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 19:35 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 20:15 (Europe/Madrid).
 > **Quién escribe este fichero ahora mismo:** la sesión de **la tarjeta y el
 > entorno** (el ⚙ al pie y la documentación de la política de aprobación). Ver
 > [Lo último: el sandbox ya no manda](#lo-último-el-sandbox-ya-no-manda-2026-11-16-1930).
@@ -20,23 +20,23 @@
 | Sección | Línea |
 |---|---|
 | Lo último: el sandbox ya no manda (2026-11-16 19:30) | 42 |
-| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 81 |
-| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 120 |
-| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 153 |
-| Resumen en una línea | 175 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 186 |
-| Versiones | 234 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 266 |
-| Qué funciona (verificado) | 289 |
-| Pendiente / siguiente | 308 |
-| Puntos abiertos y riesgos conocidos | 346 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 370 |
-| Reparto entre sesiones (acuerdo) | 389 |
-| Cómo mantener este fichero | 411 |
-| Decisiones que son del usuario | 424 |
-| Notas para quien siga | 431 |
-| Retomar (en 5 minutos) | 438 |
-| Actualización automática desde la app (2026-11-16 18:45) | 453 |
+| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 83 |
+| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 122 |
+| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 155 |
+| Resumen en una línea | 177 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 188 |
+| Versiones | 236 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 268 |
+| Qué funciona (verificado) | 291 |
+| Pendiente / siguiente | 310 |
+| Puntos abiertos y riesgos conocidos | 348 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 372 |
+| Reparto entre sesiones (acuerdo) | 391 |
+| Cómo mantener este fichero | 413 |
+| Decisiones que son del usuario | 426 |
+| Notas para quien siga | 433 |
+| Retomar (en 5 minutos) | 440 |
+| Actualización automática desde la app (2026-11-16 18:45) | 455 |
 <!-- fin-índice -->
 
 ## Lo último: el sandbox ya no manda (2026-11-16 19:30)
@@ -67,10 +67,12 @@ sandbox**, no de la app.
   sección se reescribe con el estado real.
 - `~/.dsh/skills/refresh-model-catalog/SKILL.md`: ya no pide elevación de
   sandbox (con `approval: never` **se rechaza sola**); dice qué hacer en su lugar.
-- `~/.dsh/AGENTS.md`: sección nueva **"Permisos y aprobaciones"**, con el aviso
-  de que el interruptor de la GUI es **por sesión** y lo que lo hace durable es
-  `defaultPreset` del perfil (`~/.dsh/profiles/desktop/cordis.patch.yml`), que
-  hoy sigue en `workspace-write` + `approval: ask`.
+- `~/.dsh/AGENTS.md`: sección nueva **"Permisos y aprobaciones"**, con el aviso de
+  que el interruptor de la GUI es **por sesión** y lo que lo hace durable es
+  `defaultPreset` del perfil.
+- `~/.dsh/profiles/desktop/cordis.patch.yml` (bloque `permission`): los tres
+  presets pasan a `approval: never` y `defaultPreset` a `danger-full-access`,
+  para que **las sesiones nuevas ya no pregunten**.
 
 **Lo que queda (no es documentación):** `scripts/run.js` solo relanza sin GPU en
 la app de larga vida; los modos de una sola vez (`--preview`, `--settings`,
