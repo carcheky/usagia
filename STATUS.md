@@ -30,14 +30,14 @@
 | Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
 | Qué funciona (verificado) | 337 |
 | Pendiente / siguiente | 356 |
-| Puntos abiertos y riesgos conocidos | 381 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 405 |
-| Reparto entre sesiones (acuerdo) | 424 |
-| Cómo mantener este fichero | 446 |
-| Decisiones que son del usuario | 459 |
-| Notas para quien siga | 466 |
-| Retomar (en 5 minutos) | 473 |
-| Actualización automática desde la app (2026-11-16 18:45) | 488 |
+| Puntos abiertos y riesgos conocidos | 386 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 410 |
+| Reparto entre sesiones (acuerdo) | 429 |
+| Cómo mantener este fichero | 451 |
+| Decisiones que son del usuario | 464 |
+| Notas para quien siga | 471 |
+| Retomar (en 5 minutos) | 478 |
+| Actualización automática desde la app (2026-11-16 18:45) | 493 |
 <!-- fin-índice -->
 
 ## Lo último: items 12 y 17 completados (2026-11-16 20:50)
@@ -377,6 +377,11 @@ Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en ve
 7. ~~**`fix:` del respaldo sin GPU en los modos de una sola vez**~~: **HECHO**
    (`951e478`). Los modos `--preview`, `--settings` y `--probe` ahora pasan por
    el respaldo de GPU antes de salir. Nueva suite `scripts/test-run.js`.
+8. **BUG: falta la cuota semanal en algunos usuarios**. Reportado: "solo sale el
+   uso corto (ventana de horas), no el semanal". A nosotros sí nos sale. Puede
+   ser que la API no devuelva el campo `weekly` en ciertas cuentas, o que el
+   parseo lo descarte por algún valor inesperado. **Reproducir** con los datos
+   del usuario afectado antes de arreglar.
 
 ## Puntos abiertos y riesgos conocidos
 
