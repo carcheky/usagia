@@ -75,8 +75,11 @@ function readFile() {
 /** Rellena los huecos y normaliza los tipos del archivo de configuración. */
 function normalize(file) {
   const base = { ...DEFAULTS, ...file };
-  base.providers = { ...(file.providers || {}) };
-  base.credentials = { ...(file.credentials || {}) };
+  // Solo se copian objetos planos: `{ ...'x' }` da `{ 0: 'x' }` y
+  // `{ ...[1] }` da `{ 0: 1 }`, que no son mapas por proveedor.
+  const plain = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : {});
+  base.providers = plain(file.providers);
+  base.credentials = plain(file.credentials);
   base.accounts = Array.isArray(file.accounts)
     ? file.accounts.filter((a) => a && typeof a === 'object').map((a) => ({ ...a }))
     : [];
