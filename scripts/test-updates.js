@@ -4,6 +4,7 @@
 // Node PURO: lo lanza scripts/test.js (npm test).
 
 const path = require('path');
+const fs = require('fs');
 const t = require('./test-lib');
 
 const home = t.fakeHome('usagia-updates');
@@ -392,6 +393,27 @@ t.check('las rutas de descarga no se pueden escapar de la carpeta del actualizad
     path.join(dir, 'evil.exe'),
     'solo el nombre del fichero'
   );
+});
+
+t.check('el registro del actualizador se escribe, se recorta y nunca lanza', () => {
+  const dir = path.join(home, 'datos-app');
+  assert.strictEqual(updateInstall.appendLog(dir, 'primera linea'), true);
+  assert.strictEqual(updateInstall.appendLog(dir, 'segunda linea'), true);
+  const file = updateInstall.logPath(dir);
+  const texto = fs.readFileSync(file, 'utf8');
+  assert.ok(texto.includes('primera linea') && texto.includes('segunda linea'));
+  assert.ok(/^\[\d{4}-\d{2}-\d{2}T/.test(texto.split('\n')[0]), 'cada linea lleva la fecha');
+
+  // Un log que ya es enorme se vacía en vez de crecer sin límite.
+  t.writeFile(file, 'x'.repeat(1000));
+  updateInstall.appendLog(dir, 'despues del recorte', { maxBytes: 100 });
+  const recortado = fs.readFileSync(file, 'utf8');
+  assert.ok(recortado.includes('despues del recorte'));
+  assert.ok(recortado.length < 500, `no deberia quedar el relleno: ${recortado.length}`);
+
+  // Si el disco falla, se devuelve false y no se propaga el error.
+  const roto = { mkdirSync() { throw new Error('sin disco'); } };
+  assert.strictEqual(updateInstall.appendLog(dir, 'x', { fsImpl: roto }), false);
 });
 
 t.finish('OK: las actualizaciones pasan', () => {

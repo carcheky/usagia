@@ -88,16 +88,35 @@ tarjeta (o *Configuración…* en el menú del clic derecho). Ahí se pueden:
 
 ## Actualizaciones
 
-La app mira las releases publicadas en GitHub y avisa cuando hay una nueva:
+La app mira las releases publicadas en GitHub y **se actualiza sola** cuando el
+binario instalado lo permite (el instalador NSIS de Windows y el AppImage de
+Linux): descarga la versión nueva en segundo plano, la instala en silencio al
+cerrar la app y, si se pulsa el aviso, la instala y vuelve a abrir ya
+actualizada. A mano no hay que hacer nada.
 
-- **Tarjeta**: una franja arriba con `v<instalada> → v<nueva> disponible` y un
-  botón *Descargar* que abre la release.
-- **Menú del icono**: *Buscar actualizaciones* y la versión actual (o el
-  salto, si hay una nueva).
-- **Ventana de configuración**: el interruptor de búsqueda automática, el
-  canal y la versión instalada.
-- **Notificación del sistema**: una sola vez por versión, y solo en la app
-  empaquetada.
+- **Tarjeta**: franja con el estado, que cambia sola: `v1.1.0-beta.0002 →
+  v1.1.0-beta.0003 disponible`, `Descargando v1.1.0-beta.0003… 42 %`,
+  `v1.1.0-beta.0003 lista para instalar` (botón *Reiniciar e instalar`) o el
+  motivo del fallo (con el enlace a la release como salida).
+- **Menú del icono**: *Buscar actualizaciones*, *Actualizar a …* /
+  *Reiniciar e instalar …* y la versión instalada.
+- **Ventana de configuración**: buscar, bajar e instalar al cerrar (los tres
+  interruptores), el canal, la versión instalada y si ese binario concreto se
+  actualiza solo.
+- **Aviso del sistema**: una vez por versión, solo en la app empaquetada.
+
+**Cuándo sí y cuándo no** (la ventana de configuración lo dice con el motivo):
+
+| Binario | ¿Se actualiza solo? |
+|---|---|
+| Instalador NSIS (Windows) | **Sí**: descarga + instalación silenciosa + relanzado |
+| AppImage (Linux) | **Sí**: se reemplaza el AppImage y se relanza |
+| Portable | No (se descomprime en una carpeta nueva en cada arranque) |
+| `.deb`, macOS | No (queda el enlace a la release) |
+
+El instalador tarda a propósito 3 s en arrancar: la app tiene que haber muerto
+antes, o el NSIS sale con código 2 y no instala nada. El registro de cada
+intento queda en `%APPDATA%\Usagia\updater\update.log`.
 
 **El canal** (`updateChannel`) decide qué versiones cuentan:
 
@@ -111,6 +130,9 @@ La comparación es semver: `1.0.0 < 1.0.1 < 1.1.0 < 2.0.0`, y una beta es menor
 que su estable (`1.0.0-beta.0010 < 1.0.0`). Se comprueba al arrancar y cada 6
 horas (sin gastar cuota: es la API pública de GitHub).
 
+> **La primera vez** hay que instalar a mano: el binario antiguo no trae el
+> actualizador. A partir de ahí, las siguientes se instalan solas.
+
 Todo se guarda en `%APPDATA%\Usagia\config.json` (ruta exacta en
 `app.getPath('userData')`):
 
@@ -121,6 +143,8 @@ Todo se guarda en `%APPDATA%\Usagia\config.json` (ruta exacta en
   "hoverCloseDelayMs": 400,
   "updateCheck": true,
   "updateChannel": "auto",
+  "updateAutoDownload": true,
+  "updateInstallOnQuit": true,
   "accounts": [
     {
       "id": "a1b2c3",

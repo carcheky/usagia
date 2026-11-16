@@ -169,6 +169,11 @@ let downloadInFlight = null;
 let installStarted = false;
 let lastProgressBroadcast = 0;
 
+/** Deja rastro de lo que hace el actualizador (la app no tiene consola). */
+function updateLog(message) {
+  install.appendLog(app.getPath('userData'), message);
+}
+
 /** ¿Se puede instalar sola? (NSIS en Windows, AppImage en Linux) */
 function autoUpdateSupport() {
   return updates.canAutoUpdate({ platform: process.platform, packaged: app.isPackaged, env: process.env });
@@ -203,6 +208,7 @@ async function checkForUpdates() {
       state.updateInfo = result.latest;
       if (!busy) updateState = { phase: 'available', version: result.latest.version, percent: 0, error: '' };
       console.log(`[usagia] nueva versión disponible: ${result.latest.version}`);
+      updateLog(`hay actualización: ${currentVersion()} -> ${result.latest.version} (canal ${result.channel})`);
       notifyUpdate(result.latest);
       broadcast();
       // Desatendido: si se puede instalar sola, se baja ya y queda lista
@@ -213,11 +219,15 @@ async function checkForUpdates() {
     // Al cambiar de canal o tras actualizar, el aviso viejo ya no vale.
     state.updateInfo = null;
     updateState = { phase: 'idle', version: '', percent: 0, error: '' };
-    if (result.error) console.log(`[usagia] error al buscar actualizaciones: ${result.error}`);
+    if (result.error) {
+      console.log(`[usagia] error al buscar actualizaciones: ${result.error}`);
+      updateLog(`no se pudo comprobar: ${result.error}`);
+    }
   } catch (err) {
     state.updateInfo = null;
     updateState = { phase: 'idle', version: '', percent: 0, error: '' };
     console.log(`[usagia] error al buscar actualizaciones: ${err.message}`);
+    updateLog(`no se pudo comprobar: ${err.message}`);
   }
   broadcast();
 }
@@ -263,6 +273,7 @@ function startDownload() {
   updateState = { phase: 'downloading', version: state.updateInfo.version, percent: 0, error: '' };
   broadcast();
   console.log(`[usagia] bajando ${asset.name} (${Math.round(asset.size / 1048576)} MB)`);
+  updateLog(`bajando ${asset.name} (${asset.size} bytes) desde ${asset.url}`);
 
   downloadInFlight = install
     .download(asset.url, dest, {
@@ -280,11 +291,13 @@ function startDownload() {
     .then((result) => {
       updateState = { phase: 'ready', version: state.updateInfo.version, percent: 100, error: '' };
       console.log(`[usagia] actualización descargada: ${result.file}`);
+      updateLog(`descargada: ${result.file} (${result.bytes} bytes)`);
       broadcast();
       return result;
     })
     .catch((err) => {
       console.log(`[usagia] no se pudo descargar la actualización: ${err.message}`);
+      updateLog(`fallo al descargar: ${err.message}`);
       updateState = {
         phase: 'error',
         version: state.updateInfo?.version || '',
@@ -320,6 +333,7 @@ function installUpdate({ relaunch: relaunchAfter = true } = {}) {
   updateState = { ...updateState, phase: 'installing' };
   broadcast();
   console.log(`[usagia] instalando ${asset.name} (relanzar=${relaunchAfter})`);
+  updateLog(`instalando ${asset.name} (relanzar=${relaunchAfter})`);
 
   try {
     if (process.platform === 'win32') {
@@ -337,6 +351,7 @@ function installUpdate({ relaunch: relaunchAfter = true } = {}) {
     updateState = { ...updateState, phase: 'error', error: err.message };
     broadcast();
     console.log(`[usagia] no se pudo instalar la actualización: ${err.message}`);
+    updateLog(`fallo al instalar: ${err.message}`);
     return false;
   }
 

@@ -33,6 +33,45 @@ function updaterDir(userDataDir) {
   return path.join(userDataDir, 'updater');
 }
 
+/** Ruta del registro del actualizador (lo comparten la app y el .cmd). */
+function logPath(userDataDir) {
+  return path.join(updaterDir(userDataDir), 'update.log');
+}
+
+/**
+ * Anota una línea en el registro del actualizador.
+ *
+ * La app corre sin consola (bandeja), así que si una actualización falla en la
+ * máquina del usuario no habría forma de saber por qué: esto es lo que queda.
+ * Se recorta solo si crece mucho, y **nunca** lanza: un fallo al escribir el
+ * log no puede tumbar una actualización.
+ *
+ * @param {string} userDataDir
+ * @param {string} message
+ * @param {{fsImpl?: object, maxBytes?: number, now?: Date}} opts
+ * @returns {boolean} si se pudo escribir
+ */
+function appendLog(userDataDir, message, opts = {}) {
+  const { fsImpl = fs, maxBytes = 256 * 1024, now = new Date() } = opts;
+  try {
+    const dir = updaterDir(userDataDir);
+    const file = logPath(userDataDir);
+    fsImpl.mkdirSync(dir, { recursive: true });
+    // Recorte: si el log ya es grande, se empieza de cero en vez de crecer
+    // sin límite (son pocas líneas, pero la app vive meses en la bandeja).
+    try {
+      if (fsImpl.statSync(file).size > maxBytes) fsImpl.writeFileSync(file, '', 'utf8');
+    } catch {
+      /* no existía */
+    }
+    const line = `[${now.toISOString()}] ${message}\n`;
+    fsImpl.appendFileSync(file, line, 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Ruta donde se baja un asset concreto. */
 function downloadPath(userDataDir, assetName) {
   // Solo el nombre: un asset no puede venir con separadores de ruta.
@@ -195,6 +234,8 @@ function relaunch(exePath, args = []) {
 
 module.exports = {
   updaterDir,
+  logPath,
+  appendLog,
   downloadPath,
   installScript,
   writeInstallScript,
