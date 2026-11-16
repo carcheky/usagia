@@ -12,17 +12,57 @@
 <!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
 | Sección | Línea |
 |---|---|
-| Lo último: el refresco y la caché de Claude (2026-11-16 14:00) | 27 |
-| Lo último: las actualizaciones (2026-11-16 13:50) | 100 |
-| Lo último: la suite de pruebas (2026-11-16 13:20) | 168 |
-| Lo último: la cuota, las barras y el icono (2026-11-16 09:55) | 210 |
-| Lo último: revisión a fondo del código (9 commits, ya en `v1.0.0-beta.4`) | 363 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 399 |
-| Android: el plan y su estado (2026-11-16) | 442 |
-| Verificación de la UI (2026-11-16 00:42, sesión `session-e9f5038b`) | 498 |
-| Pausa del día (2026-11-16 02:00): qué le queda a cada sesión | 520 |
-| Historial de releases | 738 |
+| Lo último: la política de aprobación pasa a `never` (2026-11-16 19:30) | 28 |
+| Lo último: el refresco y la caché de Claude (2026-11-16 14:00) | 67 |
+| Lo último: las actualizaciones (2026-11-16 13:50) | 140 |
+| Lo último: la suite de pruebas (2026-11-16 13:20) | 208 |
+| Lo último: la cuota, las barras y el icono (2026-11-16 09:55) | 250 |
+| Lo último: revisión a fondo del código (9 commits, ya en `v1.0.0-beta.4`) | 403 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 439 |
+| Android: el plan y su estado (2026-11-16) | 482 |
+| Verificación de la UI (2026-11-16 00:42, sesión `session-e9f5038b`) | 538 |
+| Pausa del día (2026-11-16 02:00): qué le queda a cada sesión | 560 |
+| Historial de releases | 778 |
 <!-- fin-índice -->
+
+## Lo último: la política de aprobación pasa a `never` (2026-11-16 19:30)
+
+**Encargo:** *"toda la documentación está correctamente actualizada?"*, después de
+que el usuario cambiara la política de aprobación de `ask` a `never`.
+
+**Qué era verdad antes:** las sesiones de DSH se lanzaban con el sandbox
+`workspace-write`, y la documentación del repo daba por hecho que eso imponía
+tres límites al medir: `spawn EPERM` en `npm run probe` (Claude y Antigravity),
+HTTPS de PowerShell roto y named pipes denegadas para los procesos hijos. La
+vista previa de Electron tampoco arrancaba (`error_code=18`).
+
+**Qué se comprobó** (2026-11-16 19:29, preset `danger-full-access` + `approval:
+never`): los tres primeros límites **han desaparecido** — `npm run probe` da los
+cuatro proveedores en `ok`, HTTPS de PowerShell responde 200 y la tubería de un
+proceso hijo funciona. El cuarto **no era el sandbox**: Electron sigue muriendo
+con `0x80000003` porque **no hay GPU utilizable** para Chromium.
+
+**El hueco que sí es código:** `scripts/run.js` solo relanza sin GPU en la app
+de larga vida; los modos de una sola vez (`--preview`, `--settings`, `--probe`)
+terminan antes de llegar a ese relanzamiento, así que `npm run preview` no
+aprovecha el respaldo que el propio script tiene. Queda anotado como `fix:`
+pendiente en `STATUS.md` (con su prueba, según la regla del repo).
+
+**Lo que se escribió:**
+
+- [FINDINGS.md §3](../FINDINGS.md): los límites medidos con `workspace-write`
+  llevan la marca de su contexto, y hay una subsection con la medición nueva y
+  la tabla de cuotas de las 19:30.
+- [STATUS.md](../STATUS.md): sección de límites reescrita y entrada *Lo último*.
+- [AGENTS.md](../AGENTS.md): el comando que **sí** pinta la vista previa en una
+  sesión de DSH (con `--disable-gpu --disable-gpu-sandbox --no-sandbox`).
+- Fuera del repo: `~/.dsh/skills/refresh-model-catalog/SKILL.md` ya no pide
+  elevación de sandbox (con `approval: never` **se rechaza sola**) y
+  `~/.dsh/AGENTS.md` tiene una sección **"Permisos y aprobaciones"** que avisa
+  de que el interruptor de la GUI es **por sesión**: lo durable es
+  `defaultPreset` del perfil, que sigue en `workspace-write` + `ask`.
+
+Commit: `c65ee56` (`docs:`). `npm test` en verde (10 suites).
 
 ## Lo último: el refresco y la caché de Claude (2026-11-16 14:00)
 
