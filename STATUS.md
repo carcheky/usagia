@@ -355,9 +355,8 @@ Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en ve
 
 ## Pendiente / siguiente
 
-1. **Instalación con el instalador NSIS**: nadie lo ha instalado todavía. Lo que falta
-   es probarlo con la ruta fija (el portable extrae a una carpeta distinta en cada
-   arranque y el icono vuelve a *iconos ocultos*).
+1. ~~**Instalación con el instalador NSIS**~~: **VERIFICADO** (2026-11-16). El icono
+   se queda en su sitio y la autoactualización desde la app funciona.
 2. **Decidir lo de Electron**: el PR #1 de Dependabot (38.8.6 → 42.11.16) está
    **cerrado sin fusionar** y la rama sigue viva. GitHub avisa de **34
    vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
