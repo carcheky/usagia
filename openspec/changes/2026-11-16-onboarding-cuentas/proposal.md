@@ -69,44 +69,80 @@ el camino** en vez de describir la ausencia:
 
 Concretamente, en Usagia:
 
-### D-1. Una pantalla «Conexiones» dentro de Configuración
+### D-1. Selección inicial: qué servicios usa
 
-La ventana de ⚙ gana una sección **Conexiones** con una tarjeta por cuenta y, dentro:
+**En el primer arranque**, antes de mostrar la tarjeta con 4 filas vacías, una pantalla pregunta:
 
-- **Qué es** (una línea: «Minimax es tu suscripción M Plan», etc.).
+> **¿Qué servicios de IA usas?**
+> Marca los que tengas. Solo se mostrarán esos en la tarjeta.
+>
+> ☐ Minimax (plan M)  
+> ☐ Claude (Code o Desktop)  
+> ☐ Google Antigravity (IDE)  
+> ☐ DeepSeek
+
+Solo las cuentas marcadas se activan (`enabled: true` en `config.json`). Las demás no aparecen en
+la tarjeta. Siempre se puede añadir otra después en Configuración.
+
+**Racionalidad:** evita el "4 filas diciendo 'sin credencial'" del problema original. Alguien que
+solo tiene Minimax marca solo esa y ve **1 fila**, no 4 imposibles de conectar.
+
+### D-2. Una pantalla «Conexiones» dentro de Configuración
+
+La ventana de ⚙ gana una sección **Conexiones**. Para cada cuenta **activa**, una tarjeta con:
+
+- **Qué es** (en lenguaje llano, sin asumir que conoce la herramienta).
 - **Estado**: `Conectada` · `Detectada, sin probar` · `Falta conectar` · `Error: <motivo>`.
-- **1-2 pasos** para conectarla, en texto local (ver D-3).
-- **Probar** (valida ya, sin esperar al refresco y **sin gastar cuota**: son endpoints de
-  metadatos).
-- **Quitar** la cuenta, con la explicación de qué deja de verse.
+- **Instrucciones honestas** (ver D-4):
+  - Si es `paste-key`: campo + botón Probar (ej. Minimax).
+  - Si es `auto` y **no** hay credencial detectada: "Necesitas [App]. [Descargar] o [Quitar]".
+  - Si es `auto` y **sí** hay credencial: "Detectada ([fuente]). [Probar]".
+- **Probar** (sin gastar cuota: son endpoints de metadatos).
+- **Quitar** la cuenta, con explicación de qué deja de verse.
+- **Añadir otra cuenta** (abre el selector de proveedores).
 
-### D-2. El estado vacío de la tarjeta lleva a la acción
+### D-3. El estado vacío de la tarjeta lleva a la acción
 
 Las filas sin credencial dejan de ser un callejón: pasan de `sin credencial` a **«Falta
 conectar»** y muestran una acción **Conectar** que abre Configuración **enfocada en esa cuenta**.
 La fila de la tarjeta no lleva a ninguna web.
 
-Progreso visible: «Conectar cuentas · 1 de 4» mientras quede alguna, y se retira cuando ya no
-queda ninguna. El descarte se recuerda (`onboarding.dismissedAt`), así que no vuelve a molestar.
+Progreso visible: «Conectar cuentas · 1 de N» (N = cuentas **activas**) mientras quede alguna, y
+se retira cuando ya no queda ninguna. El descarte se recuerda (`onboarding.dismissedAt`), así que
+no vuelve a molestar.
 
-### D-3. Las instrucciones son datos del proveedor, no texto cableado en la UI
+**Cambio clave:** el contador es sobre cuentas activas, no sobre las 4. Si solo activó Minimax, ve
+"0 de 1", no "0 de 4".
+
+### D-4. Las instrucciones son datos del proveedor, honestas y sin asumir conocimiento
 
 Cada proveedor declara en su módulo su receta:
 
 ```js
 setup: {
   action: 'auto' | 'paste-key' | 'paste-token',
-  what: 'Tu suscripción M Plan.',
-  steps: ['Copia tu clave del plan M (empieza por sk-cp-).', 'Pégala aquí y pulsa Probar.'],
-  // opcional: 'command' para copiar al portapapeles, nunca una URL
+  what: 'Monitoriza tu cuota del plan M de Minimax.',  // lenguaje llano
+  requires: null | { app: 'Google Antigravity IDE', url: 'https://antigravity.google' },
+  steps: [
+    'Copia tu clave del plan M (empieza por sk-cp-).',
+    'Pégala aquí y pulsa Probar.'
+  ],
 }
 ```
 
-La UI solo pinta `setup`. Consecuencias: un proveedor nuevo **hereda** la guía, el texto se prueba
-en `test-providers`, y no se puede «olvidar» un proveedor. Se elimina `provider.url` del flujo (y
-con ello el enlace a la portada de Antigravity): el clic de la fila abre Configuración.
+**Nueva regla:** si `action === 'auto'` y `requires` no es `null`, la UI comprueba si hay
+credencial detectada:
+- **Sí detectada** → "Detectada ([fuente]). [Probar]"
+- **No detectada** → "Necesitas {requires.app}. [Descargar {requires.url}] o [Quitar esta cuenta]"
 
-### D-4. `Detectar` es local y `Probar` es explícito
+El enlace de descarga **sí** abre el navegador, pero solo cuando el usuario **no tiene** la
+herramienta y **quiere** instalarla (acción explícita, no automática).
+
+La UI solo pinta `setup`. Consecuencias: un proveedor nuevo **hereda** la guía, el texto se prueba
+en `test-providers`, y nadie puede "olvidar" declarar dependencias. Se elimina `provider.url` del
+flujo de filas: el clic abre Configuración.
+
+### D-5. `Detectar` es local y `Probar` es explícito
 
 - **Detectar** ejecuta `resolve()` (solo lectura de credenciales del sistema: ficheros, almacén de
   Windows, harness). Es gratis y sin red, así que se puede hacer al abrir la sección: dice
@@ -115,11 +151,15 @@ con ello el enlace a la portada de Antigravity): el clic de la fila abre Configu
   que **no consume ventanas de cuota**; si falla, muestra el motivo real (401, 429, «sin
   refresh_token»…) y el estado pasa a `Error`, no a `Falta conectar`.
 
-### D-5. Sin enlaces, sin modal, sin tour: qué sustituye al tour
+### D-6. Sin modal bloqueante, sin tour: el primer arranque pregunta qué tiene
 
-Un **micro-tour contextual de 2 pasos** solo si en el futuro hay algo que descubrir (p. ej. el
-hover de la tarjeta). Hoy no se implementa: la primera pantalla ya es la tarea. Se documenta como
-decisión para que nadie lo añada por inercia.
+La pantalla de selección inicial **no es un modal bloqueante**: es una pantalla de bienvenida que
+solo aparece si `config.json` no existe o está vacío. Se puede cerrar (todas las cuentas quedan
+desactivadas) y volver a abrir desde Configuración → Añadir cuenta.
+
+Un **micro-tour contextual** solo si en el futuro hay algo que descubrir (p. ej. explicar el hover
+de la tarjeta). Hoy no se implementa: la primera pantalla ya resuelve la activación. Se documenta
+como decisión para que nadie lo añada por inercia.
 
 ## 4. Alternativas descartadas
 
@@ -135,26 +175,27 @@ decisión para que nadie lo añada por inercia.
 
 | Componente | Cambio |
 |---|---|
-| `src/main/providers/*.js` | Añadir `setup` (what, steps, action); retirar `url` del flujo de la fila |
-| `src/main/settings.js` · `src/renderer/settings.*` | Sección **Conexiones** con estados, pasos, Probar y Quitar |
-| `src/renderer/card.js` · `card.css` | Fila «Falta conectar» con acción **Conectar**; contador «n de 4» |
-| `src/main/config.js` | `onboarding: { dismissedAt, completedAt }` (normalizado, sin datos personales) |
+| `src/main/providers/*.js` | Añadir `setup` (what, requires, steps, action); retirar `url` del flujo de la fila |
+| `src/main/settings.js` · `src/renderer/settings.*` | Pantalla de bienvenida (selección inicial) + sección **Conexiones** con estados, dependencias, Probar y Quitar |
+| `src/renderer/card.js` · `card.css` | Fila «Falta conectar» con acción **Conectar**; contador «n de N» (N = activas) |
+| `src/main/config.js` | `onboarding: { dismissed, completed, welcomeShown }` + normalizar `accounts[].enabled` |
 | `src/main/summary.js` | Redacción `Falta conectar` (y sus pruebas) |
-| `scripts/test-*.js` | `test-providers` (setup de cada proveedor), `test-local` (config), `test-renderer` (CTA y textos), `test-accounts` (catálogo expone `setup`) |
+| `scripts/test-*.js` | `test-providers` (setup con requires), `test-local` (config), `test-renderer` (pantalla de bienvenida y CTA), `test-accounts` (catálogo expone setup) |
 | `README.md` · `docs/` | Sección breve de primeros pasos en el README y una página `docs/primeros-pasos.md` enlazada desde su índice |
 
 **No se toca:** endpoints, semántica de porcentajes (`pct100`), cachés por cuenta, actualizaciones.
 
 ## 6. Criterios de aceptación (resumen)
 
-1. Un usuario nuevo, **sin leer nada fuera de la app**, conecta al menos Minimax y ve la cuota.
-2. Ninguna pantalla del flujo abre el navegador ni enlaza a una web.
-3. Cada fila sin credencial dice **qué hacer** y lleva a la cuenta concreta.
-4. «Probar» da un veredicto en ≤5 s con el motivo real y sin gastar cuota.
-5. El estado nunca miente: fallo de autenticación = `Error`; sin credencial = `Falta conectar`.
-6. La app no abre modales sola, y el descarte del aviso se recuerda.
-7. `node scripts/test.js` en verde con las suites nuevas, y la UI comprobada con `npm run preview`
-   y `npm run preview:settings`.
+1. Un usuario **sin ninguna herramienta previa** ve solo las cuentas que marcó y entiende qué necesita para cada una.
+2. Alguien que **solo tiene Minimax** conecta esa cuenta sin ver 3 filas imposibles de conectar.
+3. Las instrucciones nunca asumen que el usuario sabe qué es cada herramienta («Abre Antigravity» → «Necesitas el IDE de Google Antigravity. [Descargar] o [Quitar]»).
+4. Los enlaces de descarga **sí** abren el navegador, pero solo cuando el usuario pulsa «Descargar» (acción explícita, no automática al arrancar).
+5. Cada fila sin credencial dice **qué hacer** y lleva a la cuenta concreta.
+6. «Probar» da un veredicto en ≤5 s con el motivo real y sin gastar cuota.
+7. El estado nunca miente: fallo de autenticación = `Error`; sin credencial = `Falta conectar`; sin la herramienta = «Necesitas [App]».
+8. La pantalla de bienvenida no bloquea (se puede cerrar) y el descarte del aviso se recuerda.
+9. `node scripts/test.js` en verde con las suites nuevas, y la UI comprobada con `npm run preview` y `npm run preview:settings`.
 
 ## 7. Coordinación
 
