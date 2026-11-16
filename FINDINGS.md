@@ -15,10 +15,10 @@ consume tokens de IA).
 | 1. Convención de semántica (lo que más confunde) | 24 |
 | 2. Endpoints y credenciales | 61 |
 | 3. Valores verificados (2026-11-15 ~14:35) | 85 |
-| 4. Puntos abiertos (para el otro agente) | 240 |
-| 5. Comportamiento de la app | 290 |
-| 6. El paquete (asar): el fallo que no se veía en desarrollo | 514 |
-| 7. Guiones sueltos que ya funcionan | 556 |
+| 4. Puntos abiertos (para el otro agente) | 285 |
+| 5. Comportamiento de la app | 335 |
+| 6. El paquete (asar): el fallo que no se veía en desarrollo | 559 |
+| 7. Guiones sueltos que ya funcionan | 601 |
 <!-- fin-índice -->
 
 ## 1. Convención de semántica (lo que más confunde)
@@ -203,6 +203,10 @@ usarlo a ciegas.
 
 ### Lo que se midió y lo que no, y por qué (no es un fallo de la app):
 
+> **Ojo, esto se midió con el sandbox de DSH en modo `workspace-write`** (2026-11-16
+> 02:30). Con el preset `danger-full-access` y la política de aprobación `never`
+> **esos tres límites ya no existen**: ver *El sandbox ya no estorba* más abajo.
+
 - `npm run probe` da **`spawn EPERM`** en Claude y Antigravity: el sandbox de
   DSH no permite que Node lance un proceso hijo capturando su salida por tubería
   (`stdio: 'pipe'`). Los proveedores que van por HTTP directo (Minimax,
@@ -236,6 +240,47 @@ usarlo a ciegas.
   revisión del 2026-11-16 00:00 (límite de ~5 peticiones por ventana). Con el
   `trap` nuevo del `.ps1` el motivo sale entero: *"HTTP 429: límite de
   peticiones del endpoint de uso"*.
+
+### El sandbox ya no estorba (2026-11-16 19:30, `danger-full-access` + `approval: never`)
+
+La política de aprobación pasó de **`ask`** a **`never`** y el sandbox de DSH de
+`workspace-write` a `danger-full-access`. Los tres límites de arriba eran **del
+sandbox**, no de la app. Medido otra vez el 2026-11-16 19:29:
+
+| Comprobación | Con `workspace-write` (02:30) | Con `danger-full-access` (19:29) |
+|---|---|---|
+| `npm run probe` | `spawn EPERM` en Claude y Antigravity | **los cuatro proveedores en `ok`**, salida 0 |
+| HTTPS desde PowerShell | error de TLS contra todos los hosts | **200 OK** (`https://example.com`) |
+| Proceso hijo con salida por tubería | `Access to the path '\\.\pipe\...' is denied` | **funciona** |
+| `npm run preview` | moría con `error_code=18` | **sigue muriendo, pero con `0x80000003`** |
+
+**Lo que queda no es el sandbox: es la GPU.** En esta máquina Chromium no tiene
+GPU utilizable, así que Electron muere con `0x80000003` (*"GPU process isn't
+usable. Goodbye."*). Con `--disable-gpu --disable-gpu-sandbox --no-sandbox` el
+preview **arranca y guarda la captura** (verificado):
+
+```powershell
+$env:ELECTRON_RUN_AS_NODE=$null
+node_modules\.bin\electron.cmd . --preview --disable-gpu --disable-gpu-sandbox --no-sandbox
+```
+
+**Y hay un hueco de código, no de entorno:** `scripts/run.js` solo relanza sin GPU
+en la app de larga vida. Los modos de **una sola vez** (`--preview`, `--settings`,
+`--probe`) salen antes de llegar a ese relanzamiento (`ONE_SHOT` comprueba el
+código de salida y termina), así que `npm run preview` **no aprovecha el respaldo
+que el propio script tiene**. Por eso el comando de arriba, y no `npm run
+preview`. Queda como *fix:* pendiente (y con su prueba, según la regla del repo).
+
+### Medición del 2026-11-16 19:30 (ya sin sandbox)
+
+Salida de `npm run probe`, los cuatro proveedores en `ok`:
+
+| Recurso | Lo usado | Lo que queda |
+|---|---|---|
+| Minimax | 35 % (5 h) · 22 % (semanal) | 65 % · 78 % |
+| Claude | 20 % (5 h) · 61 % (semanal) · **100 %** (tope "Fable") | 80 % · 39 % |
+| Antigravity | 15,4 % (semanal, Gemini) · 0 % (Claude/GPT) | 84,6 % · 100 % |
+| DeepSeek | $33,64 + ¥0,90 de bonus | 104,3 M tokens y 984 peticiones este mes |
 
 ## 4. Puntos abiertos (para el otro agente)
 

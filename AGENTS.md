@@ -90,6 +90,18 @@ git switch main && git merge --ff-only beta && git push origin main   # -> Relea
 - Lo que se toca en la UI se comprueba **ejecutando la app**, no narrando:
   `npm run preview` (tarjeta), `npm run preview:settings` (configuración) y
   `npm test` (todas las suites, Node puro).
+- **Ojo: `npm run preview` muere con `0x80000003` en una sesión de DSH.** No es
+  un fallo del repo: es que **no hay GPU utilizable** para Chromium, y el
+  respaldo sin GPU de `scripts/run.js` solo se aplica a la app de larga vida
+  (los modos de una sola vez salen antes de llegar a él). Para verlo, lánzalo
+  con las banderas:
+
+  ```powershell
+  $env:ELECTRON_RUN_AS_NODE=$null
+  node_modules\.bin\electron.cmd . --preview --disable-gpu --disable-gpu-sandbox --no-sandbox
+  ```
+
+  (Verificado el 2026-11-16 19:29: la tarjeta se pinta y se guarda la captura.)
 
 ## Pruebas: la red de seguridad (no se gasta contexto en re-verificar)
 

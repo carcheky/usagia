@@ -1,9 +1,9 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 19:05 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión de **cuota y extras** (el tope con
-> ámbito de Claude). Ver
-> [Lo último: los extras no cuentan (Claude)](#lo-último-los-extras-no-cuentan-claude-2026-11-16-1905).
+> **Última actualización:** 2026-11-16 19:35 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión de **la tarjeta y el
+> entorno** (el ⚙ al pie y la documentación de la política de aprobación). Ver
+> [Lo último: el sandbox ya no manda](#lo-último-el-sandbox-ya-no-manda-2026-11-16-1930).
 > **Ojo: hay otra sesión activa** en este repo (la del *onboarding* de cuentas, con su
 > propuesta en `openspec/changes/2026-11-16-onboarding-cuentas/`): **no se ha tocado nada
 > suyo**. Este fichero se ha **fusionado**, no reescrito.
@@ -19,24 +19,64 @@
 <!-- índice-de-secciones: generado con `node scripts/docs-metrics.js --index <fichero>` -->
 | Sección | Línea |
 |---|---|
-| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 41 |
-| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 80 |
-| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 113 |
-| Resumen en una línea | 135 |
-| Sesiones activas en este repo (2026-11-16 18:45) | 146 |
-| Versiones | 194 |
-| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 226 |
-| Qué funciona (verificado) | 249 |
-| Pendiente / siguiente | 268 |
-| Puntos abiertos y riesgos conocidos | 299 |
-| Límites del sandbox de DSH al medir (no son fallos de la app) | 323 |
-| Reparto entre sesiones (acuerdo) | 335 |
-| Cómo mantener este fichero | 357 |
-| Decisiones que son del usuario | 370 |
-| Notas para quien siga | 377 |
-| Retomar (en 5 minutos) | 384 |
-| Actualización automática desde la app (2026-11-16 18:45) | 399 |
+| Lo último: el sandbox ya no manda (2026-11-16 19:30) | 42 |
+| Lo último: los extras no cuentan (Claude) (2026-11-16 19:05) | 81 |
+| Lo último: documentación para humanos y agentes (2026-11-16 18:50) | 120 |
+| Lo último: el ⚙ baja al pie de la tarjeta (2026-11-16 18:55) | 153 |
+| Resumen en una línea | 175 |
+| Sesiones activas en este repo (2026-11-16 18:45) | 186 |
+| Versiones | 234 |
+| Cola de la revisión a fondo: lo que queda (items 12 y 17) | 266 |
+| Qué funciona (verificado) | 289 |
+| Pendiente / siguiente | 308 |
+| Puntos abiertos y riesgos conocidos | 346 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 370 |
+| Reparto entre sesiones (acuerdo) | 389 |
+| Cómo mantener este fichero | 411 |
+| Decisiones que son del usuario | 424 |
+| Notas para quien siga | 431 |
+| Retomar (en 5 minutos) | 438 |
+| Actualización automática desde la app (2026-11-16 18:45) | 453 |
 <!-- fin-índice -->
+
+## Lo último: el sandbox ya no manda (2026-11-16 19:30)
+
+**Pregunta del usuario:** *"toda la documentación está correctamente actualizada?"*,
+después de cambiar la política de aprobación de **`ask`** a **`never`**.
+
+**Lo que había:** la documentación del repo daba por hecho que las sesiones de
+DSH corren con sandbox `workspace-write` y que eso impone tres límites
+(`spawn EPERM`, HTTPS de PowerShell, Electron que no arranca). Eran **del
+sandbox**, no de la app.
+
+**Lo que se ha verificado** (medido el 2026-11-16 19:29, preset
+`danger-full-access` + `approval: never`):
+
+| Comprobación | Antes | Ahora |
+|---|---|---|
+| `npm run probe` | `spawn EPERM` en Claude y Antigravity | **los cuatro en `ok`** |
+| HTTPS desde PowerShell | error de TLS | **200 OK** |
+| Proceso hijo por tubería | named pipe denegada | **funciona** |
+| `npm run preview` | moría (`error_code=18`) | **sigue muriendo, por la GPU** (`0x80000003`) |
+
+**Lo que se ha tocado:**
+
+- [FINDINGS.md](FINDINGS.md): la subsection de los límites lleva la marca de que
+  se midió con `workspace-write`, y hay una nueva con la medición de las 19:30.
+- [STATUS.md](#límites-del-entorno-de-dsh-al-medir-no-son-fallos-de-la-app): la
+  sección se reescribe con el estado real.
+- `~/.dsh/skills/refresh-model-catalog/SKILL.md`: ya no pide elevación de
+  sandbox (con `approval: never` **se rechaza sola**); dice qué hacer en su lugar.
+- `~/.dsh/AGENTS.md`: sección nueva **"Permisos y aprobaciones"**, con el aviso
+  de que el interruptor de la GUI es **por sesión** y lo que lo hace durable es
+  `defaultPreset` del perfil (`~/.dsh/profiles/desktop/cordis.patch.yml`), que
+  hoy sigue en `workspace-write` + `approval: ask`.
+
+**Lo que queda (no es documentación):** `scripts/run.js` solo relanza sin GPU en
+la app de larga vida; los modos de una sola vez (`--preview`, `--settings`,
+`--probe`) **no llegan a ese relanzamiento**, así que `npm run preview` no
+aprovecha el respaldo que el propio script tiene. Es un `fix:` (con su prueba,
+según la regla del repo), no un cambio de texto.
 
 ## Lo último: los extras no cuentan (Claude) (2026-11-16 19:05)
 
@@ -157,7 +197,7 @@ ficheros aquí y fusiona en lugar de pisar.
 | `session-dab004c1` | Monitor de IAs. **Pausa**: verificado el binario publicado de `beta.4` y `beta.6` (portable, con el ratón real). Le queda el instalador NSIS, el cuelgue de `preview:settings` y cuatro apuntes de revisión | (repositorio: sus cambios ya están dentro) |
 | `session-onboarding` | **Activa**: propuesta de conectar cuentas en [openspec/changes/2026-11-16-onboarding-cuentas/](openspec/changes/2026-11-16-onboarding-cuentas/proposal.md). Además, instalación de actualizaciones en curso | `src/main/update-install.js` · `src/main/updates.js` · `src/preload/*` · `src/renderer/card.*` · `src/renderer/settings.*` · `scripts/test-updates.js` |
 | `session-docs` (**esta**) | Documentación: `docs/` con índice y carga selectiva, `STATUS.md` partido en estado + historial, skill `usagia-docs`, `scripts/test-docs.js` y `scripts/docs-metrics.js` | `docs/` · `scripts/test-docs.js` · `scripts/docs-metrics.js` · `STATUS.md` · `FINDINGS.md` (solo el índice) · `AGENTS.md` · `.agents/skills/usagia-docs/` |
-| `session-lead` | **Activa**: el ⚙ de la tarjeta baja al pie, al lado de la pista (ver *Lo último*) | `src/renderer/card.html` · `src/renderer/card.css` · `src/renderer/card.js` · `scripts/test-renderer.js` · `README.md` (interacción) |
+| `session-lead` | **Activa**: el ⚙ de la tarjeta baja al pie, al lado de la pista (ver *Lo último*), y la documentación del entorno tras el cambio de política de aprobación | `src/renderer/card.html` · `src/renderer/card.css` · `src/renderer/card.js` · `scripts/test-renderer.js` · `README.md` (interacción) · `STATUS.md` · `FINDINGS.md` (sección de entorno) |
 | `session-cuota` (**esta**) | Cuota y extras: el tope con ámbito de Claude no cuenta para la media, la cabecera ni el icono | `src/main/availability.js` · `src/main/summary.js` · `src/main/tooltip.js` · `src/main/providers/claude.js` · `scripts/test-parsers.js` · `scripts/test-local.js` · `FINDINGS.md` (semántica del extra) · `STATUS.md` |
 
 El detalle de cada sesión (qué hizo, con qué commits) está en
@@ -295,6 +335,13 @@ datos vivos y la ventana de configuración responde a *Probar* y a *Guardar*.
 6. **Linter**: no hay ESLint ni formateador, y el bug de `!enabled` (arreglado
    en `031c693`) lo habría cazado. Añadirlo toca el pipeline, así que es
    decisión del usuario antes de meter un job de CI nuevo.
+7. **`fix:` del respaldo sin GPU en los modos de una sola vez**:
+   `scripts/run.js` solo relanza sin GPU en la app de larga vida; `--preview`,
+   `--settings` y `--probe` salen con `0x80000003` **sin reintentar**, así que
+   `npm run preview` no aprovecha el respaldo que el propio script tiene (en
+   esta máquina no hay GPU utilizable para Chromium). Sería un `fix:` con su
+   prueba, según la regla del repo. Detalle en
+   [FINDINGS.md §3](FINDINGS.md#el-sandbox-ya-no-estorba-2026-11-16-1930-danger-full-access--approval-never).
 
 ## Puntos abiertos y riesgos conocidos
 
@@ -320,17 +367,24 @@ Detalle en [FINDINGS.md §4](FINDINGS.md).
   Electron. El salto a 42.11.16 quedó en el PR #1 de Dependabot, **cerrado sin
   fusionar**. Decisión pendiente del usuario.
 
-## Límites del sandbox de DSH al medir (no son fallos de la app)
+## Límites del entorno de DSH al medir (no son fallos de la app)
 
-Documentados en detalle en [FINDINGS.md §3](FINDINGS.md):
+**Actualizado el 2026-11-16 19:30.** La política de aprobación pasó de `ask` a
+`never` y el sandbox de `workspace-write` a `danger-full-access`: los tres
+límites que había **ya no existen** (medido, no supuesto):
 
-- `npm run probe` da **`spawn EPERM`** en Claude y Antigravity: el sandbox no
-  deja que Node lance un hijo capturando su salida por tubería.
-- **PowerShell no puede hacer HTTPS** dentro del sandbox (error de TLS contra
-  todos los hosts), aunque el `fetch` de Node sí funciona. El `.ps1` de Claude
-  descifra bien la caché; lo que falla es el TLS de PowerShell.
-- **Electron no arranca** en el sandbox (`error_code=18`): los `preview` hay que
-  lanzarlos fuera.
+- `npm run probe` → **los cuatro proveedores en `ok`** (antes `spawn EPERM` en
+  Claude y Antigravity).
+- **HTTPS desde PowerShell funciona** (antes error de TLS contra todos los
+  hosts).
+- Un **proceso hijo con salida por tubería** funciona (antes
+  `Access to the path '\\.\pipe\...' is denied`).
+- **Electron sigue sin arrancar** con `npm run preview`, pero ya **no es el
+  sandbox**: es la **GPU** (`0x80000003`, *"GPU process isn't usable"*). Con
+  `--disable-gpu --disable-gpu-sandbox --no-sandbox` el preview funciona y
+  guarda la captura.
+
+Detalle y comandos en [FINDINGS.md §3](FINDINGS.md#el-sandbox-ya-no-estorba-2026-11-16-1930-danger-full-access--approval-never).
 
 ## Reparto entre sesiones (acuerdo)
 
