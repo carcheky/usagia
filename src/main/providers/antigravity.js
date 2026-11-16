@@ -172,7 +172,15 @@ function parseSummary(data) {
 async function fetchUsage(ctx) {
   const credential = await resolve(ctx);
   if (!credential) {
-    return { status: 'unconfigured', summary: 'sin credencial', metrics: [] };
+    // La nota dice QUE hacer: antes la fila solo decia "sin credencial" y no
+    // habia forma de saber que la cuenta se "mete" iniciando sesion en el
+    // IDE, no en esta app (reportado por un usuario: "como meto mi cuenta?").
+    return {
+      status: 'unconfigured',
+      summary: 'sin credencial',
+      metrics: [],
+      note: 'inicia sesión en el IDE de Antigravity (no hace falta tenerlo abierto) o pega la sesión en Configuración',
+    };
   }
 
   try {
@@ -204,7 +212,7 @@ module.exports = {
   credential: {
     label: 'Credencial de Google',
     placeholder: '{"token": {...}}',
-    hint: 'JSON con access_token/refresh_token, o el token a secas. Vacío = se busca en Windows.',
+    hint: 'Déjala vacía: se lee la sesión que dejó el IDE de Antigravity al iniciar sesión con Google (no hace falta tenerlo abierto). Si no aparece, pega aquí el JSON con access_token y refresh_token.',
   },
   resolve,
   fetchUsage,

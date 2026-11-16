@@ -20,7 +20,13 @@ async function resolve(ctx) {
 async function fetchUsage(ctx) {
   const credential = await resolve(ctx);
   if (!credential) {
-    return { status: 'unconfigured', summary: 'sin clave', metrics: [] };
+    // La nota dice QUE hacer, en vez de dejar la fila en "sin clave" a secas.
+    return {
+      status: 'unconfigured',
+      summary: 'sin clave',
+      metrics: [],
+      note: 'pega la clave del plan M (sk-cp-…) en Configuración, o déjala en MINIMAX_API_KEY',
+    };
   }
 
   const res = await fetchJson(ENDPOINT, {

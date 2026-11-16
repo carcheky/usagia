@@ -138,6 +138,8 @@ t.check('sin credencial en ningun sitio -> unconfigured y SIN peticion', async (
   const r = await minimax.fetchUsage(ctx('minimax'));
   assert.strictEqual(r.status, 'unconfigured');
   assert.deepStrictEqual(r.metrics, []);
+  // La fila tiene que decir QUE HACER, no solo que falta la clave.
+  assert.match(r.note, /Configuración|MINIMAX_API_KEY/);
 });
 
 t.check('un 401 sale como error con el mensaje de la API', async () => {
@@ -487,6 +489,10 @@ t.check('sin credencial (y sin almacen de Windows) -> unconfigured', async () =>
   t.forbidFetch();
   const r = await antigravity.fetchUsage(ctx('antigravity'));
   assert.strictEqual(r.status, 'unconfigured');
+  // Un usuario pregunto "¿tiene que detectar Antigravity abierto?": la nota
+  // aclara que la cuenta se conecta iniciando sesion en el IDE, no aqui.
+  assert.match(r.note, /IDE de Antigravity/);
+  assert.match(r.note, /no hace falta tenerlo abierto/);
 });
 
 t.check('la credencial de ~/.antigravity/auth.json se usa como token a secas', async () => {
