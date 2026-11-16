@@ -30,14 +30,14 @@
 | Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
 | Qué funciona (verificado) | 337 |
 | Pendiente / siguiente | 356 |
-| Puntos abiertos y riesgos conocidos | 382 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 406 |
-| Reparto entre sesiones (acuerdo) | 425 |
-| Cómo mantener este fichero | 447 |
-| Decisiones que son del usuario | 460 |
-| Notas para quien siga | 467 |
-| Retomar (en 5 minutos) | 474 |
-| Actualización automática desde la app (2026-11-16 18:45) | 489 |
+| Puntos abiertos y riesgos conocidos | 381 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 405 |
+| Reparto entre sesiones (acuerdo) | 424 |
+| Cómo mantener este fichero | 446 |
+| Decisiones que son del usuario | 459 |
+| Notas para quien siga | 466 |
+| Retomar (en 5 minutos) | 473 |
+| Actualización automática desde la app (2026-11-16 18:45) | 488 |
 <!-- fin-índice -->
 
 ## Lo último: items 12 y 17 completados (2026-11-16 20:50)
@@ -357,11 +357,10 @@ Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en ve
 
 1. ~~**Instalación con el instalador NSIS**~~: **VERIFICADO** (2026-11-16). El icono
    se queda en su sitio y la autoactualización desde la app funciona.
-2. **Decidir lo de Electron**: el PR #1 de Dependabot (38.8.6 → 42.11.16) está
-   **cerrado sin fusionar** y la rama sigue viva. GitHub avisa de **34
-   vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
-   de Electron 38. O se vuelve a abrir el PR y se sube Electron, o se acepta
-   el riesgo y se documenta. Decisión del usuario.
+2. ~~**Decidir lo de Electron**~~: **ACTUALIZADO** (`1f61396`). Electron 38.8.6 →
+   45.3.3, electron-builder 25.1.0 → 26.18.0. Las 34 vulnerabilidades de
+   Electron resueltas. Quedan 6 moderadas en `minimatch` (dependencia de
+   electron-builder, solo afecta al build).
 3. ~~**Android**~~: **DESCARTADO** por coste. El plan está en
    [PLAN-ANDROID.md](PLAN-ANDROID.md) por si se retoma en el futuro.
 4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
