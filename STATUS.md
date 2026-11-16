@@ -377,11 +377,8 @@ Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en ve
 7. ~~**`fix:` del respaldo sin GPU en los modos de una sola vez**~~: **HECHO**
    (`951e478`). Los modos `--preview`, `--settings` y `--probe` ahora pasan por
    el respaldo de GPU antes de salir. Nueva suite `scripts/test-run.js`.
-8. **BUG: falta la cuota semanal en algunos usuarios**. Reportado: "solo sale el
-   uso corto (ventana de horas), no el semanal". A nosotros sí nos sale. Puede
-   ser que la API no devuelva el campo `weekly` en ciertas cuentas, o que el
-   parseo lo descarte por algún valor inesperado. **Reproducir** con los datos
-   del usuario afectado antes de arreglar.
+8. ~~**BUG: falta la cuota semanal en algunos usuarios**~~: **NO ERA BUG**.
+   Verificado con captura: sí le salía la semanal. Falsa alarma.
 
 ## Puntos abiertos y riesgos conocidos
 
