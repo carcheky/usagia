@@ -385,6 +385,35 @@ t.check('al instalar al salir no se relanza (el usuario esta cerrando la app)', 
   assert.ok(script.includes('start /wait'));
 });
 
+t.check('si el instalador falla: deja marcador, rastro y vuelve a abrir la app', () => {
+  const script = updateInstall.installScript({
+    installer: 'C:\\Temp\\Usagia-Setup.exe',
+    exe: 'C:\\Programs\\Usagia\\Usagia.exe',
+    relaunch: true,
+    log: 'C:\\Temp\\update.log',
+    version: '1.1.1-beta.0001',
+    failMarker: 'C:\\Temp\\failed-1.1.1-beta.0001',
+  });
+  assert.ok(script.includes('if errorlevel 1 goto fallo'), 'hay que mirar el resultado del instalador');
+  assert.ok(script.includes(':fallo'));
+  assert.ok(script.includes('failed-1.1.1-beta.0001'), 'el marcador evita reintentos en bucle');
+  assert.ok(script.includes('1.1.1-beta.0001'), 'el marcador guarda la version');
+  // La ultima linea del caso de fallo vuelve a abrir la app: nadie se queda sin bandeja.
+  const fallo = script.split(':fallo')[1];
+  assert.ok(fallo.includes('C:\\Programs\\Usagia\\Usagia.exe'), fallo);
+  assert.ok(fallo.trim().endsWith('exit /b 1'));
+});
+
+t.check('el marcador de fallo se puede consultar por version', () => {
+  const dir = path.join(home, 'datos-app2');
+  assert.strictEqual(updateInstall.hasFailed(dir, '1.1.1-beta.0001'), false);
+  t.writeFile(updateInstall.failMarkerPath(dir, '1.1.1-beta.0001'), '1.1.1-beta.0001');
+  assert.strictEqual(updateInstall.hasFailed(dir, '1.1.1-beta.0001'), true);
+  assert.strictEqual(updateInstall.hasFailed(dir, '1.1.1-beta.0002'), false, 'otra version se intenta');
+  // Un nombre raro no se escapa de la carpeta.
+  assert.strictEqual(path.dirname(updateInstall.failMarkerPath(dir, '../..\\evil')), updateInstall.updaterDir(dir));
+});
+
 t.check('las rutas de descarga no se pueden escapar de la carpeta del actualizador', () => {
   const dir = updateInstall.updaterDir('C:\\datos');
   assert.strictEqual(dir, path.join('C:\\datos', 'updater'));
@@ -414,6 +443,131 @@ t.check('el registro del actualizador se escribe, se recorta y nunca lanza', () 
   // Si el disco falla, se devuelve false y no se propaga el error.
   const roto = { mkdirSync() { throw new Error('sin disco'); } };
   assert.strictEqual(updateInstall.appendLog(dir, 'x', { fsImpl: roto }), false);
+});
+
+/* ------------------------------------------------------- download (fake) */
+
+t.section('download (con net y disco simulados):');
+
+const { EventEmitter } = require('events');
+
+/** Un `net` de mentira que devuelve una respuesta con los trozos dados. */
+function fakeNet(chunks, { status = 200, total } = {}) {
+  return {
+    request() {
+      const req = new EventEmitter();
+      req.end = () => {
+        const response = new EventEmitter();
+        response.statusCode = status;
+        response.headers = { 'content-length': String(total === undefined ? chunks.join('').length : total) };
+        response.pause = () => {};
+        response.resume = () => {};
+        setImmediate(() => {
+          req.emit('response', response);
+          setImmediate(() => {
+            for (const chunk of chunks) response.emit('data', Buffer.from(chunk));
+            response.emit('end');
+          });
+        });
+      };
+      return req;
+    },
+  };
+}
+
+const fakeFs = (dir) => {
+  const writes = [];
+  const state = { destroyed: false, errored: false };
+  return {
+    writes,
+    state,
+    mkdirSync() {},
+    createWriteStream() {
+      const stream = new EventEmitter();
+      stream.write = (chunk) => {
+        writes.push(chunk.toString());
+        return true;
+      };
+      stream.end = (cb) => {
+        if (cb) setImmediate(cb);
+      };
+      stream.destroy = () => {
+        state.destroyed = true;
+      };
+      return stream;
+    },
+    existsSync: () => true,
+    renameSync: (from, to) => writes.push(`RENAME ${path.basename(from)}->${path.basename(to)}`),
+    unlinkSync: () => writes.push('UNLINK'),
+  };
+};
+
+t.check('descarga felizmente: escribe los trozos, avisa del progreso y renombra el .part', async () => {
+  const fsImpl = fakeFs();
+  const progreso = [];
+  const result = await updateInstall.download(
+    'https://ejemplo/x.exe',
+    path.join(home, 'updater', 'x.exe'),
+    {
+      net: fakeNet(['hola', ' mundo']),
+      fsImpl,
+      expectedSize: 10,
+      onProgress: (info) => progreso.push(info.percent),
+    }
+  );
+  assert.strictEqual(result.bytes, 10);
+  assert.deepStrictEqual(fsImpl.writes.slice(0, 2), ['hola', ' mundo']);
+  assert.ok(fsImpl.writes.includes('RENAME x.exe.part->x.exe'));
+  assert.deepStrictEqual(progreso, [40, 100], '5 y 10 de 10 bytes');
+});
+
+t.check('un fallo AL CREAR el fichero rechaza en vez de quedarse colgado (bug de la prueba real)', async () => {
+  const stream = new EventEmitter();
+  stream.write = () => true;
+  stream.end = () => {};
+  stream.destroy = () => {};
+  const fsImpl = {
+    mkdirSync() {},
+    createWriteStream() {
+      // Como un disco lleno o un permiso denegado: el error llega por evento.
+      setImmediate(() => stream.emit('error', new Error('EPERM: sin permiso')));
+      return stream;
+    },
+    unlinkSync() {},
+    existsSync: () => false,
+    renameSync() {
+      throw new Error('no deberia llegar al rename');
+    },
+  };
+  await assert.rejects(
+    () => updateInstall.download('https://ejemplo/x.exe', path.join(home, 'u', 'x.exe'), { net: fakeNet(['a']), fsImpl }),
+    /sin permiso/
+  );
+});
+
+t.check('una descarga incompleta se rechaza (el tamaño de GitHub manda)', async () => {
+  const fsImpl = fakeFs();
+  await assert.rejects(
+    () =>
+      updateInstall.download('https://ejemplo/x.exe', path.join(home, 'u', 'y.exe'), {
+        net: fakeNet(['tres'], { total: 10 }),
+        fsImpl,
+        expectedSize: 10,
+      }),
+    /incompleta/
+  );
+});
+
+t.check('un HTTP que no es 200 se rechaza sin escribir nada', async () => {
+  const fsImpl = fakeFs();
+  await assert.rejects(
+    () =>
+      updateInstall.download('https://ejemplo/x.exe', path.join(home, 'u', 'z.exe'), {
+        net: fakeNet([], { status: 404 }),
+        fsImpl,
+      }),
+    /HTTP 404/
+  );
 });
 
 t.finish('OK: las actualizaciones pasan', () => {

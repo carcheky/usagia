@@ -85,24 +85,57 @@ function downloadPath(userDataDir, assetName) {
  * porque las rutas de Windows llevan espacios (`Program Files`, nombres de
  * usuario) y así no hay que escapar nada por tres capas.
  *
- * El `ping` es un "espera 3 s": al lanzar el instalador la app aún se está
- * cerrando, y si el `.exe` sigue abierto el instalador no puede reemplazarlo.
- * (`timeout` no vale: falla cuando no hay consola de entrada.)
+ * El `ping` es un "espera N s": al lanzar el instalador la app aún se está
+ * cerrando, y si el `.exe` sigue abierto el instalador NSIS **aborta con
+ * código 2** y no instala nada (comprobado: pasa con el instalador de
+ * cualquier versión). (`timeout` no vale: falla cuando no hay consola.)
  *
- * @param {{installer: string, exe?: string, relaunch?: boolean, log?: string, sleepSeconds?: number}} opts
+ * Si el instalador falla, se deja un marcador `failed-<version>` y se vuelve
+ * a abrir la app: sin eso, el usuario se queda sin app, sin saber qué pasó y
+ * con la misma actualización pendiente para siempre.
+ *
+ * @param {{installer: string, exe?: string, relaunch?: boolean, log?: string, sleepSeconds?: number,
+ *          version?: string, failMarker?: string}} opts
  * @returns {string} contenido del .cmd
  */
 function installScript(opts) {
-  const { installer, exe, relaunch = true, log, sleepSeconds = 3 } = opts || {};
+  const { installer, exe, relaunch = true, log, sleepSeconds = 3, version, failMarker } = opts || {};
   const lines = ['@echo off'];
   if (log) lines.push(`echo [%DATE% %TIME%] empieza la instalacion>>"${log}"`);
   if (sleepSeconds > 0) lines.push(`ping -n ${Math.floor(sleepSeconds) + 1} 127.0.0.1 >nul`);
   // `start /wait` es lo que hace que el script espere al instalador NSIS.
   lines.push(`start /wait "" "${installer}" /S --updated`);
-  if (log) lines.push(`echo [%DATE% %TIME%] instalador terminado (errorlevel %ERRORLEVEL%)>>"${log}"`);
+  lines.push('if errorlevel 1 goto fallo');
+  if (log) lines.push(`echo [%DATE% %TIME%] instalado>>"${log}"`);
   if (relaunch && exe) lines.push(`start "" "${exe}"`);
   lines.push('exit /b 0');
+  lines.push(':fallo');
+  if (log) lines.push(`echo [%DATE% %TIME%] el instalador FALLO (errorlevel %ERRORLEVEL%)>>"${log}"`);
+  if (failMarker) lines.push(`echo ${version || 'desconocida'}>"${failMarker}"`);
+  // Si la instalación la pidió el usuario, la app tiene que volver aunque el
+  // instalador falle: si no, se queda sin bandeja y sin saber por qué. Si era
+  // la instalación al salir, no se relanza (el usuario está cerrando).
+  if (relaunch && exe) lines.push(`start "" "${exe}"`);
+  lines.push('exit /b 1');
   return `${lines.join('\r\n')}\r\n`;
+}
+
+/**
+ * Marcador de "esta versión no se pudo instalar", para no reintentarla en
+ * bucle en cada arranque (queda el enlace a la release, a mano).
+ */
+function failMarkerPath(userDataDir, version) {
+  return path.join(updaterDir(userDataDir), `failed-${String(version || 'desconocida').replace(/[^\w.-]/g, '_')}`);
+}
+
+/** ¿Falló ya la instalación de esta versión? */
+function hasFailed(userDataDir, version, opts = {}) {
+  const { fsImpl = fs } = opts;
+  try {
+    return fsImpl.existsSync(failMarkerPath(userDataDir, version));
+  } catch {
+    return false;
+  }
 }
 
 /** Escribe el `.cmd` en la carpeta temporal y devuelve su ruta. */
@@ -152,7 +185,11 @@ function download(url, dest, opts = {}) {
     const fail = (err) => {
       if (settled) return;
       settled = true;
-      out.destroy();
+      try {
+        out.destroy();
+      } catch {
+        /* puede no haber llegado a abrirse */
+      }
       try {
         fsImpl.unlinkSync(partial);
       } catch {
@@ -160,6 +197,11 @@ function download(url, dest, opts = {}) {
       }
       reject(err instanceof Error ? err : new Error(String(err)));
     };
+
+    // Sin esto, un disco lleno o un permiso denegado dejaba la promesa colgada
+    // para siempre (y el fichero a medias sin que nadie se enterara): lo cazó
+    // la prueba contra un instalador de verdad, no la suite.
+    out.on('error', fail);
 
     const request = electronNet.request({ url, redirect: 'follow' });
     request.on('error', fail);
@@ -173,7 +215,13 @@ function download(url, dest, opts = {}) {
 
       response.on('data', (chunk) => {
         received += chunk.length;
-        out.write(chunk);
+        // Contrapresión: si el disco no da abasto, se para de leer hasta que
+        // el stream drene. Con 100 MB en memoria también funcionaría, pero no
+        // hay razón para gastarlos.
+        if (out.write(chunk) === false && typeof response.pause === 'function') {
+          response.pause();
+          out.once('drain', () => response.resume());
+        }
         if (typeof onProgress === 'function') {
           onProgress({ received, total, percent: require('./updates').downloadPercent(received, total) });
         }
@@ -185,6 +233,16 @@ function download(url, dest, opts = {}) {
           // Integridad barata: el tamaño que anuncia GitHub tiene que cuadrar.
           if (total > 0 && received !== total) {
             fail(new Error(`la descarga quedo incompleta (${received} de ${total} bytes)`));
+            return;
+          }
+          let existe = true;
+          try {
+            existe = typeof fsImpl.existsSync !== 'function' ? true : fsImpl.existsSync(partial);
+          } catch {
+            existe = false;
+          }
+          if (!existe) {
+            fail(new Error('la descarga no llego a escribir el fichero'));
             return;
           }
           try {
@@ -207,11 +265,12 @@ function download(url, dest, opts = {}) {
  * @returns {{script: string, cmd: string}}
  */
 function installWindows(opts) {
-  const { installer, exe, relaunch = true, log, sleepSeconds = 3 } = opts || {};
-  const script = installScript({ installer, exe, relaunch, log, sleepSeconds });
+  const { installer, exe, relaunch = true, log, sleepSeconds = 3, version, userDataDir } = opts || {};
+  const failMarker = userDataDir ? failMarkerPath(userDataDir, version) : undefined;
+  const script = installScript({ installer, exe, relaunch, log, sleepSeconds, version, failMarker });
   const cmd = writeInstallScript(script, `usagia-update-${Date.now()}.cmd`);
   runDetached(cmd);
-  return { script, cmd };
+  return { script, cmd, failMarker };
 }
 
 /**
@@ -237,6 +296,8 @@ module.exports = {
   logPath,
   appendLog,
   downloadPath,
+  failMarkerPath,
+  hasFailed,
   installScript,
   writeInstallScript,
   runDetached,

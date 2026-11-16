@@ -206,6 +206,21 @@ async function checkForUpdates() {
     const result = await updates.checkForUpdates(currentVersion(), cfg.updateChannel);
     if (result.available && result.latest) {
       state.updateInfo = result.latest;
+      // Si esta versión ya falló al instalarse, no se reintenta en bucle: se
+      // avisa (con el registro del actualizador) y queda el enlace a la
+      // release para bajarla a mano.
+      if (install.hasFailed(app.getPath('userData'), result.latest.version)) {
+        updateState = {
+          phase: 'error',
+          version: result.latest.version,
+          percent: 0,
+          error: 'ya falló al instalarse (mira updater\\update.log)',
+        };
+        updateLog(`la instalación de ${result.latest.version} falló antes; no se reintenta sola`);
+        console.log(`[usagia] la instalación de ${result.latest.version} falló antes; no se reintenta sola`);
+        broadcast();
+        return;
+      }
       if (!busy) updateState = { phase: 'available', version: result.latest.version, percent: 0, error: '' };
       console.log(`[usagia] nueva versión disponible: ${result.latest.version}`);
       updateLog(`hay actualización: ${currentVersion()} -> ${result.latest.version} (canal ${result.channel})`);
@@ -337,7 +352,14 @@ function installUpdate({ relaunch: relaunchAfter = true } = {}) {
 
   try {
     if (process.platform === 'win32') {
-      install.installWindows({ installer: file, exe: process.execPath, relaunch: relaunchAfter, log });
+      install.installWindows({
+        installer: file,
+        exe: process.execPath,
+        relaunch: relaunchAfter,
+        log,
+        version: state.updateInfo.version,
+        userDataDir: app.getPath('userData'),
+      });
     } else if (process.platform === 'linux') {
       const image = process.env.APPIMAGE || process.execPath;
       install.installAppImage({ downloaded: file, current: image });
