@@ -3,6 +3,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('./crypto');
 
 const DEFAULTS = {
   // Cada cuánto se refrescan los datos en segundo plano (segundos).
@@ -11,8 +12,6 @@ const DEFAULTS = {
   showOnHover: true,
   // Segundos sin mover el ratón dentro de la zona del icono para cerrar la tarjeta.
   hoverCloseDelayMs: 400,
-  // Idioma de las etiquetas de la tarjeta.
-  locale: 'es',
   // Buscar actualizaciones automáticamente.
   updateCheck: true,
   // Canal de actualización: 'auto' (sigue a la versión instalada), 'stable'
@@ -83,17 +82,72 @@ function readFile() {
   }
 }
 
+/**
+ * Descifra las credenciales de las cuentas.
+ * Las cifradas que no se puedan descifrar (Node puro, otro usuario) se marcan
+ * con `_encrypted: true` para que la cascada las salte pero la UI sepa que hay
+ * algo guardado.
+ */
+function decryptAccounts(accounts) {
+  if (!Array.isArray(accounts)) return accounts;
+  return accounts.map((acc) => {
+    if (!acc || !acc.credentials || typeof acc.credentials !== 'object') return acc;
+    const creds = {};
+    let anyEncrypted = false;
+    for (const [key, value] of Object.entries(acc.credentials)) {
+      if (crypto.isEncrypted(value)) {
+        const plain = crypto.decrypt(value);
+        if (plain === null) {
+          // No se pudo descifrar: marcar pero no incluir el valor.
+          anyEncrypted = true;
+        } else {
+          creds[key] = plain;
+        }
+      } else {
+        creds[key] = value;
+      }
+    }
+    return { ...acc, credentials: creds, _encrypted: anyEncrypted || undefined };
+  });
+}
+
+/**
+ * Cifra las credenciales de las cuentas antes de guardar.
+ * Las que ya están cifradas se dejan tal cual.
+ */
+function encryptAccounts(accounts) {
+  if (!Array.isArray(accounts)) return accounts;
+  return accounts.map((acc) => {
+    if (!acc || !acc.credentials || typeof acc.credentials !== 'object') return acc;
+    const creds = {};
+    for (const [key, value] of Object.entries(acc.credentials)) {
+      if (typeof value === 'string' && value.trim() && !crypto.isEncrypted(value)) {
+        creds[key] = crypto.encrypt(value);
+      } else {
+        creds[key] = value;
+      }
+    }
+    // Limpiar el marcador _encrypted al guardar.
+    const { _encrypted, ...rest } = acc;
+    return { ...rest, credentials: creds };
+  });
+}
+
 /** Rellena los huecos y normaliza los tipos del archivo de configuración. */
-function normalize(file) {
+function normalize(file, decrypt = true) {
   const base = { ...DEFAULTS, ...file };
   // Solo se copian objetos planos: `{ ...'x' }` da `{ 0: 'x' }` y
   // `{ ...[1] }` da `{ 0: 1 }`, que no son mapas por proveedor.
   const plain = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : {});
   base.providers = plain(file.providers);
   base.credentials = plain(file.credentials);
-  base.accounts = Array.isArray(file.accounts)
+  let accounts = Array.isArray(file.accounts)
     ? file.accounts.filter((a) => a && typeof a === 'object').map((a) => ({ ...a }))
     : [];
+  // Descifrar las credenciales al leer (a menos que estemos preparando para
+  // guardar, donde decrypt=false para no descifrar y volver a cifrar).
+  if (decrypt) accounts = decryptAccounts(accounts);
+  base.accounts = accounts;
   // Normalizar los ajustes de actualizaciones.
   if (typeof base.updateCheck !== 'boolean') base.updateCheck = DEFAULTS.updateCheck;
   if (typeof base.updateAutoDownload !== 'boolean') {
@@ -135,9 +189,16 @@ function write(next) {
  *   la ventana decía "Guardado" aunque no se hubiera escrito nada).
  */
 function save(patch) {
-  const next = normalize({ ...load(), ...(patch || {}) });
-  write(next);
-  return next;
+  // Cifrar las credenciales del parche ANTES de mezclar con la config actual.
+  const patchWithEncrypted = patch && patch.accounts
+    ? { ...patch, accounts: encryptAccounts(patch.accounts) }
+    : patch;
+  // normalize(decrypt=false) para no descifrar lo que ya viene cifrado.
+  const toWrite = normalize({ ...readFile(), ...(patchWithEncrypted || {}) }, /* decrypt */ false);
+  write(toWrite);
+  // Invalidar la caché para que la siguiente lectura descifre de nuevo.
+  cache = null;
+  return load();
 }
 
 /** Vacía la caché: la siguiente lectura vuelve al archivo. */
@@ -159,5 +220,6 @@ module.exports = {
   isProviderEnabled,
   configPath,
   userDataDir,
+  isEncryptionAvailable: crypto.isAvailable,
   DEFAULTS,
 };
