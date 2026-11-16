@@ -1,14 +1,15 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 01:40 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-8a303ef4`
-> ("Revisión a fondo del código"). Esta versión **fusiona** lo que escribió la
-> sesión `session-e9f5038b` (lead, commit `60b9519`: verificación de la UI y
-> de la app instalada de `beta.4`, estado del plan de Android) y le añade el
-> estado de la cola de la revisión: los items **11, 13, 14, 15, 16 y 18**
-> están ya **arreglados y empujados**, y queda **12** y **17**. Si al abrirlo
-> la cabecera dice otra sesión, **fusiona su contenido** en vez de
-> sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo
+> **Última actualización:** 2026-11-16 01:45 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-e9f5038b`
+> ("lead"). Esta versión **fusiona** lo que escribió la sesión `session-8a303ef4`
+> (commits `fcb920f`, `34aa4a9`, `9ff63fd`: la cola de la revisión al día, con
+> los items 11, 13, 14, 15, 16 y 18 ya arreglados) y la sesión
+> `session-fa207887` (commit `59692d2`: plan de Android), y añade lo que solo
+> tenía esta sesión: la **verificación de la UI** con las vistas previas reales
+> y el **conflicto abierto** entre dos sesiones sobre `src/main/main.js`.
+> Si al abrirlo la cabecera dice otra sesión, **fusiona su contenido** en vez
+> de sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo
 > repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
@@ -33,10 +34,20 @@ lugar de pisar.
 
 | Sesión | Título | Qué está haciendo | Ficheros reservados |
 |---|---|---|---|
-| `session-e9f5038b` (**esta**) | lead (documentación y verificación) | Cuadra los documentos con lo publicado, **verificó la UI** (tarjeta y configuración, con datos vivos) y verificó `beta.4` en la app instalada. Commiteó `de3d34f` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
-| `session-8a303ef4` (**esta**) | Revisión a fondo del código | Los 9 commits de la revisión están publicados en `beta.4`. Ha cerrado la **cola**: items **11, 13, 14, 15, 16 y 18** hechos y empujados (`34aa4a9`, `41bcda2`, `140e31d`); quedan **12** (`safeStorage`) y **17** (código muerto). Verifica la UI con las vistas previas reales | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
+| `session-e9f5038b` (**esta**) | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
+| `session-8a303ef4` | Revisión a fondo del código | Los 9 commits de la revisión están publicados en `beta.4`. Ha cerrado la **cola**: items **11, 13, 14, 15, 16 y 18** hechos y empujados (`34aa4a9`, `41bcda2`, `140e31d`); quedan **12** (`safeStorage`) y **17** (código muerto). Verifica la UI con las vistas previas reales | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
 | `session-fa207887` | Plan de Android | Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4` (Claude solo-OAuth, `test-parsers.js`, numeración de releases), commiteado en `59692d2`. La **implementación no ha empezado**: lo siguiente es ejecutar el plan por commits (F0-F6), empezando por el refactor del núcleo, que **no puede empezar hasta que la otra sesión libere `src/main/providers/*`**. Ver [Android: el plan y su estado](#android-el-plan-y-su-estado-2026-11-16) | `PLAN-ANDROID.md` (liberado) |
-| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Ahora **verifica la app ya instalada** de `beta.4` con un script propio (`Temp\test-beta4.ps1`) y saca capturas del tooltip | (no toca el repo: trabaja en `%TEMP%`) |
+| `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Verifica la app **instalada** de `beta.4` (script propio en `%TEMP%`). Añadió el **fallback sin GPU** a `src/main/main.js` y tocó `src/main/card.js` y `package.json`: sus cambios ya están commiteados (ver *Trabajo commiteado y pusheado*) | (repositorio: sus cambios ya están dentro) |
+
+> ✅ **Conflicto resuelto a las 01:55**: `session-dab004c1` y
+> `session-8a303ef4` editaban `src/main/main.js`, `src/main/card.js` y
+> `package.json` a la vez. Los cambios de **las dos** sesiones están ahora
+> **commiteados juntos** (ver *Trabajo commiteado y pusheado*), así que ya no
+> hay dos sesiones editando los mismos ficheros: quien siga con ellos parte
+> de `814b6f5`, no de un árbol con cambios a medias.
+> Ojo también a `preview-card.png`, que se regenera en cada vista previa
+> (una ejecución interrumpida lo deja a **0 bytes**: se restauró con
+> `git checkout -- preview-card.png` en vez de commitear una captura rota).
 
 **Reglas de coordinación** (valen para todas; también en `AGENTS.md`):
 
@@ -131,21 +142,28 @@ en este entorno con `ELECTRON_RUN_AS_NODE` vacío y
 `--disable-gpu --disable-gpu-sandbox --no-sandbox`: la tarjeta se pinta con
 datos vivos y la ventana de configuración responde a *Probar* y a *Guardar*.
 
-### Ficheros sin commitear en el árbol (2026-11-16 01:40)
+### Ficheros sin commitear en el árbol (2026-11-16 01:45)
 
 `session-8a303ef4` **no deja nada sin commitear**: todo lo suyo está en
 `34aa4a9`, `41bcda2` y `140e31d`, y empujado. Los ficheros que quedan
-modificados en el árbol son de **`session-e9f5038b`** (lead), que sigue
-trabajando:
+modificados en el árbol son de **`session-dab004c1`**, que está con un
+**fallback sin GPU** (para que las vistas previas funcionen en cualquier
+entorno, sin banderas a mano):
 
-`scripts/run.js` (añadir `--settings` a `ONE_SHOT`) ·
-`scripts/test-accounts.js` · `scripts/test-parsers.js` · `src/main/http.js` ·
-`src/main/instances.js` (`uniqueIds`: ids únicos por cuenta) ·
-`src/main/main.js` (bloque `disable-gpu` para las vistas previas) ·
-`src/main/settings.js` · `src/renderer/settings.js` · `preview-card.png`
+`src/main/main.js` (`disable-gpu` automático en `--preview`/`--settings`) ·
+`src/main/card.js` (guarda contra *Render frame was disposed*) ·
+`scripts/run.js` (`--settings` en `ONE_SHOT`) · `package.json` (guiones de
+preview con `--in-process-gpu`) · `preview-card.png` (regenerada)
 
-> **Ninguna otra sesión debe tocar esos ficheros** hasta que se commiteen.
-> Cuando se commitee, la cola de la revisión baja a los items **12** y **17**.
+> ⚠️ **Estos ficheros chocan con las reservas de `session-8a303ef4`**
+> (`src/main/main.js`, `src/main/card.js`, `package.json`). Quien commitee
+> primero deja el resto en el aire: el segundo debe **incorporar el diff**
+> (`git diff` antes de commitear), no sobrescribirlo. La regla 6 de más arriba
+> (esperar al commit del otro) es justo para esto.
+>
+> Cuando esto se commitee, `FINDINGS.md` necesita una retoque: la nota de
+> "cómo lanzar las vistas previas fuera del sandbox" (--disable-gpu a mano)
+> queda obsoleta si la app se pone la bandera sola.
 
 Commits nuevos desde la última actualización de este fichero:
 
@@ -214,7 +232,7 @@ sesiones raíz se ha hecho **por el repo**, que es el canal que fija
 `AGENTS.md`. El `task-1` que mencionan las reglas es **por árbol de
 subagentes**: cada sesión raíz tiene el suyo y no son el mismo.
 
-## Verificación de la UI (2026-11-16 00:42, esta sesión)
+## Verificación de la UI (2026-11-16 00:42, sesión `session-e9f5038b`)
 
 Con `danger-full-access` y arrancando Electron con `--disable-gpu`
 (`ELECTRON_RUN_AS_NODE` vacío), **las dos vistas previas funcionan** y se
