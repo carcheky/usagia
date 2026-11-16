@@ -1,17 +1,17 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 02:00 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-fa207887`
-> ("Plan de Android"). **Pausa del día**: se añade
-> [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión)
-> con lo que le queda a cada sesión para seguir mañana. Esta versión **fusiona**
-> lo que escribieron las sesiones `session-e9f5038b` (lead: verificación de la
-> UI y de la app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo:
-> cola de los items 11-18) y `session-dab004c1` (fallback sin GPU), y
-> **cierra el conflicto abierto** entre las dos últimas: sus cambios ya están
-> **commiteados y empujados** por separado (ver *Trabajo commiteado y
-> pusheado*), así que el árbol queda limpio. Si al abrirlo la cabecera dice
-> otra sesión, **fusiona su contenido** en vez de sobrescribirlo (ver
+> **Última actualización:** 2026-11-16 02:05 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-8a303ef4`
+> ("Revisión a fondo del código"). **Pausa del día**: se añade el detalle de
+> lo que le queda a esta sesión (items **12** y **17** de la cola de la
+> revisión) en
+> [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión),
+> sin tocar lo que dejaron las demás sesiones. Esta versión **fusiona** lo que
+> escribieron las sesiones `session-fa207887` (plan de Android),
+> `session-e9f5038b` (lead: verificación de la UI y de la app instalada de
+> `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los items 11-18) y
+> `session-dab004c1` (fallback sin GPU). Si al abrirlo la cabecera dice otra
+> sesión, **fusiona su contenido** en vez de sobrescribirlo (ver
 > [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
@@ -38,9 +38,9 @@ lugar de pisar.
 
 | Sesión | Título | Qué está haciendo | Ficheros reservados |
 |---|---|---|---|
-| `session-fa207887` (**esta**) | Plan de Android | **Pausa del día**. Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4`, commiteado en `59692d2`. Ha **commiteado y pusheado el trabajo que las otras sesiones dejaron a medias** (ids de cuenta, `pct100` con espacios, nota de la cuenta, fallback sin GPU) para dejar el árbol limpio. La **implementación de Android no ha empezado**: lo siguiente es **F0** (keystore + secrets), que no depende de nadie. Ver [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión) | `PLAN-ANDROID.md` (liberado) · `STATUS.md` (fusionado) |
+| `session-fa207887` | Plan de Android | **Pausa del día**. Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4`, commiteado en `59692d2`. Ha **commiteado y pusheado el trabajo que las otras sesiones dejaron a medias** (ids de cuenta, `pct100` con espacios, nota de la cuenta, fallback sin GPU) para dejar el árbol limpio. La **implementación de Android no ha empezado**: lo siguiente es **F0** (keystore + secrets), que no depende de nadie. Ver [Pausa del día](#pausa-del-día-2026-11-16-0200-qué-le-queda-a-cada-sesión) | `PLAN-ANDROID.md` (liberado) · `STATUS.md` (fusionado) |
 | `session-e9f5038b` | lead (documentación y verificación) | Cuadra los documentos con lo publicado y **verificó la UI** con las vistas previas reales (tarjeta y configuración, con datos vivos). Commiteó `de3d34f` y `60b9519` | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
-| `session-8a303ef4` | Revisión a fondo del código | Los 9 commits de la revisión están publicados en `beta.4`. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca` | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
+| `session-8a303ef4` (**esta**) | Revisión a fondo del código | **Pausa del día**. Cola cerrada salvo los items **12** (`safeStorage`) y **17** (código muerto); lo suyo sin commitear ya está en `cfe09d7`, `3e13411` y `31f03ca`. Mañana: **17 antes que 12**, y los dos **antes que F1** (que mueve `src/main/http.js` y `src/main/providers/*`). Plan detallado en [Pausa del día](#de-session-8a303ef4-revisión-a-fondo-los-items-12-y-17-en-detalle) | `STATUS.md` · `scripts/run.js` · `scripts/test-*.js` · `src/main/hover.js` · `src/main/http.js` · `src/main/instances.js` · `src/main/local/antigravity-client.js` · `src/main/main.js` · `src/main/settings.js` · `src/renderer/settings.js` · `src/main/credentials.js` · `src/main/card.js` · `src/main/providers/*.js` · `package.json` |
 | `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos). Verifica la app **instalada** de `beta.4` (script propio en `%TEMP%`). Su fallback sin GPU ya está commiteado en `814b6f5` | (repositorio: sus cambios ya están dentro) |
 
 > ✅ **Conflicto resuelto a las 01:55**: `session-dab004c1` y
@@ -345,13 +345,98 @@ sin pelearse con cambios a medias.
 - [ ] Al cerrar F2 y F6: actualizar `STATUS.md` (fusionando) y
       `PLAN-ANDROID.md` con lo hecho.
 
+### De esta sesión (`session-e9f5038b`, documentación y verificación)
+
+Lo que **queda pendiente** de esta sesión, en orden de valor:
+
+- [ ] **Instalar `v1.0.0-beta.4` y verificar la app empaquetada** (única
+      prueba que no se ha hecho): que la **tarjeta salga al pasar el ratón**
+      (el fallo exacto que arregló `beta.3`), que el tooltip del sistema
+      muestre el resumen y que la ventana de configuración abra y *Probar*
+      responda. Si algo falla, el arreglo va en `src/main/local/script-path.js`
+      / `build.files` / `build.asarUnpack`, que es donde se rompió la última vez.
+- [ ] **Cuadrar `README.md` con lo publicado**: añadir que las vistas previas
+      **se ponen solas** `disable-gpu` (`814b6f5`), que `--probe`/`--preview`
+      no exigen instancia única, y el estado de la cola de la revisión
+      (items 12 y 17 pendientes). El resto del README ya está al día.
+- [ ] **`FINDINGS.md`**: está al día con el sandbox y con `814b6f5`. Queda
+      **re-medir los valores de §3** cuando Claude y Antigravity se puedan
+      consultar desde fuera del sandbox (aquí el endpoint de Claude da 429 y
+      Antigravity no se puede llamar desde una sesión de DSH).
+- [ ] **`AGENTS.md`**: solo una línea más: *"si otra sesión muere a medias,
+      deja el árbol como estaba"* (reforzar la regla 6).
+- [ ] **Preparar el `v1.0.0`** (cuando el usuario lo decida): los 18 commits
+      sin publicar desde `beta.4` saldrían como **`v1.0.0-beta.5`** en el
+      primer `git push origin beta`; y la estable sería
+      `git switch main && git merge --ff-only beta && git push origin main`.
+- [ ] **Avisar de dos trampas del entorno** (ya están en `FINDINGS.md`, pero
+      conviene recordarlas al retomar): `ELECTRON_RUN_AS_NODE` tiene que
+      estar **vacío** para las vistas previas, y `preview-card.png` se deja a
+      **0 bytes** si la ejecución se interrumpe (se restaura con
+      `git checkout -- preview-card.png`).
+
 ### De las otras sesiones
 
 | Sesión | Qué le queda |
 |---|---|
-| `session-8a303ef4` | Items **12** (`safeStorage` para cifrar las credenciales) y **17** (código muerto y duplicación). Después, **libera `src/main/providers/*`** para que F1 pueda empezar |
-| `session-e9f5038b` | Terminar de cuadrar `README.md`/`FINDINGS.md`/`AGENTS.md` con lo publicado, y la comprobación de la **app instalada** de `beta.4` |
+| `session-8a303ef4` | Items **12** (`safeStorage` para cifrar las credenciales) y **17** (código muerto y duplicación). Después, **libera `src/main/providers/*`** para que F1 pueda empezar. Detalle y plan abajo |
+| `session-e9f5038b` | **Verificar la app instalada de `beta.4`** (tarjeta al pasar el ratón, tooltip, configuración) y cuadrar `README.md`/`FINDINGS.md`/`AGENTS.md` con lo publicado. Detalle en *De esta sesión (`session-e9f5038b`)* |
 | `session-dab004c1` | Verificación de la app instalada de `beta.4` (script propio en `%TEMP%`) y capturas del tooltip |
+
+### De `session-8a303ef4` (revisión a fondo): los items 12 y 17, en detalle
+
+Punto de partida: `beta` = `origin/beta` = `452220f`, **árbol limpio**. Nada
+de esto bloquea una release; es robustez, seguridad y limpieza.
+
+**Orden recomendado: 17 antes que 12**, y los dos **antes que F1** (el
+refactor del núcleo de Android mueve `src/main/http.js` y
+`src/main/providers/*`, que son justo los ficheros del item 17; si se hace al
+revés, el trabajo se deshace).
+
+- [ ] **Item 17 — código muerto y duplicación** (barato, sin riesgo de datos):
+  - `src/main/config.js`: quitar `locale` de `DEFAULTS` (no se usa por nada).
+  - `src/main/credentials.js`: quitar `gemini` de `ENV_KEYS` y su rama en
+    `fromDsh` (no hay proveedor de Gemini); quitar el export `dshCredentials`
+    (solo se usa dentro del módulo).
+  - `src/main/card.js`: quitar `isInteractive()` y el export `CARD_WIDTH`
+    (ningún consumidor).
+  - `src/main/local/antigravity-client.js`: quitar el export `describe()`.
+  - `src/main/main.js`: el modo `--probe` **duplica** `scripts/probe.js`; que
+    `scripts/run.js` lance el sondeo en Node puro y quite el bloque de
+    `main.js`.
+  - `src/main/http.js`: mover `formatTokens` aquí (está copiado en
+    `claude.js` y `deepseek.js`) y sacar un helper único de métrica de
+    porcentaje (el bloque `value`/`short`/`remaining`/`pct`/`tone` está
+    repetido en Minimax, Claude y Antigravity).
+  - **Criterio de aceptación**: `npm test` sigue en verde (los 16 tests de
+    `scripts/test-parsers.js` cubren justo los parsers que se tocan) y el
+    formato de las métricas **no cambia** en la tarjeta (mismo `15.4% usado`,
+    mismo `queda 84.6%`): es un refactor, no un cambio de aspecto.
+- [ ] **Item 12 — cifrar las credenciales con `safeStorage`** (más delicado):
+  - Ficheros: `src/main/credentials.js` (cifrar/descifrar),
+    `src/main/settings.js` (guardar) y `src/renderer/settings.js` (no
+    mostrar la clave en claro al cargar el formulario).
+  - Diseño a decidir: Electron trae `safeStorage` (DPAPI en Windows, Keychain
+    en macOS). Guardar `enc:v1:<base64>` en `config.json` y descifrar al leer;
+    **migrar** las claves ya guardadas en claro (si al leer no viene el
+    prefijo, se trata como texto plano).
+  - **Trampa importante**: `scripts/probe.js` corre en **Node puro** (lo usa
+    el job `verify` del pipeline), y ahí `safeStorage` **no existe**. O el
+    sondeo se salta las credenciales cifradas, o la cascada se resuelve solo
+    con las del sistema. Hay que decidirlo antes de tocar nada, o el pipeline
+    se rompe.
+  - **Segundo caso**: `safeStorage.isEncryptionAvailable()` puede ser `false`
+    (Linux sin keyring). Entonces: seguir en claro y **avisar** en la tarjeta,
+    no fallar.
+  - **Criterio de aceptación**: en Windows, la clave de una cuenta ya no es
+    legible en `config.json`; la app sigue funcionando con ella; y el
+    `npm run probe` del CI **no se rompe**.
+- [ ] **Después**: **liberar `src/main/providers/*`** (y `src/main/http.js`)
+  para que la sesión `session-fa207887` pueda empezar **F1**, y avisar en
+  `STATUS.md` con un commit `docs:`.
+- [ ] **Item 18-bis — linter**: decisión del usuario (añadir ESLint + un job
+  de CI toca el pipeline; ya está en *Decisiones que son del usuario*).
+- [ ] Al cerrar, actualizar `STATUS.md` (fusionando) con lo hecho.
 
 ### Decisiones que son del usuario
 
@@ -369,6 +454,18 @@ sin pelearse con cambios a medias.
   `git checkout -- preview-card.png`, nunca commitearlo roto.
 - Las vistas previas ya se ponen solas `disable-gpu` (`814b6f5`): basta
   `npm run preview` con `ELECTRON_RUN_AS_NODE` **vacío**.
+
+### Retomar (en 5 minutos)
+
+```bash
+cd C:\Users\carch\Nextcloud\Scripts\Usagia
+git switch beta && git pull --ff-only
+npm test && npm run test:package     # tienen que salir OK
+```
+
+Y para lo visual, con `ELECTRON_RUN_AS_NODE` **vacío**:
+`npm run preview` (tarjeta) y `npm run preview:settings` (configuración).
+Si `preview-card.png` queda a 0 bytes: `git checkout -- preview-card.png`.
 
 ## Puntos abiertos y riesgos conocidos
 
