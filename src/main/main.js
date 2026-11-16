@@ -9,6 +9,7 @@ const card = require('./card');
 const hover = require('./hover');
 const instances = require('./instances');
 const settings = require('./settings');
+const availability = require('./availability');
 const { byId } = require('./providers');
 
 const MARKER = 'Usagia';
@@ -157,40 +158,19 @@ function primarySummary(result) {
   return `${worst.value} · ${worst.label}`;
 }
 
-function worstTone() {
-  const order = { critical: 3, warning: 2, ok: 1, neutral: 0 };
-  let worst = 'neutral';
-  for (const { result } of orderedResults()) {
-    if (!result) continue;
-    // Una cuenta sin cuota consultable (warning) tambien avisa: si no, el
-    // icono de la bandeja dira "todo bien" sin saber que hay un hueco.
-    if (result.status === 'warning') {
-      if (order.warning > order[worst]) worst = 'warning';
-      continue;
-    }
-    if (result.status !== 'ok') continue;
-    const tone = providerTone(result);
-    if (order[tone] > order[worst]) worst = tone;
-  }
-  return worst;
-}
-
 /**
- * Tono de un proveedor: el peor de sus metricas con porcentaje.
+ * Tono del icono de la bandeja: la salud GLOBAL de la cuota.
  *
- * El punto de la tarjeta lo usa: con una cuota al 100 % el punto tiene que
- * estar en ROJO, no en verde de "todo correcto". Solo cuentan las metricas
- * con porcentaje (las de saldo o de tokens no tienen nada que opinar).
+ * No es "la peor de todas": una sola ventana de un solo proveedor al 100 %
+ * (p. ej. la de 5 h de Claude, que se repone en un rato) no debe poner el
+ * icono en rojo, que se lee como "no queda uso de nada". El criterio esta
+ * en `availability.js`.
  */
-function providerTone(result) {
-  const order = { critical: 3, warning: 2, ok: 1, neutral: 0 };
-  let worst = 'neutral';
-  for (const metric of result?.metrics || []) {
-    if (typeof metric.pct !== 'number') continue;
-    if (!metric.tone || metric.tone === 'neutral') continue;
-    if (order[metric.tone] > order[worst]) worst = metric.tone;
-  }
-  return worst;
+function globalTone() {
+  const results = orderedResults()
+    .map(({ result }) => result)
+    .filter(Boolean);
+  return availability.computeAvailability(results).tone;
 }
 
 /* ------------------------------------------------------------------ bandeja */
@@ -213,7 +193,7 @@ function iconFor(tone) {
 
 function updateTrayIcon() {
   if (!tray) return;
-  tray.setImage(iconFor(worstTone()));
+  tray.setImage(iconFor(globalTone()));
 }
 
 function updateTooltip() {
@@ -392,9 +372,10 @@ function broadcast() {
       status: result?.status || 'pending',
       summary: result?.summary || '',
       primary: primarySummary(result),
-      // El punto refleja la CUOTA, no el estado de la consulta: una cuota al
-      // 100 % se pinta en rojo aunque la consulta haya ido bien.
-      tone: result?.status === 'ok' ? providerTone(result) : 'neutral',
+      // El punto refleja la CUOTA de ese proveedor, no el estado de la
+      // consulta: una ventana larga agotada tiene que salir en rojo, y una
+      // de 5 h (que se repone en un rato) en amarillo.
+      tone: result?.status === 'ok' ? availability.providerTone(result) : 'neutral',
       metrics: result?.metrics || [],
       note: result?.note || '',
       error: result?.error || '',

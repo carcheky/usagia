@@ -243,6 +243,64 @@ usarlo a ciegas.
 - En Windows el tooltip del sistema está limitado a ~127 caracteres: ahí cabe
   el resumen corto de las cuatro IAs; la tarjeta es la vista completa.
 
+### El color del icono de la bandeja (la cuenta global)
+
+El icono tiene **una** señal para muchos proveedores. Antes tomaba "la peor
+de todas" (la primera ventana que encontraba justa), así que con **una sola
+ventana de un solo proveedor al 100 %** salía en **rojo**, que se lee como
+"no queda uso de nada" cuando en realidad había de sobra en las demás. Es lo
+que se quejó el 2026-11-16.
+
+**La cuenta** (en `src/main/availability.js`, thresholds incluidos):
+
+1. Cada ventana aporta lo que **queda** (`1 - pct`). La media se pondera por
+   tipo de ventana: la de 5 h se repone en horas, la mensual en semanas.
+
+   | `window` | Peso |
+   |---|---|
+   | `5h` | 1 |
+   | `daily` | 1,5 |
+   | `weekly` / `weekly_scoped` | 2 |
+   | `monthly` | 2,5 |
+
+2. Se distingue la ventana **agotada** de la que **se repone pronto**: la de
+   5 h (o la diaria) vuelve en un rato, así que enrojecerse por ella sería
+   alarmista. La semanal o la mensual no.
+
+3. El color sale de ahí:
+
+   | Situación | Icono |
+   |---|---|
+   | Todo con ≥ 50 % de sobra, nada agotado | **verde** |
+   | Algo agotado (que se repone pronto), o media < 50 %, o algo sin consultar | **amarillo** |
+   | Media < 20 %, o una ventana larga agotada, o **todos** los proveedores bloqueados | **rojo** |
+
+Comprobado con los datos reales del 2026-11-16:
+
+| Situación | Media | Icono |
+|---|---|---|
+| Todo reseteado (Claude 5 h al 0 %) | 79 % | verde |
+| **Claude 5 h al 100 %** (el caso que se quejó), el resto con de sobra | 72 % | **amarillo** |
+| Claude **semanal** al 100 % (problema de verdad) | 71 % | **rojo** |
+
+> **Ojo con el "bloqueado":** un proveedor está bloqueado cuando **todas**
+> sus ventanas de cuota están agotadas (no se puede usar ese proveedor).
+> Uno bloqueado entre varios → amarillo; todos bloqueados → rojo.
+
+### El reinicio de cada ventana, junto a su barra
+
+El reinicio va **en la métrica que le corresponde**, no en una nota global
+sola: así se ve junto a la barra y no hay que repetir el nombre de la
+ventana cuatro veces. Se abrevia en la etiqueta (`Gemini Models` →
+`Gemini`, `Claude and GPT models` → `Claude/GPT`; el nombre completo se
+queda en el tooltip) y el reinicio va en la misma línea que el valor, con
+un `↻`.
+
+La nota final **envuelve** en varias líneas: antes era una línea con
+`text-overflow: ellipsis` y con las notas largas (los reinicios de cuatro
+ventanas) se perdía el final con un `...`, que era justo el dato que
+explicaba.
+
 ### El orden de las ventanas (una regla para todos)
 
 Cada API devuelve sus ventanas en **su propio orden** y no coinciden: la 5 h

@@ -1,12 +1,14 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 02:45 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 09:55 (Europe/Madrid).
 > **Quién escribe este fichero ahora mismo:** la sesión `session-lead-quota`
-> ("Claude en gris: cuota real y barras intuitivas"). Aporta el **arreglo de la
-> cuota de Claude** (no salía por un token caducado), el **repintado de las
-> barras** (llenas y rojas al 100 %, sin barras grises sin porcentaje) y el
-> **orden canónico de las ventanas** (la 5 h primero en todos los
-> proveedores), con su commit y su entrada en [Lo último](#lo-último-la-cuota-de-claude-y-las-barras-2026-11-16-0235).
+> ("Claude en gris: cuota real, barras intuitivas y color del icono"). Aporta
+> el **arreglo de la cuota de Claude** (no salía por un token caducado), el
+> **repintado de las barras** (llenas y rojas al 100 %, sin barras grises sin
+> porcentaje), el **orden canónico de las ventanas** (la 5 h primero en todos
+> los proveedores), las **notas que ya no se cortan con "..."** y la **cuenta
+> global del icono de la bandeja** (`src/main/availability.js`), con sus
+> commits y su entrada en [Lo último](#lo-último-la-cuota-las-barras-y-el-icono-2026-11-16-0955).
 > Esta versión **fusiona** lo que escribieron las sesiones `session-fa207887`
 > (plan de Android), `session-e9f5038b` (lead: verificación de la UI y de la
 > app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los
@@ -95,13 +97,18 @@ lugar de pisar.
 
 Releases: <https://github.com/carcheky/usagia/releases>
 
-## Lo último: la cuota de Claude y las barras (2026-11-16 02:35)
+## Lo último: la cuota, las barras y el icono (2026-11-16 09:55)
 
-**El encargo:** "no me queda claro si he gastado o no mi cuota de Claude, sale
-en gris; si he gastado el 100 % las barras deberían estar llenas y rojas".
+**Los cinco encargos** de esta sesión, todos hechos y verificados con la app
+real (capturas con datos vivos) y con `npm test`:
 
-Salían las dos cosas, y por motivos distintos. Los dos están arreglados y
-verificados con la app real (captura de la tarjeta con datos vivos).
+| Encargo | Qué se hizo |
+|---|---|
+| "no me queda claro si he gastado o no mi cuota de claude, sale en gris" | La cuota real **no salía**: la app elegía un token OAuth **caducado** de Claude (401) y caía al respaldo local (transcripciones, que no son la cuota). Ahora prueba **varios candidatos** en orden |
+| "si he gastado el 100 % las barras deberían estar llenas y rojas" | Barras: llena = **consumido**, roja al 100 %; el punto refleja la cuota; sin barra donde no hay porcentaje |
+| "el icono de la bandeja debería cambiar según el total de uso disponible" | Nuevo módulo `src/main/availability.js`: la salud **global** de la cuota, no "la peor de todas" |
+| "el orden debería ser el mismo en todos los proveedores" | Orden canónico de ventanas: **5 h → diaria → semanal → con ámbito → mensual** |
+| "el texto final se corta con '...' en el overlay" | La nota **envuelve** en varias líneas; el reinicio va **junto a su barra** |
 
 ### 1. La cuota de Claude no salía (token caducado)
 
@@ -117,7 +124,7 @@ esa fila **no era la cuota**. Las otras dos fuentes sí funcionaban:
 | `~/.dsh/.credentials.yaml` → `llm-pi-ai/anthropic` | **200** | 2026-11-16T06:26Z |
 | `%APPDATA%\Claude\config.json` → `oauth:tokenCacheV2` | **200** | 2026-12-04 |
 
-**El arreglo:** `resolve()` devuelve ahora una **lista de candidatos** en orden
+**El arreglo:** `resolve()` devuelve una **lista de candidatos** en orden
 (manual → CLI si no caducado → harness si no caducado → caché de Claude
 Desktop) y se prueban hasta que uno responda. Solo se pasa al siguiente si el
 anterior falló de **autenticación** (401/403): un **429 no se reintenta**,
@@ -125,54 +132,66 @@ porque el endpoint da ~5 peticiones por ventana. Un token con `expiresAt` en
 el pasado **no se usa**: se descarta antes de gastarlo un 401. El `.ps1`
 también (descarta los grants caducados y salta el token de la CLI si venció).
 
-Ahora la cuota real se ve: **ventana 5 h al 100 %** (reinicia a las 4:30),
-semanal al 42 %.
+### 2. El icono de la bandeja: la cuenta global
 
-### 2. Las barras (por qué salían en gris y por qué no se entendían)
+Antes tomaba "la peor de todas": con **una** ventana de **un** proveedor al
+100 % salía en **rojo**, que se lee como "no queda uso de nada". Ahora
+(`src/main/availability.js`):
+
+1. Cada ventana aporta lo que **queda**; la media se pondera por tipo (la
+   de 5 h pesa 1, la mensual 2,5: si se agota, no se repone enseguida).
+2. Se distingue la ventana agotada de la que **se repone pronto** (5 h /
+   diaria): la primera es un contratiempo, la segunda un problema de verdad.
+3. **Verde** si hay ≥ 50 % de sobra y nada agotado · **amarillo** si algo
+   está agotado (que se repone pronto) o la media baja del 50 % · **rojo**
+   si la media baja del 20 %, o una ventana **larga** (semanal/mensual) está
+   agotada, o **todos** los proveedores están bloqueados.
+
+Comprobado con los datos reales:
+
+| Situación | Media | Icono |
+|---|---|---|
+| Todo reseteado (2026-11-16 09:55) | 79 % | verde |
+| **Claude 5 h al 100 %**, el resto con de sobra | 72 % | **amarillo** |
+| Claude **semanal** al 100 % | 71 % | **rojo** |
+
+### 3. Las barras, el orden y el texto
 
 | Antes | Ahora |
 |---|---|
-| Una métrica **sin porcentaje** (saldo, tokens, peticiones) pintaba una barra **apagada al 100 % de ancho**: parecía "cuota agotada" | **Sin barra**: solo el valor, que es lo que significa |
-| La etiqueta decía `ventana 5 h · queda 23 %` y se **cortaba** a los 122 px | La etiqueta va solo con el nombre; lo que queda, en el **tooltip** |
-| El punto de la fila era **verde** (estado de la consulta), aunque la cuota estuviera al 100 % | El punto refleja la **cuota**: **rojo** al 100 %, amarillo al 90 % |
-| La cabecera decía `100% / 42% usado`: no se sabe cuál es cuál | La cabecera dice `100 % usado · ventana 5 h` (la **peor** ventana, y el % delante para que no se recorte) |
-| Sin cuota remota la fila salía **verde**, como si todo fuera bien | Estado **`warning`**: punto y texto amarillos, con la nota explicando por qué |
+| Una métrica **sin porcentaje** pintaba una barra **apagada al 100 %**: parecía "agotada" | **Sin barra**: solo el valor |
+| Etiqueta `ventana 5 h · queda 23 %`, **cortada** a los 122 px | Solo el nombre; lo que queda, en el **tooltip** |
+| Punto **verde** aunque la cuota estuviera al 100 % | El punto refleja la **cuota** (rojo/amarillo/verde) |
+| Cabecera `100% / 42% usado`: no se sabe cuál es cuál | `100 % usado · ventana 5 h` (la **peor** ventana, % delante) |
+| Sin cuota remota la fila salía **verde** | Estado **`warning`**: las transcripciones no son la cuota |
+| La **nota final se cortaba con "..."** (línea de una, `text-overflow`) | La nota **envuelve** en varias líneas |
+| El reinicio iba en una nota global que **repetía el grupo 4 veces** (216 caracteres) | El reinicio va **junto a su barra**, en la misma línea, con `↻`; el grupo se abrevia (`Gemini`, `Claude/GPT`) y el nombre completo queda en el tooltip |
+| Las ventanas en **orden distinto** según el proveedor | Orden canónico: **5 h → diaria → semanal → con ámbito → mensual** |
 
 **El color de las barras** (medido por lo que **queda**, como los paneles):
 verde > 30 %, amarillo 10-30 %, **rojo ≤ 10 %**. Barra llena = **consumido**.
 
-### 3. El orden de las ventanas (una regla para todos)
-
-Cada API devuelve sus ventanas en su propio orden y no coincidían: la 5 h iba
-**primera** en Minimax y en Claude, pero **segunda** en Antigravity (que la
-devuelve tras la semanal). Con la tarjeta era imposible comparar de un
-vistazo.
-
-**Regla única** (en `http.sortMetrics()`, `src/main/http.js`): la ventana
-**más corta primero**, de más larga a más larga → **5 h → diaria → semanal →
-semanal con ámbito → mensual**. El orden es estable y respeta los **grupos**
-de Antigravity (sus bloques por familia de modelos no se separan). Lo que no
-sea una ventana de cuota (saldo, tokens) queda al final.
-
-Verificado con `npm run probe`: Minimax `ventana 5 h, semanal` · Claude
-`ventana 5 h, semanal` · Antigravity `Gemini Models · 5 h, Gemini Models ·
-semanal, Claude and GPT models · 5 h, Claude and GPT models · semanal`.
+**El orden** (en `http.sortMetrics()`, `src/main/http.js`): la ventana **más
+corta primero**, de más larga a más larga. El orden es estable y respeta los
+**grupos** de Antigravity (sus bloques por familia de modelos no se separan).
+Lo que no sea una ventana de cuota (saldo, tokens) queda al final.
 
 ### Verificación
 
 - `npm test` → **OK** (pruebas nuevas: token caducado, cuota al 100 % con
-  barra llena y tono crítico, límite con ámbito por modelo).
-- `npm run probe` → Claude **ok**: `ventana 5 h: 100% usado · semanal: 42% usado`.
-- **App real** (Electron, con datos vivos): la tarjeta sale con Claude en
-  **rojo** y la barra de 5 h **llena**, y DeepSeek **sin barras grises**.
+  barra llena y tono crítico, límite con ámbito por modelo, orden canónico,
+  respeto de grupos, y **9 pruebas de la cuenta global** del icono).
+- `npm run probe` → las cuatro cuentas `ok` con sus cuotas reales.
+- **App real** (Electron, con datos vivos): tarjeta **sin scroll**, todo el
+  texto visible, y el icono con el color que corresponde.
 - La captura sale a 0 bytes si la app instalada está en marcha (caché de disco
   compartido): con `--user-data-dir` propio y `--disable-gpu
   --disable-gpu-sandbox --no-sandbox` sale bien. Es un problema del entorno
   de prueba, no de la app.
 
-> **Lo que NO se ha hecho:** publicar. El commit está en `beta`, sin publicar;
-> la captura `preview-card.png` del repo **sigue restaurada** (no se
-> commitea una captura generada a mano).
+> **Lo que NO se ha hecho:** publicar. Todo queda commiteado y **pusheado a
+> `beta`**, pero sin release: la app instalada sigue con lo viejo hasta que
+> haya una.
 
 ## Lo último: revisión a fondo del código (9 commits, ya en `v1.0.0-beta.4`)
 
