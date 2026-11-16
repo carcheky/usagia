@@ -4,8 +4,12 @@ Objetivo: que cada release (`beta` → pre-release, `main` → estable) adjunte,
 además del `.exe`, el `.AppImage` y el `.deb`, un **`Usagia-<versión>-android.apk`
 firmado e instalable**, construido desde el mismo tag y por el mismo pipeline.
 
-Fecha del plan: 2026-11-15. Estado del repo al escribirlo: rama `beta`,
-último commit `442f1ef fix: los scripts de PowerShell no viajaban en el paquete`.
+Fecha del plan: 2026-11-15. **Actualizado el 2026-11-16** con las novedades
+del repo (revisión a fondo del código ya publicada en `v1.0.0-beta.4`).
+
+Estado del repo al actualizarlo: rama `beta` en `de3d34f`, `v1.0.0-beta.4`
+publicada (Windows + Linux), `main` sin versión estable todavía, y
+`npm test` = `test-accounts.js` + `test-parsers.js`.
 
 ---
 
@@ -68,7 +72,7 @@ un APK que haya que "mantener aparte" se queda obsoleto en dos releases.
 |---|---|---|
 | Minimax | ✅ | Clave `sk-cp-…` pegada en la configuración. |
 | DeepSeek | ✅ | Clave `sk-…` (balance) o token `x-dsh-auth-token` (plataforma), pegados. |
-| Claude | ✅ parcial | Solo token OAuth/clave pegada vía HTTP. **No** hay DPAPI, PowerShell ni transcripciones locales (`localUsage()` no aplica). El caché de 10 min se mantiene (el endpoint da 429). |
+| Claude | ⚠️ parcial | **Solo un token OAuth (`sk-ant-oat…`)**: desde la revisión del 2026-11-15 la app **descarta** las claves API (`sk-ant-api…`) y lo avisa en la nota, porque el endpoint de cuota no las acepta. En Android no hay DPAPI, ni PowerShell, ni transcripciones locales de Claude Code (`localUsage()` no aplica): sin un token OAuth pegado, la fila sale "sin sesión" y **no hay respaldo**. Además el token caduca (el de la sesión local caduca el 2026-12-04), así que hay que re-pegarlo cada cierto tiempo. El caché de 10 min se mantiene (el endpoint da 429). |
 | Antigravity | ⚠️ | Solo con `access_token` "raw" pegado (caduca en ~1 h) o JSON con `refresh_token` **más** `ANTIGRAVITY_OAUTH_CLIENT_ID/SECRET` en la configuración. Sin almacén de Windows. Se deja como "funciona si lo configuras"; no bloquea el plan. |
 
 La **cascada de credenciales en Android es de un solo escalón**: configuración
@@ -126,11 +130,18 @@ Puntos concretos:
   WebView se empaqueta con **esbuild** (devDependency, sin config) a un IIFE:
   `esbuild src/web/bridge.js --bundle --format=iife --outfile=www/bridge.js`.
   No se introduce ningún framework.
-- `npm test` (`scripts/test-accounts.js`) y `scripts/test-package.js` tienen
-  que seguir en verde **sin tocarlos**; si el refactor los rompe, el refactor
-  está mal. Ojo con `test-package.js` (comprobación 3): busca `script('…')`
-  en todo `src/`, así que las llamadas a PowerShell se quedan en
-  `src/main/`, nunca en `src/core/`.
+- `npm test` (`scripts/test-accounts.js` **+ `scripts/test-parsers.js`**) y
+  `scripts/test-package.js` tienen que seguir en verde **sin tocarlos**; si el
+  refactor los rompe, el refactor está mal. Ojo con `test-package.js`
+  (comprobación 3): busca `script('…')` en todo `src/`, así que las llamadas a
+  PowerShell se quedan en `src/main/`, nunca en `src/core/`.
+- **`scripts/test-parsers.js` sí hay que tocarlo** (y es la excepción): sus
+  `require` apuntan a rutas concretas (`src/main/http`, `src/main/credentials`,
+  `src/main/providers/claude`, `src/main/providers/antigravity`,
+  `src/main/local/antigravity-client`). Al mover el núcleo hay que repuntar
+  solo las que cambien de sitio (`http` y los dos proveedores) y **no tocar el
+  resto**. Es la luz roja que hay que poner en verde en el commit F1: si el
+  núcleo se mueve mal, estas pruebas lo dicen.
 - El contrato del renderer no cambia: `card.js` y `settings.js` solo conocen
   `window.usagia` / `window.usagiaSettings`. En Electron los pone el preload;
   en Android los pone `src/web/bridge.js`. Si una pantalla necesita algo
@@ -140,6 +151,19 @@ Puntos concretos:
 - Nuevo `scripts/test-core.js` (Node puro): comprueba que ningún fichero de
   `src/core/` hace `require('fs'|'os'|'path'|'child_process'|'electron')`.
   Es el candado que evita que el núcleo vuelva a depender de Node.
+- **Lo que ya es puro y está probado** (la revisión del 2026-11-15 lo dejó
+  así, y es justo el material del núcleo): `parseUsage` (Claude),
+  `parseSummary` y `manualKind` (Antigravity), `extractPairs` (cliente OAuth),
+  `isOauthToken` (Claude), `parseYamlMappings`/`firstValid` (credenciales) y
+  las funciones de `http.js` (`pct100`, `used`, `tone`, `fmtDuration`,
+  `fmtPercent1`). `src/core/` es, literalmente, **estos ficheros tal cual,
+  con la resolución de credenciales inyectada**. Eso reduce el refactor a
+  mover código que ya no tiene dependencias de Node.
+- El item 17 de la cola de la revisión ("`formatTokens` copiado en `claude.js`
+  y `deepseek.js`, bloque de métrica de porcentaje repetido 4 veces") se
+  resuelve **solo** al unificar el núcleo: `formatTokens` y el formateo de
+  métricas pasan a estar en `src/core/metrics.js` una sola vez. No hay que
+  arreglarlo dos veces.
 
 ---
 
@@ -427,6 +451,7 @@ Notas de estabilidad del YAML:
 | `package.json` | scripts `build:web`, `test:core`, `test:android`, `dist:android` (= `build:web && cap sync android && gradlew assembleRelease`). Dependencias de Capacitor y esbuild. |
 | `README.md` | Diagrama del pipeline con los dos jobs nuevos; sección "Android" (qué proveedores funcionan, cómo instalar el APK, que no está en Play). |
 | `AGENTS.md` | Regla: todo proveedor nuevo va en `src/core/providers/`, nunca en `src/main/providers/` salvo el envoltorio; `android/` se commitea; nunca se toca la clave de firma. |
+| `STATUS.md` | Al empezar la implementación (F1) y al cerrar (F6): qué está hecho del plan y qué falta. **Fusionar, no sobrescribir**: hay más sesiones sobre este repo. |
 | `.gitignore` | `www/`, `android/app/build/`, `android/.gradle/`, `android/local.properties`, `*.jks`, `*.keystore`. |
 | `scripts/build-android-wsl.sh` | Gemelo de `build-linux-wsl.sh`: copia a `/tmp`, `npm ci`, `build:web`, `cap sync`, `gradlew assembleRelease`. Para validar en local antes de gastar CI. |
 
@@ -452,9 +477,10 @@ Notas de estabilidad del YAML:
 
 `scripts/test-core.js`: ningún `require` de módulos de Node/Electron en `src/core/`.
 
-Los dos se añaden a `npm test`? **No**: `npm test` sigue siendo
-`test-accounts.js` (lo documenta el README y AGENTS). Se añaden como
-`npm run test:core` y `npm run test:android` y los ejecuta el job.
+Los dos se añaden a `npm test`? **No**: `npm test` sigue siendo lo que es hoy
+(`test-accounts.js` + `test-parsers.js`, lo documentan el README y AGENTS).
+Se añaden como `npm run test:core` y `npm run test:android` y los ejecuta el
+job.
 
 ---
 
@@ -466,15 +492,36 @@ Todo en `beta`; `main` solo por `--ff-only`. Tipos de commit elegidos para que
 | Paso | Commit | ¿Publica? | Verificación |
 |---|---|---|---|
 | F0 | — (fuera del repo) | — | Generar keystore, guardarlo en el gestor de contraseñas, crear los 4 secrets. `gh secret list` los enseña. |
-| F1 | `refactor: núcleo de proveedores sin dependencias de Electron` | No | `npm test`, `npm run test:package`, `npm run probe`, `npm run preview` y `preview:settings` **iguales que antes** (misma captura). `test:core` en verde. |
-| F2 | `ci: verificación de la app Android antes de publicar` + `feat(android): app Capacitor con la tarjeta y la configuración` **en el mismo push** | Sí (minor beta) | El `feat` es lo que dispara la release; el `ci` va en el mismo push porque `ci:` solo no publica y el job `build-android` no se ejercitaría. `publish-releases.js wait beta` → `verify-latest prerelease` lista el `.apk`. |
+| F1 | `refactor: núcleo de proveedores sin dependencias de Electron` | No | `npm test`, `npm run test:package`, `npm run probe`, `npm run preview` y `preview:settings` **iguales que antes** (misma captura). `test:core` en verde. || F2 | `ci: verificación de la app Android antes de publicar` + `feat(android): app Capacitor con la tarjeta y la configuración` **en el mismo push** | Sí (minor beta) | El `feat` es lo que dispara la release; el `ci` va en el mismo push porque `ci:` solo no publica y el job `build-android` no se ejercitaría. `publish-releases.js wait beta` → `verify-latest prerelease` lista el `.apk`. |
 | F3 | Instalar el APK de la beta en un móvil real (`adb install` o descarga), pegar una clave de Minimax, ver la tarjeta. | — | Es la única prueba de que el APK **funciona**, no solo de que existe. Sin esto no se pasa a `main`. |
 | F4 | `fix:` de lo que salga en F3 | Sí (patch beta) | Repetir F3 con la nueva beta: comprueba además que **actualiza encima** sin desinstalar (misma firma, `versionCode` mayor). |
 | F5 | `docs: Android en README y AGENTS` | No | — |
 | F6 | `git switch main && git merge --ff-only beta && git push origin main` | Sí (estable) | `verify-latest stable` lista los 4 artefactos. Instalar la estable **encima de la beta**: debe actualizar. |
 
+**Antes de F1**: el refactor mueve `src/main/providers/*.js`,
+`src/main/http.js` y toca `package.json`. Esos ficheros están **reservados**
+por la sesión `session-8a303ef4` (items 11-18 de la cola de la revisión del
+código, ver [STATUS.md](STATUS.md)). **F1 no empieza hasta que sus commits
+estén dentro**: si no, dos sesiones editan los mismos ficheros y el
+resultado es un merge horroroso. Además, el item 17 de esa cola
+(`formatTokens` duplicado en `claude.js` y `deepseek.js`, bloque de métrica
+de porcentaje repetido 4 veces) es **justo lo que este plan elimina** al
+unificar el núcleo: si se arregla antes, el plan lo hereda; si no, lo
+deshace. Lo natural es **F1 después**.
+
 Si F2 falla en `verify-android`, **no se crea ningún tag**: se corrige y se
 vuelve a empujar. Eso es lo que compra el job de verificación previo.
+
+**Numeración concreta (2026-11-16)**: lo publicado es `v1.0.0-beta.4`, así que
+F2 saldría como `v1.0.0-beta.5` y F6 como `v1.0.0` (la primera estable). Con la
+fórmula de §3: `v1.0.0-beta.5 → versionCode 1000005` y `v1.0.0 → 1000099`, de
+modo que la estable **sube** sobre la beta y Android la actualiza sin
+desinstalar. Si F2/F4 acumulan varias betas (`.5`, `.6`, …), cada una tiene un
+`versionCode` mayor y la fórmula sigue valiendo.
+
+**Antes de F6**, ojo con la regla de ramas: `main` solo recibe `beta` por
+`--ff-only` (ver AGENTS.md). Y `main` va 14 commits por detrás: el primer
+estable arrastra **toda** la revisión a fondo, no solo el trabajo de Android.
 
 ---
 
@@ -491,6 +538,7 @@ vuelve a empujar. Eso es lo que compra el job de verificación previo.
 | Descarga de Gradle/AGP lenta o fallida | `cache: gradle` en `setup-java`; `timeout-minutes` generoso; el job es independiente de Windows/Linux (uno no tumba a los otros). |
 | `npx cap add` regenera `android/` distinto | `android/` commiteado; `test-android.js` comprueba que `build.gradle` conserva las propiedades de versión y la firma por entorno. |
 | Claude 429 | Mismo caché de 10 min que en escritorio (está en el núcleo). |
+| **Claude en Android solo con token OAuth, y caduca** | La app ya **descarta** las claves API (`sk-ant-api…`) y avisa en la nota. En Android no hay sesión local ni transcripciones que sirvan de respaldo: sin un `sk-ant-oat…` pegado, la fila sale "sin sesión". Documentarlo en el README de Android y **no** prometer la cuota de Claude como algo que funciona solo. |
 | Antigravity sin refresco | Documentado como limitación; token raw sigue funcionando ~1 h. No bloquea. |
 | Android 16 y pantallas grandes | No se fija orientación; la tarjeta es responsive (380 px de ancho fijo hoy → pasar a `max-width` en `card.css`, cambio de una línea en F2). |
 | Tamaño del runner | App web sin código nativo: APK de ~5-8 MB; no hace falta liberar disco. |

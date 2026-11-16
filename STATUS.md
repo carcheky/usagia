@@ -1,10 +1,13 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 01:12 (Europe/Madrid).
-> **Quién escribe este fichero ahora mismo:** la sesión `session-8a303ef4`
-> ("Revisión a fondo del código"). Si al abrirlo la cabecera dice otra
-> sesión, **fusiona su contenido** en vez de sobrescribirlo (ver
-> [AGENTS.md](AGENTS.md), *Varias sesiones en el mismo repo*).
+> **Última actualización:** 2026-11-16 01:30 (Europe/Madrid).
+> **Quién escribe este fichero ahora mismo:** la sesión `session-fa207887`
+> ("Plan de Android"). Esta versión **fusiona** lo que escribieron las sesiones
+> `session-e9f5038b` (docs, commit `de3d34f`) y `session-8a303ef4` (revisión a
+> fondo, cabecera de las 01:12 y cola de la revisión), sin perder nada de su
+> contenido. Si al abrirlo la cabecera dice otra sesión, **fusiona su
+> contenido** en vez de sobrescribirlo (ver [AGENTS.md](AGENTS.md), *Varias
+> sesiones en el mismo repo*).
 > Este fichero es la foto del proyecto *ahora mismo*: qué hay publicado, qué
 > está a medias y qué toca después. Lo actualiza la sesión que trabaja en el
 > repo (ver [Cómo mantener este fichero](#cómo-mantener-este-fichero)).
@@ -18,7 +21,7 @@ y DeepSeek. **Publicada en pre-release (`v1.0.0-beta.4`)**, sin versión
 estable todavía. La revisión a fondo del código (9 commits) está **publicada y
 verificada**; `beta` está a la par de `origin/beta` y el árbol está limpio.
 
-## Sesiones activas en este repo (2026-11-16 01:12)
+## Sesiones activas en este repo (2026-11-16 01:30)
 
 Cuatro sesiones de DSH están abiertas sobre este mismo repo y han recibido el
 mismo encargo. **DSH no permite mensajes entre sesiones raíz distintas**
@@ -28,10 +31,10 @@ lugar de pisar.
 
 | Sesión | Título | Qué está haciendo | Ficheros reservados |
 |---|---|---|---|
-| `session-8a303ef4` (**esta**) | Revisión a fondo del código | Los 9 commits ya están publicados en `beta.4`. Ahora recoge la **cola de la revisión** (items 11-18, ver más abajo) y mantiene este fichero | `STATUS.md` · `scripts/run.js` · `src/main/credentials.js` · `src/main/settings.js` · `src/main/card.js` · `src/main/http.js` · `src/main/local/antigravity-client.js` · `src/main/providers/*.js` · `package.json` |
+| `session-fa207887` (**esta**) | Plan de Android | Plan cerrado y **actualizado el 2026-11-16** con las novedades de `beta.4` (Claude solo-OAuth, `test-parsers.js`, numeración de releases). La **implementación no ha empezado**: lo siguiente es ejecutar el plan por commits (F0-F6), empezando por el refactor del núcleo, que **no puede empezar hasta que la otra sesión libere `src/main/providers/*`**. Ver [Android: el plan y su estado](#android-el-plan-y-su-estado-2026-11-16) | `PLAN-ANDROID.md` · `STATUS.md` (fusionado, no pisado) |
+| `session-8a303ef4` | Revisión a fondo del código | Los 9 commits ya están publicados en `beta.4`. Ahora recoge la **cola de la revisión** (items 11-18, ver más abajo) y mantiene este fichero | `STATUS.md` · `scripts/run.js` · `src/main/credentials.js` · `src/main/settings.js` · `src/main/card.js` · `src/main/http.js` · `src/main/local/antigravity-client.js` · `src/main/providers/*.js` · `package.json` |
 | `session-e9f5038b` | lead (documentación) | Commiteó `de3d34f` (STATUS.md + las reglas "fusionar, no sobrescribir" y "reservar antes de editar" en `AGENTS.md`). En espera | `STATUS.md`, `FINDINGS.md`, `README.md`, `AGENTS.md` |
 | `session-dab004c1` | Monitor de IAs en barra de tareas | La sesión larga del repo (21 turnos); está leyendo `STATUS.md` y el historial de releases | (por anunciar) |
-| `session-fa207887` | Plan de Android | Plan del pipeline de APK: goal cerrado y documentado en [PLAN-ANDROID.md](PLAN-ANDROID.md) | `PLAN-ANDROID.md` |
 
 **Reglas de coordinación** (valen para todas; también en `AGENTS.md`):
 
@@ -111,6 +114,62 @@ tocar estos ficheros mientras los tenga reservados**:
 Verificado el 2026-11-16 01:10 sobre `de3d34f`: `npm test` → **OK**
 (30 pruebas: 14 de cuentas + 16 de parsers) y `npm run test:package` → **OK**.
 
+## Android: el plan y su estado (2026-11-16)
+
+El plan completo está en [PLAN-ANDROID.md](PLAN-ANDROID.md) (se actualizó hoy
+con las novedades de `beta.4`). En corto:
+
+- **Decisión**: app Android con **Capacitor 8** que reutiliza la tarjeta y la
+  ventana de configuración actuales, con los proveedores movidos a un núcleo
+  JS compartido (`src/core/`) que no depende de Node ni de Electron. Electron
+  no existe para Android, así que hoy **no hay nada que compilar**: el trabajo
+  es crear la app **y** añadirla al pipeline.
+- **Pipeline**: dos jobs nuevos en `.github/workflows/release.yml`:
+  `verify-android` (**antes** de semantic-release, para que no nazca una
+  release sin APK: el tag es irreversible) y `build-android` (después, como
+  `build-windows`/`build-linux`: compila el tag, firma, y adjunta
+  `Usagia-<v>-android.apk` + `.sha256`).
+- **Firma**: **una sola clave**, para `beta` y `main` (si cambia, Android no
+  actualiza y hay que desinstalar). Se genera en local y vive en 4 secrets;
+  nunca en el repo.
+- **`versionCode` derivado del tag** (`1.0.0-beta.5 → 1000005`,
+  `1.0.0 → 1000099`): la estable actualiza encima de la beta.
+
+**Qué cambió en el plan al actualizarlo hoy** (y por qué importa):
+
+1. **Claude solo se consulta con un token OAuth** (`sk-ant-oat…`): las claves
+   API se descartan y se avisa en la nota. En Android eso deja a Claude
+   **sin respaldo** (no hay sesión local ni transcripciones), así que el plan
+   lo marca como limitación real, no como algo que "funciona".
+2. **`npm test` ahora incluye `scripts/test-parsers.js`**: el plan lo tenía
+   como "intocable" y es la única excepción (hay que repuntar sus `require`
+   al mover el núcleo). Además confirma que casi todo el núcleo **ya es puro
+   y está probado** (`parseUsage`, `parseSummary`, `isOauthToken`,
+   `manualKind`, `extractPairs`, `pct100`…), lo que reduce el refactor a mover
+   código.
+3. **Numeración**: lo publicado es `v1.0.0-beta.4`, así que el siguiente
+   push de la implementación sería `beta.5` y el primer estable `v1.0.0`.
+
+**Estado real: la implementación no ha empezado.** Lo único que se puede
+hacer ya, sin depender de nadie, es **F0** (generar el keystore, guardarlo
+fuera del repo y crear los 4 secrets).
+
+**Choque de ficheros que hay que respetar**: el paso F1 del plan (mover los
+proveedores a `src/core/`) toca `src/main/providers/*.js`,
+`src/main/http.js` y `package.json`, que la sesión `session-8a303ef4` tiene
+**reservados** para los items 11-18 de la cola de la revisión. Secuencia:
+F1 **no** empieza hasta que sus commits estén dentro. Además, el item 17
+(`formatTokens` duplicado en `claude.js` y `deepseek.js`, bloque de métrica
+repetido 4 veces) es justo lo que el núcleo shared elimina: si esa sesión lo
+arregla primero, el plan hereda el arreglo; si no, lo deshace al mover el
+código. Lo ideal es hacerlo **después**.
+
+**Sobre el tablero de tareas**: desde esta sesión las herramientas
+`team_task_*` no están expuestas, así que la coordinación con las otras
+sesiones raíz se ha hecho **por el repo**, que es el canal que fija
+`AGENTS.md`. El `task-1` que mencionan las reglas es **por árbol de
+subagentes**: cada sesión raíz tiene el suyo y no son el mismo.
+
 ## Verificación de la UI (2026-11-16 00:42, esta sesión)
 
 Con `danger-full-access` y arrancando Electron con `--disable-gpu`
@@ -160,11 +219,14 @@ el segundo arranque de la app dice por qué se cierra en vez de morir mudo.
    vulnerabilidades** (11 altas, 16 moderadas, 7 bajas) en `main`, casi todas
    de Electron 38. O se vuelve a abrir el PR y se sube Electron, o se acepta
    el riesgo y se documenta. Decisión del usuario.
-3. **Android**: el **plan** está escrito y cerrado en
+3. **Android**: el **plan** está escrito y **actualizado** en
    [PLAN-ANDROID.md](PLAN-ANDROID.md) (Capacitor 8 + núcleo JS compartido +
    jobs `verify-android`/`build-android`), pero la **implementación no ha
-   empezado**: hoy no hay nada que compilar para Android. Siguiente paso:
-   ejecutar el plan por commits.
+   empezado**: hoy no hay nada que compilar para Android. Detalle y secuencia
+   en [Android: el plan y su estado](#android-el-plan-y-su-estado-2026-11-16).
+   Siguiente paso: **F0** (keystore + secrets, no depende de nadie) y luego
+   **F1**, que espera a que la sesión `session-8a303ef4` libere
+   `src/main/providers/*`.
 4. **macOS**: el código contempla la plataforma, pero el pipeline **no genera
    binarios de macOS** (solo Windows y Linux).
 5. **Cola de la revisión a fondo** (items 11-18): los ocho puntos que
@@ -211,12 +273,15 @@ Documentados en detalle en [FINDINGS.md §3](FINDINGS.md):
 
 ## Reparto entre sesiones (acuerdo)
 
-Ver [Sesiones activas en este repo](#sesiones-activas-en-este-repo-2026-11-16-0112),
+Ver [Sesiones activas en este repo](#sesiones-activas-en-este-repo-2026-11-16-0130),
 que es la tabla viva. En corto:
 
 - **DSH no permite mensajes entre sesiones raíz distintas**: `send_message`
   solo funciona dentro del mismo árbol de subagentes. El canal entre sesiones
   es **el repo**.
+- **El tablero de tareas del equipo no se comparte entre sesiones raíz**
+  (cada una tiene su propio `task-1`): no sirve para coordinarse entre
+  sesiones, solo dentro de un mismo árbol de subagentes.
 - `STATUS.md` (este fichero): estado del proyecto.
 - `FINDINGS.md`: endpoints, semántica y valores medidos. Fuente única.
 - `README.md` / `AGENTS.md`: cómo se usa y cómo se trabaja en el repo.
