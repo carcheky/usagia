@@ -150,9 +150,16 @@ function parseUsage(data) {
     if (raw.resets_at) {
       const when = new Date(raw.resets_at);
       if (!Number.isNaN(when.getTime())) {
-        notes.push(
-          `${label} se reinicia ${when.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`
-        );
+        // El reinicio va en la propia metrica, en la misma linea que el
+        // valor: asi se ve junto a la barra que le corresponde, sin que la
+        // tarjeta crezca una linea por ventana (y sin que el texto final
+        // se corte con "...").
+        metrics[metrics.length - 1].reset = when.toLocaleString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
       }
     }
   }
@@ -187,11 +194,14 @@ function parseUsage(data) {
   if (extra?.monthly_limit) {
     const usedCredits = extra.used_credits ?? 0;
     const currency = extra.currency || '';
-    notes.push(
-      extra.is_enabled
-        ? `uso extra: ${usedCredits} de ${extra.monthly_limit} ${currency}`.trim()
-        : `uso extra desactivado (límite ${extra.monthly_limit} ${currency})`
-    );
+    // Solo se avisa del uso extra cuando HAY algo que avisar: "desactivado"
+    // con un limite de 3600 EUR no es informacion, es ruido (y la nota se
+    // cortaba con "...").
+    if (extra.is_enabled) {
+      notes.push(`uso extra: ${usedCredits} de ${extra.monthly_limit} ${currency}`.trim());
+    } else if (usedCredits > 0) {
+      notes.push(`uso extra: ${usedCredits} de ${extra.monthly_limit} ${currency}`.trim());
+    }
   }
 
   return { metrics: sortMetrics(metrics), notes };

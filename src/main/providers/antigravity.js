@@ -21,6 +21,21 @@ const HOST = 'https://cloudcode-pa.googleapis.com';
 
 const WINDOW_LABELS = { '5h': '5 h', weekly: 'semanal', daily: 'diario', monthly: 'mensual' };
 
+/**
+ * Nombre corto de un grupo, para que quepa en la columna.
+ *
+ * Los grupos de Antigravity se llaman "Gemini Models" y "Claude and GPT
+ * models": con el nombre entero, la etiqueta de la fila se cortaba con
+ * "..." (y con ella el nombre de la ventana, que es lo que identifica la
+ * cuota). El nombre largo se queda en el tooltip.
+ */
+function shortGroup(name) {
+  return String(name)
+    .replace(/\s+models\b/i, '')
+    .replace(/\s+and\s+/i, '/')
+    .trim();
+}
+
 // El access_token se cachea por CUENTA: con varias cuentas de Antigravity,
 // el token de una no puede servirse para la otra.
 const tokenCache = new Map();
@@ -121,8 +136,10 @@ function parseSummary(data) {
       if (typeof remaining !== 'number') continue;
       const window = WINDOW_LABELS[bucket.window] || bucket.window || '';
       const consumed = used(remaining);
+      const short = shortGroup(groupName);
       metrics.push({
-        label: window ? `${groupName} · ${window}` : groupName,
+        label: window ? `${short} · ${window}` : short,
+        fullLabel: window ? `${groupName} · ${window}` : groupName,
         window: bucket.window,
         group: groupName,
         value: `${fmtPercent1(consumed)} usado`,
@@ -134,12 +151,16 @@ function parseSummary(data) {
       if (bucket.resetTime) {
         const when = new Date(bucket.resetTime);
         if (!Number.isNaN(when.getTime())) {
-          notes.push(
-            `${groupName} (${window || bucket.bucketId}) reinicia ${when.toLocaleString('es-ES', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-            })}`
-          );
+          // El reinicio va como NOTA DE LA METRICA, no en una nota aparte: la
+          // nota global repetia el nombre del grupo cuatro veces y era la
+          // linea mas larga de la tarjeta.
+          const metric = metrics[metrics.length - 1];
+          metric.reset = when.toLocaleString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
         }
       }
     }

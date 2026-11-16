@@ -29,7 +29,11 @@ body {
 
 .card {
   width: 380px;
-  max-height: 560px;
+  /* Tope alto: con las notas envueltas en varias lineas (y el reinicio de
+     cada ventana en su propia linea) la tarjeta ronda los 610 px. Con 560
+     salia una barra de scroll que era justo lo que se queria evitar. El
+     proceso principal la recorta si la pantalla no da para tanto. */
+  max-height: 640px;
   overflow-y: auto;
   background: var(--bg);
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -209,13 +213,34 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Columna de la derecha: el valor y, a continuacion, el reinicio de esa
+   ventana. El reinicio va en la MISMA linea (fuente menor) para que la
+   tarjeta no crezca una linea por ventana. */
+.metric-right {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: none;
+}
+
+.metric-reset {
+  font-size: 9.5px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  opacity: 0.75;
+}
+
 .note {
   margin-top: 6px;
   font-size: 10.5px;
   color: var(--fg-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* La nota ENVUELVE en varias lineas. Antes era una sola linea con
+     "text-overflow: ellipsis", y con las notas largas (los reinicios de
+     cuatro ventanas) se perdia el final con un "...": el dato que
+     precisamente explicaba se quedaba fuera de la vista. */
+  line-height: 1.4;
+  overflow-wrap: break-word;
 }
 
 .note.error {

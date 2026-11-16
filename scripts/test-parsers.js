@@ -20,6 +20,7 @@ const creds = require(path.join(root, 'credentials'));
 const claude = require(path.join(root, 'providers', 'claude'));
 const antigravity = require(path.join(root, 'providers', 'antigravity'));
 const client = require(path.join(root, 'local', 'antigravity-client'));
+const availability = require(path.join(root, 'availability'));
 
 let failures = 0;
 
@@ -152,7 +153,7 @@ const claudeResponse = {
     { kind: 'weekly_scoped', is_active: false, percent: 99 },
   ],
   seven_day_breakdown: { rows: [{ key: 'claude_code', percent: 94.2 }] },
-  extra_usage: { is_enabled: false, monthly_limit: 50, currency: 'USD' },
+  extra_usage: { is_enabled: true, monthly_limit: 50, used_credits: 12, currency: 'USD' },
 };
 
 check('utilization=1 es 1 % usado, no 100 %', () => {
@@ -176,10 +177,24 @@ check('la semanal y el limite con ambito salen como consumido', () => {
 });
 
 check('las notas recogen reinicios, reparto y uso extra', () => {
-  const { notes } = claude.parseUsage(claudeResponse);
-  assert.ok(notes.some((n) => n.startsWith('ventana 5 h se reinicia')), notes.join(' | '));
-  assert.ok(notes.includes('Claude Code consume el 94% de la cuota semanal'), notes.join(' | '));
-  assert.ok(notes.includes('uso extra desactivado (límite 50 USD)'), notes.join(' | '));
+  const { metrics, notes } = claude.parseUsage(claudeResponse);
+  // El reinicio va en la propia metrica (junto a su barra), no en la nota.
+  const fiveHour = metrics.find((m) => m.label === 'ventana 5 h');
+  assert.ok(fiveHour.reset, 'la metrica debe decir cuando se reinicia');
+  assert.ok(notes.some((n) => n.includes('Claude Code consume el 94% de la cuota semanal')), notes.join(' | '));
+  // El uso extra solo se avisa cuando hay algo que avisar.
+  assert.ok(
+    notes.some((n) => n.includes('uso extra: 12 de 50 USD')),
+    notes.join(' | ')
+  );
+});
+
+check('el uso extra desactivado no llena la nota de ruido', () => {
+  const { notes } = claude.parseUsage({
+    seven_day: { utilization: 42 },
+    extra_usage: { is_enabled: false, monthly_limit: 3600, used_credits: 0, currency: 'EUR' },
+  });
+  assert.deepStrictEqual(notes, [], notes.join(' | '));
 });
 
 check('una respuesta vacia no produce metricas', () => {
@@ -280,32 +295,36 @@ const agResponse = {
 
 check('remainingFraction (0-1) se invierte a consumido', () => {
   const { metrics } = antigravity.parseSummary(agResponse);
-  const weekly = metrics.find((m) => m.label === 'Gemini Models · semanal');
+  const weekly = metrics.find((m) => m.label === 'Gemini · semanal');
   assert.ok(weekly, 'falta la metrica semanal');
   assert.strictEqual(weekly.value, '15.4% usado');
   assert.strictEqual(weekly.short, '15%');
   assert.strictEqual(weekly.remaining, 'queda 84.6%');
   assert.strictEqual(weekly.tone, 'ok');
   // remaining=1 es "100 % que queda", o sea 0 % usado, no 1 %.
-  const fiveHour = metrics.find((m) => m.label === 'Gemini Models · 5 h');
+  const fiveHour = metrics.find((m) => m.label === 'Gemini · 5 h');
   assert.strictEqual(fiveHour.value, '0% usado');
 });
 
 check('un bucket casi agotado sale critico y los no numericos se omiten', () => {
   const { metrics, notes } = antigravity.parseSummary(agResponse);
-  const tight = metrics.find((m) => m.label === 'Claude and GPT models · semanal');
+  const tight = metrics.find((m) => m.label === 'Claude/GPT · semanal');
   assert.strictEqual(tight.tone, 'critical');
   assert.strictEqual(tight.value, '99% usado');
   assert.ok(!metrics.some((m) => m.label.endsWith('diario')), 'el bucket no numerico no debe pintarse');
-  assert.strictEqual(notes.length, 1);
-  assert.ok(notes[0].startsWith('Gemini Models (semanal) reinicia'));
+  // El reinicio va en la metrica que lo tiene; la nota global ya no repite
+  // el grupo cuatro veces (era la linea mas larga de la tarjeta).
+  const weekly = metrics.find((m) => m.label === 'Gemini · semanal');
+  assert.ok(weekly.reset, 'la metrica debe decir cuando se reinicia');
+  assert.strictEqual(notes.length, 0);
 });
 
-check('manualKind distingue JSON de token a secas', () => {
-  assert.strictEqual(antigravity.manualKind('{"token":{}}'), 'json');
-  assert.strictEqual(antigravity.manualKind('  {"a":1}'), 'json');
-  assert.strictEqual(antigravity.manualKind('ya29.abc'), 'raw');
-  assert.strictEqual(antigravity.manualKind(''), 'raw');
+check('el nombre largo del grupo se abrevia, pero el completo sigue en el tooltip', () => {
+  const { metrics } = antigravity.parseSummary(agResponse);
+  const weekly = metrics.find((m) => m.label === 'Gemini · semanal');
+  assert.strictEqual(weekly.fullLabel, 'Gemini Models · semanal');
+  const gpt = metrics.find((m) => m.label === 'Claude/GPT · semanal');
+  assert.strictEqual(gpt.fullLabel, 'Claude and GPT models · semanal');
 });
 
 check('Antigravity sale en el orden canonico: 5 h antes que semanal', () => {
@@ -322,8 +341,15 @@ check('Antigravity sale en el orden canonico: 5 h antes que semanal', () => {
   });
   assert.deepStrictEqual(
     metrics.map((m) => m.label),
-    ['Gemini Models · 5 h', 'Gemini Models · semanal']
+    ['Gemini · 5 h', 'Gemini · semanal']
   );
+});
+
+check('manualKind distingue JSON de token a secas', () => {
+  assert.strictEqual(antigravity.manualKind('{"token":{}}'), 'json');
+  assert.strictEqual(antigravity.manualKind('  {"a":1}'), 'json');
+  assert.strictEqual(antigravity.manualKind('ya29.abc'), 'raw');
+  assert.strictEqual(antigravity.manualKind(''), 'raw');
 });
 
 check('extractPairs empareja cada client_id con el secret siguiente', () => {
@@ -369,6 +395,137 @@ check('firstValid salta nulos y vacios', () => {
   const picked = creds.firstValid([null, { value: '  ', source: 'a' }, { value: 'x', source: 'b' }]);
   assert.strictEqual(picked.source, 'b');
   assert.strictEqual(creds.firstValid([null, { value: '', source: 'a' }]), null);
+});
+
+/* ------------------------------------------------------- disponibilidad */
+
+console.log('disponibilidad:');
+
+/** Atajo: un proveedor con las ventanas que se le pasan. */
+function prov(metrics, extra = {}) {
+  return {
+    status: 'ok',
+    metrics: metrics.map(([window, used]) => ({
+      label: window,
+      window,
+      pct: used,
+      tone: 'ok',
+    })),
+    ...extra,
+  };
+}
+
+check('todo en verde cuando hay de sobra en todas partes', () => {
+  const { tone, left } = availability.computeAvailability([
+    prov([['5h', 0.1], ['weekly', 0.2]]),
+    prov([['5h', 0], ['weekly', 0.1]]),
+  ]);
+  assert.strictEqual(tone, 'ok');
+  assert.ok(left > 0.5, `media ${left}`);
+});
+
+check('una ventana de 5 h agotada NO pone el icono en rojo', () => {
+  // Es el caso que se quejaba: Claude al 100 % en la 5 h y de sobra en lo
+  // demas. Rojo se lee como "no queda uso de nada".
+  const { tone } = availability.computeAvailability([
+    prov([['5h', 1], ['weekly', 0.42]]),
+    prov([['5h', 0.07], ['weekly', 0.11]]),
+    prov([['5h', 0], ['weekly', 0.15]]),
+  ]);
+  assert.strictEqual(tone, 'warning', 'una 5 h agotada es amarillo, no rojo');
+});
+
+check('una ventana LARGA agotada si pone el icono en rojo', () => {
+  const { tone } = availability.computeAvailability([
+    prov([['5h', 0.1], ['weekly', 1]]),
+    prov([['5h', 0.07], ['weekly', 0.11]]),
+  ]);
+  assert.strictEqual(tone, 'critical', 'la semanal agotada es un problema de verdad');
+});
+
+check('una ventana mensual agotada es roja', () => {
+  const { tone } = availability.computeAvailability([
+    prov([['5h', 0.1], ['monthly', 1]]),
+    prov([['5h', 0.07], ['weekly', 0.11]]),
+  ]);
+  assert.strictEqual(tone, 'critical');
+});
+
+check('con la media por debajo del 20 % el icono se pone rojo', () => {
+  // Nadie al 100 %, pero entre todos queda muy poco.
+  const { tone, left } = availability.computeAvailability([
+    prov([['weekly', 0.95], ['monthly', 0.95]]),
+    prov([['weekly', 0.95], ['monthly', 0.95]]),
+  ]);
+  assert.ok(left < 0.2, `media ${left}`);
+  assert.strictEqual(tone, 'critical');
+});
+
+check('con la media entre el 20 % y el 50 % el icono es amarillo', () => {
+  const { tone, left } = availability.computeAvailability([
+    prov([['weekly', 0.7], ['monthly', 0.7]]),
+    prov([['weekly', 0.7], ['monthly', 0.7]]),
+  ]);
+  assert.ok(left > 0.2 && left < 0.5, `media ${left}`);
+  assert.strictEqual(tone, 'warning');
+});
+
+check('un proveedor con TODAS sus ventanas agotadas bloquea al resto', () => {
+  const providers = [
+    prov([['5h', 1], ['weekly', 1]]),
+    prov([['5h', 0.07], ['weekly', 0.11]]),
+  ];
+  const { tone, blocked } = availability.computeAvailability(providers);
+  assert.strictEqual(blocked, 1);
+  // El otro proveedor tiene de sobra, pero el primero tiene la SEMANAL
+  // agotada (no se repone en dias): eso es rojo, aunque el total global
+  // no sea de collapse.
+  assert.strictEqual(tone, 'critical');
+});
+
+check('si TODOS los proveedores estan bloqueados, es rojo', () => {
+  const { tone } = availability.computeAvailability([
+    prov([['5h', 1], ['weekly', 1]]),
+    prov([['5h', 1], ['weekly', 1]]),
+  ]);
+  assert.strictEqual(tone, 'critical');
+});
+
+check('una cuota que no se pudo consultar avisa (no se da por buena)', () => {
+  const { tone, unknown } = availability.computeAvailability([
+    prov([['5h', 0.05], ['weekly', 0.1]]),
+    { status: 'warning', metrics: [] },
+  ]);
+  assert.strictEqual(unknown, 1);
+  assert.strictEqual(tone, 'warning');
+});
+
+check('el punto de la fila usa el mismo criterio que el icono', () => {
+  // Una ventana larga agotada: el punto va en rojo.
+  assert.strictEqual(availability.providerTone(prov([['5h', 0.1], ['weekly', 1]])), 'critical');
+  // Una 5 h agotada: el punto va en amarillo, no en rojo.
+  assert.strictEqual(availability.providerTone(prov([['5h', 1], ['weekly', 0.4]])), 'warning');
+  // Con de sobra: en verde.
+  assert.strictEqual(availability.providerTone(prov([['5h', 0.1], ['weekly', 0.2]])), 'ok');
+  // Sin cuota consultable: avisa.
+  assert.strictEqual(availability.providerTone({ status: 'warning', metrics: [] }), 'warning');
+  // Sin porcentajes (el saldo de DeepSeek): ni verde ni rojo, neutro.
+  assert.strictEqual(
+    availability.providerTone({ status: 'ok', metrics: [{ label: 'saldo', pct: null }] }),
+    'neutral'
+  );
+});
+
+check('las ventanas de 5 h pesan menos que las semanales en la media', () => {
+  // Con la 5 h al 100 % pero la semanal casi entera, la media ponderada
+  // tiene que seguir siendo buena: la semanal es la que pesa, porque es la
+  // que no se repone enseguida.
+  const { left } = availability.computeAvailability([prov([['5h', 1], ['weekly', 0]])]);
+  assert.ok(left > 0.5, `media ${left} (la semanal pesa mas que la 5 h)`);
+  const solo = availability.providerState(prov([['5h', 1], ['weekly', 0]]));
+  assert.ok(solo.left > 0.5, `media del proveedor ${solo.left}`);
+  // Y aun asi avisa: la 5 h agotada es un contratiempo pasajero.
+  assert.strictEqual(availability.providerTone(prov([['5h', 1], ['weekly', 0]])), 'warning');
 });
 
 console.log(failures ? `\nFALLO: ${failures} prueba(s) fallida(s)` : '\nOK: todos los parsers pasan');

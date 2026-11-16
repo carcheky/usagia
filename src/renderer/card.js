@@ -97,7 +97,11 @@ function render(payload) {
         // tambien "queda 43 %", que no cabia en 122 px y se cortaba a medias.
         // El % que queda se deja en el tooltip, que si tiene sitio.
         const label = el('span', 'metric-label', metric.label);
-        label.title = metric.remaining ? `${metric.label}: ${metric.remaining}` : metric.label;
+        label.title = metric.fullLabel
+          ? `${metric.fullLabel}${metric.remaining ? ` · ${metric.remaining}` : ''}`
+          : metric.remaining
+            ? `${metric.label}: ${metric.remaining}`
+            : metric.label;
         item.appendChild(label);
 
         // Una metrica SIN PORCENTAJE (saldo, tokens, peticiones) no lleva
@@ -108,18 +112,29 @@ function render(payload) {
           const fill = el('i', metric.tone || 'neutral');
           // La barra mide lo CONSUMIDO: llena = cuota agotada.
           fill.style.width = `${Math.max(2, Math.min(1, metric.pct) * 100)}%`;
-          bar.title = `${metric.label}: ${Math.round(metric.pct * 100)}% usado${metric.remaining ? ` · ${metric.remaining}` : ''}`;
+          const parts = [`${Math.round(metric.pct * 100)}% usado`];
+          if (metric.remaining) parts.push(metric.remaining);
+          if (metric.reset) parts.push(`reinicia ${metric.reset}`);
+          bar.title = `${metric.fullLabel || metric.label}: ${parts.join(' · ')}`;
           bar.appendChild(fill);
           item.appendChild(bar);
         } else {
           item.classList.add('plain');
         }
 
+        // La columna de la derecha: el valor y, a continuacion, el reinicio
+        // de esa ventana. Va en la MISMA linea (con una fuente menor) para
+        // que la tarjeta no crezca una linea por ventana.
+        const right = el('div', 'metric-right');
         const valueEl = el('span', 'metric-value', metric.value);
         if (hasPct && metric.remaining) {
           valueEl.title = `${metric.label}: ${metric.value} · ${metric.remaining}`;
         }
-        item.appendChild(valueEl);
+        right.appendChild(valueEl);
+        if (metric.reset) {
+          right.appendChild(el('span', 'metric-reset', `↻ ${metric.reset}`));
+        }
+        item.appendChild(right);
         metrics.appendChild(item);
       }
       row.appendChild(metrics);

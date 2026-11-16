@@ -66,15 +66,19 @@ async function fetchUsage(ctx) {
   const reset5h = fmtDuration(Number(bucket.remains_time));
   const resetWeek = fmtDuration(Number(bucket.weekly_remains_time));
 
-  const notes = [];
-  if (reset5h) notes.push(`reinicio 5 h en ${reset5h}`);
-  if (resetWeek) notes.push(`reinicio semanal en ${resetWeek}`);
+  // El reinicio va en la propia metrica (junto a su barra), no en una nota
+  // aparte: asi cada ventana dice la suya y la nota global no crece.
+  // En Minimax es una DURACION ("en 3 h 12 min"), no una fecha.
+  const fiveHour = metrics.find((m) => m.window === '5h');
+  if (fiveHour && reset5h) fiveHour.reset = `en ${reset5h}`;
+  const weekly = metrics.find((m) => m.window === 'weekly');
+  if (weekly && resetWeek) weekly.reset = `en ${resetWeek}`;
 
   return {
     status: 'ok',
     summary: metrics.map((m) => `${m.label}: ${m.value}`).join(' · '),
     metrics: sortMetrics(metrics),
-    note: notes.join(' · '),
+    note: '',
     source: credential.source,
   };
 }

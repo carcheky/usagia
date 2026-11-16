@@ -107,12 +107,30 @@ function position(size) {
   win.setBounds({ x: Math.round(x), y: Math.round(y), width, height });
 }
 
-/** Ajusta la ventana al tamaño real del contenido y la recoloca. */
+/**
+ * Ajusta la ventana al tamaño real del contenido y la recoloca.
+ *
+ * La tarjeta mide lo que necesita su contenido, pero no puede ser mas alta
+ * que el area de trabajo: si lo fuera, se saldría por arriba de la pantalla
+ * (y con el scroll interno, el final del texto seguia sin verse).
+ */
 function resize(size) {
   if (!win || !size) return;
   const width = Math.ceil(size.width);
-  const height = Math.ceil(size.height);
+  let height = Math.ceil(size.height);
   if (!width || !height) return;
+
+  // El alto disponible es el del area de trabajo de la pantalla del icono,
+  // menos un margen. Si no cabe, se recorta (la tarjeta hace scroll).
+  const display = screen.getDisplayMatching({
+    x: anchor?.x ?? 0,
+    y: anchor?.y ?? 0,
+    width: anchor?.width ?? 1,
+    height: anchor?.height ?? 1,
+  });
+  const available = display.workArea.height - 16;
+  if (height > available) height = Math.max(available, 200);
+
   const current = win.getSize();
   if (current[0] === width && current[1] === height) return;
   win.setSize(width, height);
