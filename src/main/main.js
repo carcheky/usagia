@@ -10,11 +10,13 @@ const hover = require('./hover');
 const instances = require('./instances');
 const settings = require('./settings');
 const availability = require('./availability');
+const tooltip = require('./tooltip');
 const { byId } = require('./providers');
 
 const MARKER = 'Usagia';
 const ASSETS = path.join(__dirname, '..', '..', 'assets');
-const TOOLTIP_MAX = 120;
+// Presupuesto del tooltip del sistema (ver src/main/tooltip.js).
+const TOOLTIP_MAX = tooltip.TOOLTIP_MAX;
 
 // La vista previa de la configuracion trabaja sobre una carpeta de datos
 // temporal: al pulsar "Guardar" no debe tocar la configuracion de verdad.
@@ -202,13 +204,18 @@ function updateTrayIcon() {
 
 function updateTooltip() {
   if (!tray) return;
-  const lines = [MARKER];
-  for (const { instance, result } of orderedResults()) {
-    if (!result) continue;
-    lines.push(`${instance.label}: ${shortSummary(result)}`);
-  }
-  let text = lines.join('\n');
-  if (text.length > TOOLTIP_MAX) text = `${text.slice(0, TOOLTIP_MAX - 1)}…`;
+  // El tooltip lleva una linea por proveedor, lo mas urgente primero, y
+  // se recorta al presupuesto de Windows sin partir lineas a medias (ver
+  // src/main/tooltip.js).
+  const text = tooltip.buildTooltip(
+    orderedResults().map(({ instance, result }) => ({
+      label: instance.label,
+      result,
+      tone: result?.status === 'ok' ? availability.providerTone(result) : 'neutral',
+    })),
+    TOOLTIP_MAX
+  );
+
   tray.setToolTip(text);
   if (process.argv.includes('--verbose')) {
     console.log(`[usagia] tooltip (${text.length} car.): ${JSON.stringify(text)}`);
@@ -363,11 +370,38 @@ function handlePointer() {
 
 /* ------------------------------------------------------------------ tarjeta */
 
+/**
+ * Tope de altura de la tarjeta: **toda la pantalla menos la barra de
+ * tareas**.
+ *
+ * El `workArea` de Electron es exactamente eso (la pantalla menos la barra
+ * de tareas), asi que el tope es su alto. Antes era un tope fijo (640 px)
+ * que no significaba nada: hacia aparecer una barra de scroll por 3 o 4
+ * pixeles, que es una chapuza.
+ *
+ * @returns {number} pixeles
+ */
+function cardMaxHeight() {
+  const display = anchorRect
+    ? screen.getDisplayMatching({
+        x: anchorRect.x,
+        y: anchorRect.y,
+        width: anchorRect.width,
+        height: anchorRect.height,
+      })
+    : screen.getPrimaryDisplay();
+  return display.workArea.height;
+}
+
 function broadcast() {
   const payload = {
     updatedAt: state.updatedAt,
     refreshing: state.refreshing,
     pinned,
+    // El tope de la tarjeta: lo aplica el renderer como max-height, para
+    // que la tarjeta CREZCA sola hasta ese limite (y solo entonces
+    // aparezca el scroll).
+    maxHeight: cardMaxHeight(),
     providers: orderedResults().map(({ instance, provider, result }) => ({
       id: instance.id,
       label: instance.label,
@@ -565,7 +599,7 @@ app.whenReady().then(async () => {
   registerAppProtocol();
 
   ipcMain.on('card:size', (_event, size) => {
-    card.resize(size);
+    card.resize(size, cardMaxHeight());
     if (process.argv.includes('--verbose') && size?.gear) {
       const bounds = card.bounds();
       if (!bounds) return;
@@ -615,6 +649,21 @@ app.whenReady().then(async () => {
     // Captura del contenido para poder revisarlo desde fuera.
     setTimeout(async () => {
       try {
+        // Diagnostico: si la tarjeta necesita scroll, o cual es el tope
+        // aplicado (la pantalla menos la barra de tareas).
+        const info = await card.get().webContents.executeJavaScript(`
+          (() => {
+            const c = document.querySelector('.card');
+            if (!c) return { error: 'sin .card' };
+            return {
+              alto: c.scrollHeight,
+              visible: c.clientHeight,
+              maxHeight: c.style.maxHeight || '(sin tope)',
+              scroll: c.scrollHeight > c.clientHeight,
+            };
+          })()
+        `);
+        console.log(`[usagia] tarjeta: ${JSON.stringify(info)}`);
         const image = await card.get().webContents.capturePage();
         const file = previewPath('preview-card.png');
         fs.writeFileSync(file, image.toPNG());

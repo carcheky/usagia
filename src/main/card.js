@@ -102,7 +102,13 @@ function position(size) {
 
   // Ajuste a la pantalla (por ejemplo, iconos muy a la izquierda).
   x = Math.max(area.x + 8, Math.min(x, area.x + area.width - width - 8));
-  y = Math.max(area.y + 8, Math.min(y, area.y + area.height - height - 8));
+
+  // La tarjeta cabe entre el borde superior y el inferior del area de
+  // trabajo (la pantalla menos la barra de tareas). Si es mas alta que eso
+  // (no cabe de ninguna manera), se apoya en el borde superior; si lo es
+  // justo, se apoya en el inferior, tocando la barra de tareas.
+  y = Math.min(y, area.y + area.height - height);
+  y = Math.max(area.y, y);
 
   win.setBounds({ x: Math.round(x), y: Math.round(y), width, height });
 }
@@ -110,26 +116,19 @@ function position(size) {
 /**
  * Ajusta la ventana al tamaño real del contenido y la recoloca.
  *
- * La tarjeta mide lo que necesita su contenido, pero no puede ser mas alta
- * que el area de trabajo: si lo fuera, se saldría por arriba de la pantalla
- * (y con el scroll interno, el final del texto seguia sin verse).
+ * `limit` es el tope que pone el proceso principal (el 90 % de la pantalla).
+ * El renderer ya aplica ese tope como max-height de la tarjeta, asi que la
+ * medida llega acotada; este es el cinturon de seguridad por si llegara
+ * una medida suelta.
  */
-function resize(size) {
+function resize(size, limit) {
   if (!win || !size) return;
   const width = Math.ceil(size.width);
   let height = Math.ceil(size.height);
   if (!width || !height) return;
 
-  // El alto disponible es el del area de trabajo de la pantalla del icono,
-  // menos un margen. Si no cabe, se recorta (la tarjeta hace scroll).
-  const display = screen.getDisplayMatching({
-    x: anchor?.x ?? 0,
-    y: anchor?.y ?? 0,
-    width: anchor?.width ?? 1,
-    height: anchor?.height ?? 1,
-  });
-  const available = display.workArea.height - 16;
-  if (height > available) height = Math.max(available, 200);
+  const max = Number(limit);
+  if (Number.isFinite(max) && max > 0 && height > max) height = max;
 
   const current = win.getSize();
   if (current[0] === width && current[1] === height) return;

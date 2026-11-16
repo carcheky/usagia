@@ -21,6 +21,7 @@ const claude = require(path.join(root, 'providers', 'claude'));
 const antigravity = require(path.join(root, 'providers', 'antigravity'));
 const client = require(path.join(root, 'local', 'antigravity-client'));
 const availability = require(path.join(root, 'availability'));
+const tooltip = require(path.join(root, 'tooltip'));
 const deepseek = require(path.join(root, 'providers', 'deepseek'));
 
 let failures = 0;
@@ -602,6 +603,58 @@ check('un saldo bajo avisa aunque la autonomia sea larga', () => {
     ],
   };
   assert.strictEqual(availability.providerTone(resultado), 'critical');
+});
+
+/* --------------------------------------------------------------- tooltip */
+
+console.log('tooltip:');
+
+check('el nombre corto de una ventana', () => {
+  assert.strictEqual(tooltip.shortWindow('ventana 5 h'), '5 h');
+  assert.strictEqual(tooltip.shortWindow('5 h'), '5 h');
+  assert.strictEqual(tooltip.shortWindow('semanal'), 'sem');
+  assert.strictEqual(tooltip.shortWindow('semanal Fable'), 'sem Fable');
+  assert.strictEqual(tooltip.shortWindow('mensual'), 'mens');
+  // Con grupo delante: se quita.
+  assert.strictEqual(tooltip.shortWindow('Gemini · 5 h'), '5 h');
+  assert.strictEqual(tooltip.shortWindow('Claude/GPT · semanal'), 'sem');
+});
+
+check('la linea del tooltip dice la ventana MAS AGOTADA', () => {
+  const resultado = {
+    status: 'ok',
+    metrics: [
+      { label: 'ventana 5 h', pct: 0.1 },
+      { label: 'semanal', pct: 0.42 },
+    ],
+  };
+  assert.strictEqual(tooltip.tooltipLine(resultado), '42% sem');
+});
+
+check('la linea del tooltip avisa cuando no hay cuota', () => {
+  assert.strictEqual(tooltip.tooltipLine({ status: 'warning', metrics: [] }), 'cuota no disponible');
+  assert.strictEqual(tooltip.tooltipLine({ status: 'error', metrics: [] }), 'error');
+  assert.strictEqual(tooltip.tooltipLine({ status: 'unconfigured', metrics: [] }), 'sin credencial');
+});
+
+check('el tooltip cabe en el presupuesto de Windows sin partir lineas', () => {
+  const lineas = [
+    'Claude: 100% 5 h',
+    'Minimax: 31% 5 h',
+    'Antigravity: 15% sem',
+    'DeepSeek: $33.64',
+  ];
+  const texto = tooltip.fitTooltip(lineas, 40);
+  assert.ok(texto.length <= 40, `texto de ${texto.length} caracteres`);
+  // Ninguna linea queda partida a medias.
+  for (const linea of texto.split('\n')) {
+    assert.ok(lineas.includes(linea), `linea inesperada: ${linea}`);
+  }
+});
+
+check('el tooltip usa el presupuesto entero si todo cabe', () => {
+  const lineas = ['Claude: 100% 5 h', 'Minimax: 31% 5 h'];
+  assert.strictEqual(tooltip.fitTooltip(lineas, 127), lineas.join('\n'));
 });
 
 console.log(failures ? `\nFALLO: ${failures} prueba(s) fallida(s)` : '\nOK: todos los parsers pasan');

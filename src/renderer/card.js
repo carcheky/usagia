@@ -58,6 +58,16 @@ function el(tag, className, text) {
 function render(payload) {
   rowsEl.textContent = '';
 
+  // El tope de altura lo pone el proceso principal (la pantalla menos la
+  // barra de tareas). La tarjeta CRECE hasta ese limite: el scroll solo
+  // sale si de verdad no cabe. Con un tope fijo mas bajo salia una barra
+  // por 3 o 4 pixeles.
+  const cardEl = document.querySelector('.card');
+  if (cardEl && payload.maxHeight) {
+    const max = `${payload.maxHeight}px`;
+    if (cardEl.style.maxHeight !== max) cardEl.style.maxHeight = max;
+  }
+
   for (const provider of payload.providers || []) {
     const row = el('div', `row ${provider.status}`);
 

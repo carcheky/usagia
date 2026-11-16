@@ -29,11 +29,9 @@ body {
 
 .card {
   width: 380px;
-  /* Tope alto: con las notas envueltas en varias lineas (y el reinicio de
-     cada ventana en su propia linea) la tarjeta ronda los 610 px. Con 560
-     salia una barra de scroll que era justo lo que se queria evitar. El
-     proceso principal la recorta si la pantalla no da para tanto. */
-  max-height: 640px;
+  /* Sin tope fijo: la tarjeta crece lo que necesite. El limite real lo
+     pone el proceso principal (el 90 % de la altura de la pantalla) y lo
+     aplica como max-height en linea; solo entonces aparece el scroll. */
   overflow-y: auto;
   background: var(--bg);
   border: 1px solid rgba(255, 255, 255, 0.09);

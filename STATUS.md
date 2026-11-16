@@ -1,14 +1,17 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 09:55 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 10:30 (Europe/Madrid).
 > **Quién escribe este fichero ahora mismo:** la sesión `session-lead-quota`
 > ("Claude en gris: cuota real, barras intuitivas y color del icono"). Aporta
 > el **arreglo de la cuota de Claude** (no salía por un token caducado), el
 > **repintado de las barras** (llenas y rojas al 100 %, sin barras grises sin
 > porcentaje), el **orden canónico de las ventanas** (la 5 h primero en todos
-> los proveedores), las **notas que ya no se cortan con "..."** y la **cuenta
-> global del icono de la bandeja** (`src/main/availability.js`), con sus
-> commits y su entrada en [Lo último](#lo-último-la-cuota-las-barras-y-el-icono-2026-11-16-0955).
+> los proveedores), las **notas que ya no se cortan con "..."**, el **modelo
+> propio de DeepSeek** (saldo + autonomía, que no es una cuota por
+> ventanas), la **cuenta global del icono de la bandeja**
+> (`src/main/availability.js`) y el **fin del scroll por 3 píxeles** (el tope
+> es la pantalla menos la barra de tareas), con sus commits y su entrada en
+> [Lo último](#lo-último-la-cuota-las-barras-y-el-icono-2026-11-16-0955).
 > Esta versión **fusiona** lo que escribieron las sesiones `session-fa207887`
 > (plan de Android), `session-e9f5038b` (lead: verificación de la UI y de la
 > app instalada de `beta.4`), `session-8a303ef4` (revisión a fondo: cola de los
@@ -202,6 +205,36 @@ avisa igual (crítico), porque recargar es cosa del usuario.
 La cabecera de la fila la dice el proveedor (`headline`): **"$33.64 ·
 aguanta 12 meses"**, y las métricas se ordenan por importancia (saldo y
 autonomía primero, que son las 4 que caben).
+
+### 5. El scroll (que no aparezca por 3 píxeles)
+
+El tope de altura de la tarjeta era un número fijo (640 px en el CSS, y el
+área de trabajo − 16 px en el proceso principal). Eso no significaba nada:
+en una pantalla de 1080 px, una tarjeta de 641 px sacaba una barra de scroll
+**por un píxel**. Una chapuza.
+
+**Ahora el tope es la pantalla menos la barra de tareas**: el `workArea` de
+Electron es exactamente eso, así que el tope es su alto (852 px en esta
+pantalla). La tarjeta **crece** hasta ese límite (el renderer lo aplica como
+`max-height`), y el scroll sale **solo si de verdad no cabe**.
+
+| Contenido | Antes | Ahora |
+|---|---|---|
+| 546 px (lo normal) | cabe | cabe, **sin scroll** |
+| 641 px | **scroll por 1 píxel** | cabe, sin scroll |
+| 2820 px (a la fuerza, prueba) | scroll | scroll, con tope de 852 px |
+
+Cuando la tarjeta es más alta que el área de trabajo, se apoya en el borde
+superior (en vez de salirse por arriba).
+
+**El tooltip crece con la información que cabe** (`src/main/tooltip.js`, con
+la lógica pura aparte para poder probarla):
+
+- Una línea por proveedor, con la **ventana más agotada**: `Claude: 100% 5 h`.
+- Windows da un presupuesto de ~127 caracteres. Antes se cortaba el texto
+  a la mitad, partiendo una línea; ahora **se van quitando líneas enteras**,
+  empezando por las menos urgentes, y lo que **peor está va primero**.
+- El tooltip se entero, sin el marcador `Usagia` que ocupaba presupuesto.
 
 ### Verificación
 
