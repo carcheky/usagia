@@ -1,6 +1,9 @@
 # Estado de Usagia
 
-> **Última actualización:** 2026-11-16 13:50 (Europe/Madrid).
+> **Última actualización:** 2026-11-16 13:50 (Europe/Madrid), más lo añadido a
+> las 18:20 por la **sesión de documentación** (`docs/` con índice y metodología
+> de carga selectiva, la regla en [AGENTS.md](AGENTS.md) y `scripts/test-docs.js`):
+> ver [Lo último: documentación para humanos y agentes](#lo-último-documentación-para-humanos-y-agentes-2026-11-16-1820).
 > **Quién escribe este fichero ahora mismo:** la sesión `session-updates`
 > (**búsqueda de actualizaciones** con canal configurable: tarjeta, menú de
 > bandeja, ventana de configuración y aviso del sistema). Ver
@@ -137,6 +140,42 @@ lugar de pisar.
 | Electron | **38.8.6** (instalado y en el lock) | El PR #1 de Dependabot propone 42.11.16 y está **cerrado sin fusionar** |
 
 Releases: <https://github.com/carcheky/usagia/releases>
+
+## Lo último: documentación para humanos y agentes (2026-11-16 18:20)
+
+**Encargo:** "la regla de oro del agente es documentar todo debidamente en una
+carpeta human/ia oriented, siguiendo una metodología de carga documental
+selectiva según la tarea".
+
+**Lo hecho:** una carpeta [`docs/`](docs/README.md) con **índice único** y una
+**metodología de carga selectiva**, más la regla escrita en [AGENTS.md](AGENTS.md)
+y una suite que la mantiene viva.
+
+| Qué | Dónde |
+|---|---|
+| Índice: qué documento responde a qué y cuándo cargarlo | [docs/README.md](docs/README.md) |
+| Método: niveles de carga (índice → documento → sección), **12 recetas por tarea** (con lo que **no** hace falta leer), enrutado del conocimiento, anatomía de un documento y el bucle de mantenimiento | [docs/METODOLOGIA.md](docs/METODOLOGIA.md) |
+| Decisión y alternativas descartadas (raíz intacta, wiki, RAG, sub-índices) | [docs/decisions/0001](docs/decisions/0001-documentacion-para-humanos-y-agentes.md) |
+| Prueba: enlaces relativos vivos, todo `docs/` enlazado desde el índice, cabecera (`Para quién`/`Responde a`/`Verificado`) y tope de 300 líneas | `scripts/test-docs.js` (se descubre sola: entra en `npm test` y en el job `verify`) |
+| Regla operativa: "un dato, un sitio", carga por secciones, commit `docs:` | [AGENTS.md](AGENTS.md) § *Documentación: la regla de oro* |
+
+**Por qué así (medido, 2026):** un `AGENTS.md` útil ahorra ~28,6 % de tiempo y
+~16,6 % de tokens, pero **duplicar el README** empeora el coste ~23 %; la
+atención se degrada al crecer el contexto ("context rot"); y la divulgación
+progresiva funciona con **un** nivel de índice, no con dos (∞Bench / REALM 2026).
+Está resumido con sus fuentes en
+[METODOLOGIA §2](docs/METODOLOGIA.md#2-por-qué-así-lo-que-dice-la-evidencia-de-2026).
+
+**Lo que NO se ha tocado:** los ficheros de la raíz no se han movido (los
+referencian las otras sesiones y el historial); el trabajo **en curso de otra
+sesión** (la instalación de actualizaciones: `src/main/update-install.js`,
+`updates.js`, preloads y renderer) sigue **sin commitear y sin tocar**.
+`npm test` → **10 suites en verde** (la nueva incluida).
+
+**Sin empujar:** el commit es `docs:` y está **solo en local**, porque la regla
+del repo pide `git status --porcelain` vacío antes de cada `git push` y el árbol
+tiene el trabajo en curso de la otra sesión. Quien cierre el árbol puede
+empujarlo tal cual (no publica release: `docs:` no es de la app).
 
 ## Lo último: el refresco y la caché de Claude (2026-11-16 14:00)
 
