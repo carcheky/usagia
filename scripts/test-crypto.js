@@ -13,7 +13,7 @@
 const path = require('path');
 const t = require('./test-lib');
 
-const { fakeHome, check, finish, mockFetch } = t;
+const { fakeHome, check, finish } = t;
 fakeHome();
 
 const crypto = require(path.join(__dirname, '..', 'src', 'main', 'crypto'));

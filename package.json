@@ -25,6 +25,7 @@
     "probe": "node scripts/probe.js",
     "preview": "node scripts/run.js --preview --in-process-gpu",
     "preview:settings": "node scripts/run.js --settings --in-process-gpu",
+    "lint": "eslint .",
     "test": "node scripts/test.js",
     "test:package": "node scripts/test-package.js",
     "test:ci-env": "node scripts/test-probe-clean-env.js",
@@ -35,7 +36,8 @@
   },
   "devDependencies": {
     "electron": "^45.3.3",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "eslint": "^10.15.0"
   },
   "build": {
     "appId": "com.usagia.tray",

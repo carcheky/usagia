@@ -154,7 +154,7 @@ function writeInstallScript(content, name = 'usagia-update.cmd') {
  * de un proceso CMD que a su vez hace `ping` (el ping abre su propia
  * consola). El VBScript con `vbHide` la oculta de verdad.
  */
-function runDetached(file, args = [], spawnImpl = spawn) {
+function runDetached(file, _args = [], spawnImpl = spawn) {
   // VBScript que lanza el CMD oculto.
   const vbs = path.join(os.tmpdir(), 'usagia-update-hidden.vbs');
   const cmdLine = `"${process.env.ComSpec || 'cmd.exe'}" /c "${file}"`;

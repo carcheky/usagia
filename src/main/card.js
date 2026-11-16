@@ -2,7 +2,6 @@
 
 // Tarjeta flotante que se muestra al pasar el ratón por el icono de la bandeja.
 
-const path = require('path');
 const { BrowserWindow, screen } = require('electron');
 
 const CARD_WIDTH = 380;

@@ -475,7 +475,7 @@ function fakeNet(chunks, { status = 200, total } = {}) {
   };
 }
 
-const fakeFs = (dir) => {
+const fakeFs = (_dir) => {
   const writes = [];
   const state = { destroyed: false, errored: false };
   return {

@@ -30,14 +30,14 @@
 | Cola de la revisión a fondo: completada (2026-11-16 20:50) | 317 |
 | Qué funciona (verificado) | 337 |
 | Pendiente / siguiente | 356 |
-| Puntos abiertos y riesgos conocidos | 380 |
-| Límites del entorno de DSH al medir (no son fallos de la app) | 404 |
-| Reparto entre sesiones (acuerdo) | 423 |
-| Cómo mantener este fichero | 445 |
-| Decisiones que son del usuario | 458 |
-| Notas para quien siga | 465 |
-| Retomar (en 5 minutos) | 472 |
-| Actualización automática desde la app (2026-11-16 18:45) | 487 |
+| Puntos abiertos y riesgos conocidos | 379 |
+| Límites del entorno de DSH al medir (no son fallos de la app) | 403 |
+| Reparto entre sesiones (acuerdo) | 422 |
+| Cómo mantener este fichero | 444 |
+| Decisiones que son del usuario | 457 |
+| Notas para quien siga | 464 |
+| Retomar (en 5 minutos) | 471 |
+| Actualización automática desde la app (2026-11-16 18:45) | 486 |
 <!-- fin-índice -->
 
 ## Lo último: items 12 y 17 completados (2026-11-16 20:50)
@@ -368,9 +368,8 @@ Verificado el 2026-11-16 20:50 sobre `4cdc332`: `npm test` → **12 suites en ve
    Items 12 (cifrado con `safeStorage`) y 17 (código muerto) arreglados.
    Nueva suite `test-crypto.js`. Ver
    [Cola de la revisión a fondo](#cola-de-la-revisión-a-fondo-completada-2026-11-16-2050).
-6. **Linter**: no hay ESLint ni formateador, y el bug de `!enabled` (arreglado
-   en `031c693`) lo habría cazado. Añadirlo toca el pipeline, así que es
-   decisión del usuario antes de meter un job de CI nuevo.
+6. ~~**Linter**~~: **AÑADIDO**. ESLint con reglas mínimas que cazan bugs reales.
+   Se ejecuta en el pipeline (`npm run lint` antes de las pruebas).
 7. ~~**`fix:` del respaldo sin GPU en los modos de una sola vez**~~: **HECHO**
    (`951e478`). Los modos `--preview`, `--settings` y `--probe` ahora pasan por
    el respaldo de GPU antes de salir. Nueva suite `scripts/test-run.js`.

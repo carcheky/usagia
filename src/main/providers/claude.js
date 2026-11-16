@@ -339,7 +339,6 @@ function localUsage() {
 }
 
 
-
 async function fetchUsage(ctx) {
   const key = cacheKey(ctx);
   const hit = cache.get(key);

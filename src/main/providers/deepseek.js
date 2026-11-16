@@ -11,17 +11,11 @@
 //       /api/v0/usage/amount?month&year  -> tokens del mes por modelo
 //       /api/v0/usage/cost?month&year    -> coste del mes
 
-const { fetchJson, tone, formatTokens } = require('../http');
+const { fetchJson, formatTokens } = require('../http');
 const creds = require('../credentials');
 
 const PLATFORM = 'https://platform.deepseek.com';
 const BALANCE_ENDPOINT = 'https://api.deepseek.com/user/balance';
-
-// Umbrales de la BARRA DE SALDO: cuanto saldo queda, en fraccion.
-// El saldo no se repone solo: es dinero prepaid que hay que recargar a
-// mano, asi que agotarse es un problema REAL (no un contratiempo como la
-// ventana de 5 h de una cuota por tiempo).
-const BALANCE_THRESHOLDS = { critical: 0.1, warning: 0.3 };
 
 async function resolve(ctx) {
   const manual = creds.firstValid([
@@ -292,17 +286,6 @@ async function fetchUsage(ctx) {
     note: notes.join(' · '),
     source: credential.source,
   };
-}
-
-/** ¿Hubo gasto en este dia del desglose? */
-function dayHasSpend(day) {
-  for (const group of day?.data || []) {
-    for (const item of group.usage || []) {
-      if (item.type === 'REQUEST') continue;
-      if (Number(item.amount || 0) > 0) return true;
-    }
-  }
-  return false;
 }
 
 /**

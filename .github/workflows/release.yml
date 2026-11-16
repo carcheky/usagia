@@ -113,6 +113,10 @@ jobs:
       # Se usa `scripts/probe.js` (Node PURO) y no la app de Electron: en un
       # runner no hay display, y Electron sin servidor X revienta con
       # STATUS_BREAKPOINT. Los proveedores solo necesitan fetch y fs.
+      # Linter: detecta errores y codigo muerto antes de ejecutar.
+      - name: Lint
+        run: npm run lint
+
       - name: Comprobacion de humo
         run: node scripts/probe.js
 

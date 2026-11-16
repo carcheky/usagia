@@ -50,7 +50,7 @@ const result = spawnSync(process.execPath, [path.join(repo, 'scripts', 'probe.js
 
 const out = `${result.stdout || ''}${result.stderr || ''}`;
 console.log(`\ncodigo de salida: ${result.status}`);
-console.log(`\n--- salida ---`);
+console.log('\n--- salida ---');
 console.log(out.trim().split('\n').slice(0, 60).join('\n'));
 
 // Cada proveedor deberia aparecer con status unconfigured.

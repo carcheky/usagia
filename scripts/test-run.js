@@ -22,7 +22,7 @@ const t = require('./test-lib');
 //   'exit-clean'   - salir con 0 (cierre normal)
 //   'exit-error'   - salir con el codigo de error
 //   'restart'      - relanzar (watchdog, solo app de larga vida)
-function simulateExitHandler({ code, signal, ONE_SHOT, gpuFallbackUsed }) {
+function simulateExitHandler({ code, _signal, ONE_SHOT, gpuFallbackUsed }) {
   const GPU_FATAL_CODE = 2147483651; // 0x80000003
   const killedBySignal = code === null;
   const exitCode = killedBySignal ? 128 + 15 : code; // simplificado: SIGTERM=15
@@ -45,7 +45,7 @@ function simulateExitHandler({ code, signal, ONE_SHOT, gpuFallbackUsed }) {
 }
 
 // Simulamos el orden INCORRECTO (antes del fix) para verificar que el bug existia
-function simulateExitHandlerBuggy({ code, signal, ONE_SHOT, gpuFallbackUsed }) {
+function simulateExitHandlerBuggy({ code, _signal, ONE_SHOT, gpuFallbackUsed }) {
   const GPU_FATAL_CODE = 2147483651;
   const killedBySignal = code === null;
   const exitCode = killedBySignal ? 128 + 15 : code;
